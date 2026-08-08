@@ -16,6 +16,7 @@ import {
   MenuUnfoldOutlined,
   LogoutOutlined,
   EnvironmentOutlined,
+  CustomerServiceOutlined,
 } from "@ant-design/icons";
 import { Logo } from "../common/Logo";
 import { SidebarNav, type SidebarNavSection } from "./SidebarNav";
@@ -78,6 +79,11 @@ export const DashboardLayout: React.FC = () => {
       items: [
         { key: "/customer/profile", icon: <UserOutlined />, label: "Profile" },
         { key: "/customer/wallet", icon: <WalletOutlined />, label: "Wallet" },
+        {
+          key: "/customer/support",
+          icon: <CustomerServiceOutlined />,
+          label: "Support Tickets",
+        },
         {
           key: "/customer/settings",
           icon: <UserOutlined />,
@@ -145,12 +151,6 @@ export const DashboardLayout: React.FC = () => {
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
               className="hidden lg:flex text-slate-500"
-            />
-            <Button
-              type="text"
-              icon={<MenuUnfoldOutlined />}
-              onClick={() => setMobileOpen(true)}
-              className="lg:hidden text-slate-500"
             />
             <Input
               placeholder="Search shipments..."

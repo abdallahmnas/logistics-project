@@ -29,6 +29,8 @@ import { ConsolidationPage } from "./pages/customer/shipments/ConsolidationPage"
 import { ShipmentDetail } from "./pages/customer/shipments/ShipmentDetail";
 import { WarehouseAddresses } from "./pages/customer/shipments/WarehouseAddresses";
 import { NewConsolidationPage } from "./pages/customer/shipments/NewConsolidationPage";
+import { CustomerSupportTickets } from "./pages/customer/support/CustomerSupportTickets";
+import { OpenSupportTicket } from "./pages/customer/support/OpenSupportTicket";
 import { BuyForMeList } from "./pages/customer/procurement/BuyForMeList";
 import { BuyForMeForm } from "./pages/customer/procurement/BuyForMeForm";
 import { ExchangeList } from "./pages/customer/exchange/ExchangeList";
@@ -59,6 +61,8 @@ import { PermissionGroupDetails } from "./pages/admin/permissions/PermissionGrou
 import { StaffMembersList } from "./pages/admin/staff/StaffMembersList";
 import { AddStaffMember } from "./pages/admin/staff/AddStaffMember";
 import { CustomersList } from "./pages/admin/customers/CustomersList";
+import { SupportTicketsList } from "./pages/admin/support/SupportTicketsList";
+import { TicketDetails } from "./pages/admin/support/TicketDetails";
 import { PlatformSettings } from "./pages/admin/settings/PlatformSettings";
 import { AdminDashboardHome } from "./pages/admin/AdminDashboardHome";
 
@@ -104,6 +108,9 @@ function App() {
             <Route path="shipments/:id" element={<ShipmentDetail />} />
             <Route path="addresses" element={<WarehouseAddresses />} />
             <Route path="buy-for-me" element={<BuyForMeList />} />
+            <Route path="buy-for-me/new" element={<BuyForMeForm />} />
+            <Route path="support" element={<CustomerSupportTickets />} />
+            <Route path="support/new" element={<OpenSupportTicket />} />
             <Route path="exchange" element={<ExchangeList />} />
             <Route path="exchange/history" element={<ExchangeHistory />} />
             <Route path="exchange/new" element={<ExchangeRequestForm />} />
@@ -158,6 +165,8 @@ function App() {
             <Route path="customers" element={<CustomersList />} />
             <Route path="staff" element={<StaffMembersList />} />
             <Route path="staff/new" element={<AddStaffMember />} />
+            <Route path="support" element={<SupportTicketsList />} />
+            <Route path="support/:id" element={<TicketDetails />} />
             <Route path="permissions" element={<PermissionGroups />} />
             <Route path="permissions/new" element={<CreatePermissionGroup />} />
             <Route path="permissions/:id" element={<PermissionGroupDetails />} />
