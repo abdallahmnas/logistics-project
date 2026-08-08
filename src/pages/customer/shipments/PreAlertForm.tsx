@@ -1,21 +1,27 @@
-import React, { useState } from 'react';
-import { Card, Form, Input, InputNumber, Button, message } from 'antd';
-import type { UploadFile } from 'antd';
-import { ArrowLeftOutlined, SendOutlined, BarcodeOutlined, FileTextOutlined, PictureOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import { useAppDispatch } from '../../../store/hooks';
-import { createPreAlert } from '../../../store/slices/shipmentSlice';
-import { preAlertSchema, validateForm } from '../../../utils/validators';
-import type { PreAlertPayload } from '../../../types/shipment.types';
-import { ImageDropzone } from '../../../components/common/ImageDropzone';
+import React, { useState } from "react";
+import { Card, Form, Input, InputNumber, Button, message } from "antd";
+import type { UploadFile } from "antd";
+import {
+  ArrowLeftOutlined,
+  SendOutlined,
+  BarcodeOutlined,
+  FileTextOutlined,
+  PictureOutlined,
+} from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+import { useAppDispatch } from "../../../store/hooks";
+import { createPreAlert } from "../../../store/slices/shipmentSlice";
+import { preAlertSchema, validateForm } from "../../../utils/validators";
+import type { PreAlertPayload } from "../../../types/shipment.types";
+import { ImageDropzone } from "../../../components/common/ImageDropzone";
 
 const { TextArea } = Input;
 
-const SectionHeading: React.FC<{ icon: React.ReactNode; title: string; subtitle: string }> = ({
-  icon,
-  title,
-  subtitle,
-}) => (
+const SectionHeading: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+}> = ({ icon, title, subtitle }) => (
   <div className="flex items-center gap-3 mb-5">
     <div className="w-9 h-9 rounded-lg bg-brand-blue-light text-brand-blue flex items-center justify-center shrink-0">
       {icon}
@@ -35,9 +41,17 @@ export const PreAlertForm: React.FC = () => {
   const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   const onFinish = async (values: PreAlertPayload) => {
-    const errors = await validateForm(preAlertSchema, values as unknown as Record<string, unknown>);
+    const errors = await validateForm(
+      preAlertSchema,
+      values as unknown as Record<string, unknown>,
+    );
     if (Object.keys(errors).length > 0) {
-      form.setFields(Object.keys(errors).map((key) => ({ name: key, errors: [errors[key]] })));
+      form.setFields(
+        Object.keys(errors).map((key) => ({
+          name: key,
+          errors: [errors[key]],
+        })),
+      );
       return;
     }
 
@@ -51,10 +65,12 @@ export const PreAlertForm: React.FC = () => {
           estimatedItems: values.estimatedItems,
           notes: values.notes,
           photos: fileList.map((f) => f.name),
-        })
+        }),
       ).unwrap();
-      message.success('Package pre-alerted successfully. We will notify you when it arrives.');
-      navigate('/dashboard/shipments');
+      message.success(
+        "Package pre-alerted successfully. We will notify you when it arrives.",
+      );
+      navigate("/customer/shipments");
     } finally {
       setSubmitting(false);
     }
@@ -66,20 +82,31 @@ export const PreAlertForm: React.FC = () => {
         <Button
           type="text"
           icon={<ArrowLeftOutlined />}
-          onClick={() => navigate('/dashboard/shipments')}
+          onClick={() => navigate("/customer/shipments")}
           className="mb-2 -ml-2 text-slate-500"
         >
           Back to My Shipments
         </Button>
-        <h1 className="text-2xl font-bold text-slate-800 m-0 text-center">Pre-Alert a Package</h1>
+        <h1 className="text-2xl font-bold text-slate-800 m-0 text-center">
+          Pre-Alert a Package
+        </h1>
         <p className="text-slate-500 mt-1 mb-0 text-sm text-center">
-          Let us know a package is coming so we can watch for it at our Guangzhou warehouse.
+          Let us know a package is coming so we can watch for it at our
+          Guangzhou warehouse.
         </p>
       </div>
 
       <div className="flex justify-center">
-        <Card bordered={false} className="shadow-sm rounded-2xl w-full max-w-2xl">
-          <Form form={form} layout="vertical" onFinish={onFinish} requiredMark={false}>
+        <Card
+          bordered={false}
+          className="shadow-sm rounded-2xl w-full max-w-2xl"
+        >
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={onFinish}
+            requiredMark={false}
+          >
             <SectionHeading
               icon={<BarcodeOutlined />}
               title="Tracking details"
@@ -88,7 +115,9 @@ export const PreAlertForm: React.FC = () => {
             <Form.Item
               name="chineseTrackingNo"
               label="Chinese Domestic Tracking Number"
-              rules={[{ required: true, message: 'Please enter the tracking number' }]}
+              rules={[
+                { required: true, message: "Please enter the tracking number" },
+              ]}
             >
               <Input placeholder="e.g. SF1234567890123" size="large" />
             </Form.Item>
@@ -96,7 +125,9 @@ export const PreAlertForm: React.FC = () => {
             <Form.Item
               name="supplierName"
               label="Supplier / Seller Name"
-              rules={[{ required: true, message: 'Please enter the supplier name' }]}
+              rules={[
+                { required: true, message: "Please enter the supplier name" },
+              ]}
             >
               <Input placeholder="e.g. Guangzhou Trading Co." size="large" />
             </Form.Item>
@@ -111,16 +142,26 @@ export const PreAlertForm: React.FC = () => {
             <Form.Item
               name="description"
               label="Item Description"
-              rules={[{ required: true, message: 'Please describe the items' }]}
+              rules={[{ required: true, message: "Please describe the items" }]}
             >
-              <TextArea rows={3} placeholder="e.g. 2 boxes of men's sneakers, assorted sizes" />
+              <TextArea
+                rows={3}
+                placeholder="e.g. 2 boxes of men's sneakers, assorted sizes"
+              />
             </Form.Item>
 
             <div className="grid grid-cols-2 gap-4">
-              <Form.Item name="estimatedItems" label="Estimated Number of Items (Optional)">
+              <Form.Item
+                name="estimatedItems"
+                label="Estimated Number of Items (Optional)"
+              >
                 <InputNumber className="w-full" min={1} size="large" />
               </Form.Item>
-              <Form.Item name="notes" label="Additional Notes (Optional)" className="mb-0">
+              <Form.Item
+                name="notes"
+                label="Additional Notes (Optional)"
+                className="mb-0"
+              >
                 <Input placeholder="Anything else to flag" size="large" />
               </Form.Item>
             </div>
@@ -143,10 +184,20 @@ export const PreAlertForm: React.FC = () => {
             </Form.Item>
 
             <Form.Item className="mb-0 mt-8 text-right">
-              <Button onClick={() => navigate('/dashboard/shipments')} className="mr-2" size="large">
+              <Button
+                onClick={() => navigate("/customer/shipments")}
+                className="mr-2"
+                size="large"
+              >
                 Cancel
               </Button>
-              <Button type="primary" htmlType="submit" icon={<SendOutlined />} loading={submitting} size="large">
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<SendOutlined />}
+                loading={submitting}
+                size="large"
+              >
                 Submit Pre-Alert
               </Button>
             </Form.Item>

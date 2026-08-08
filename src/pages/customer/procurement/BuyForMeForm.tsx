@@ -1,21 +1,27 @@
-import React, { useState } from 'react';
-import { Card, Form, Input, InputNumber, Button, message } from 'antd';
-import type { UploadFile } from 'antd';
-import { ArrowLeftOutlined, SendOutlined, LinkOutlined, AppstoreOutlined, PictureOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import { useAppDispatch } from '../../../store/hooks';
-import { submitProcurement } from '../../../store/slices/procurementSlice';
-import { buyForMeSchema, validateForm } from '../../../utils/validators';
-import type { ProcurementSubmitPayload } from '../../../types/procurement.types';
-import { ImageDropzone } from '../../../components/common/ImageDropzone';
+import React, { useState } from "react";
+import { Card, Form, Input, InputNumber, Button, message } from "antd";
+import type { UploadFile } from "antd";
+import {
+  ArrowLeftOutlined,
+  SendOutlined,
+  LinkOutlined,
+  AppstoreOutlined,
+  PictureOutlined,
+} from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+import { useAppDispatch } from "../../../store/hooks";
+import { submitProcurement } from "../../../store/slices/procurementSlice";
+import { buyForMeSchema, validateForm } from "../../../utils/validators";
+import type { ProcurementSubmitPayload } from "../../../types/procurement.types";
+import { ImageDropzone } from "../../../components/common/ImageDropzone";
 
 const { TextArea } = Input;
 
-const SectionHeading: React.FC<{ icon: React.ReactNode; title: string; subtitle: string }> = ({
-  icon,
-  title,
-  subtitle,
-}) => (
+const SectionHeading: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+}> = ({ icon, title, subtitle }) => (
   <div className="flex items-center gap-3 mb-5">
     <div className="w-9 h-9 rounded-lg bg-brand-blue-light text-brand-blue flex items-center justify-center shrink-0">
       {icon}
@@ -35,9 +41,17 @@ export const BuyForMeForm: React.FC = () => {
   const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   const onFinish = async (values: ProcurementSubmitPayload) => {
-    const errors = await validateForm(buyForMeSchema, values as unknown as Record<string, unknown>);
+    const errors = await validateForm(
+      buyForMeSchema,
+      values as unknown as Record<string, unknown>,
+    );
     if (Object.keys(errors).length > 0) {
-      form.setFields(Object.keys(errors).map((key) => ({ name: key, errors: [errors[key]] })));
+      form.setFields(
+        Object.keys(errors).map((key) => ({
+          name: key,
+          errors: [errors[key]],
+        })),
+      );
       return;
     }
 
@@ -53,10 +67,12 @@ export const BuyForMeForm: React.FC = () => {
           colors: values.colors,
           variations: values.variations,
           notes: values.notes,
-        })
+        }),
       ).unwrap();
-      message.success('Request submitted. Our procurement team will review and send you a quote.');
-      navigate('/dashboard/buy-for-me');
+      message.success(
+        "Request submitted. Our procurement team will review and send you a quote.",
+      );
+      navigate("/customer/buy-for-me");
     } finally {
       setSubmitting(false);
     }
@@ -68,20 +84,31 @@ export const BuyForMeForm: React.FC = () => {
         <Button
           type="text"
           icon={<ArrowLeftOutlined />}
-          onClick={() => navigate('/dashboard/buy-for-me')}
+          onClick={() => navigate("/customer/buy-for-me")}
           className="mb-2 -ml-2 text-slate-500"
         >
           Back to Buy For Me
         </Button>
-        <h1 className="text-2xl font-bold text-slate-800 m-0 text-center">New Buy For Me Request</h1>
+        <h1 className="text-2xl font-bold text-slate-800 m-0 text-center">
+          New Buy For Me Request
+        </h1>
         <p className="text-slate-500 mt-1 mb-0 text-sm text-center">
-          Share a product link and details, and our agents will purchase it on your behalf.
+          Share a product link and details, and our agents will purchase it on
+          your behalf.
         </p>
       </div>
 
       <div className="flex justify-center">
-        <Card bordered={false} className="shadow-sm rounded-2xl w-full max-w-2xl">
-          <Form form={form} layout="vertical" onFinish={onFinish} requiredMark={false}>
+        <Card
+          bordered={false}
+          className="shadow-sm rounded-2xl w-full max-w-2xl"
+        >
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={onFinish}
+            requiredMark={false}
+          >
             <SectionHeading
               icon={<LinkOutlined />}
               title="Product details"
@@ -90,13 +117,19 @@ export const BuyForMeForm: React.FC = () => {
             <Form.Item
               name="productUrl"
               label="Product Link (1688, Taobao, etc.)"
-              rules={[{ required: true, message: 'Please enter the product link' }]}
+              rules={[
+                { required: true, message: "Please enter the product link" },
+              ]}
             >
               <Input placeholder="https://detail.1688.com/..." size="large" />
             </Form.Item>
 
             <div className="grid grid-cols-2 gap-4">
-              <Form.Item name="quantity" label="Quantity" rules={[{ required: true, message: 'Please enter quantity' }]}>
+              <Form.Item
+                name="quantity"
+                label="Quantity"
+                rules={[{ required: true, message: "Please enter quantity" }]}
+              >
                 <InputNumber className="w-full" min={1} size="large" />
               </Form.Item>
               <Form.Item name="colors" label="Colors (Optional)">
@@ -123,12 +156,21 @@ export const BuyForMeForm: React.FC = () => {
             <Form.Item
               name="specifications"
               label="Detailed Specifications / Notes"
-              rules={[{ required: true, message: 'Please provide specifications' }]}
+              rules={[
+                { required: true, message: "Please provide specifications" },
+              ]}
             >
-              <TextArea rows={4} placeholder="Please provide any specific instructions for the agent..." />
+              <TextArea
+                rows={4}
+                placeholder="Please provide any specific instructions for the agent..."
+              />
             </Form.Item>
 
-            <Form.Item name="notes" label="Additional Notes (Optional)" className="mb-0">
+            <Form.Item
+              name="notes"
+              label="Additional Notes (Optional)"
+              className="mb-0"
+            >
               <TextArea rows={2} />
             </Form.Item>
 
@@ -150,10 +192,20 @@ export const BuyForMeForm: React.FC = () => {
             </Form.Item>
 
             <Form.Item className="mb-0 mt-8 text-right">
-              <Button onClick={() => navigate('/dashboard/buy-for-me')} className="mr-2" size="large">
+              <Button
+                onClick={() => navigate("/customer/buy-for-me")}
+                className="mr-2"
+                size="large"
+              >
                 Cancel
               </Button>
-              <Button type="primary" htmlType="submit" icon={<SendOutlined />} loading={submitting} size="large">
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<SendOutlined />}
+                loading={submitting}
+                size="large"
+              >
                 Submit Request
               </Button>
             </Form.Item>

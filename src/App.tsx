@@ -169,7 +169,10 @@ function App() {
             <Route path="support/:id" element={<TicketDetails />} />
             <Route path="permissions" element={<PermissionGroups />} />
             <Route path="permissions/new" element={<CreatePermissionGroup />} />
-            <Route path="permissions/:id" element={<PermissionGroupDetails />} />
+            <Route
+              path="permissions/:id"
+              element={<PermissionGroupDetails />}
+            />
             <Route path="settings" element={<PlatformSettings />} />
           </Route>
 
