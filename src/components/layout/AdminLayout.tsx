@@ -16,6 +16,7 @@ import {
   MenuUnfoldOutlined,
   LogoutOutlined,
   BlockOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { Logo } from '../common/Logo';
 import { SidebarNav, type SidebarNavSection } from './SidebarNav';
@@ -71,6 +72,7 @@ export const AdminLayout: React.FC = () => {
       title: 'Manage',
       items: [
         { key: '/admin/users', icon: <TeamOutlined />, label: 'Users' },
+        { key: '/admin/permissions', icon: <SafetyCertificateOutlined />, label: 'Permissions' },
         { key: '/admin/settings', icon: <SettingOutlined />, label: 'Settings' },
       ],
     });

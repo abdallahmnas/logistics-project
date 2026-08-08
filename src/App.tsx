@@ -53,6 +53,9 @@ import { ProcurementReview } from "./pages/admin/procurement/ProcurementReview";
 import { ExchangeManagement } from "./pages/admin/exchange/ExchangeManagement";
 import { DeliveryDispatch } from "./pages/admin/delivery/DeliveryDispatch";
 import { UserManagement } from "./pages/admin/users/UserManagement";
+import { PermissionGroups } from "./pages/admin/permissions/PermissionGroups";
+import { CreatePermissionGroup } from "./pages/admin/permissions/CreatePermissionGroup";
+import { PermissionGroupDetails } from "./pages/admin/permissions/PermissionGroupDetails";
 import { PlatformSettings } from "./pages/admin/settings/PlatformSettings";
 import { AdminDashboardHome } from "./pages/admin/AdminDashboardHome";
 
@@ -149,6 +152,9 @@ function App() {
             <Route path="exchange/:id" element={<ExchangeReviewPage />} />
             <Route path="delivery" element={<DeliveryDispatch />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="permissions" element={<PermissionGroups />} />
+            <Route path="permissions/new" element={<CreatePermissionGroup />} />
+            <Route path="permissions/:id" element={<PermissionGroupDetails />} />
             <Route path="settings" element={<PlatformSettings />} />
           </Route>
 

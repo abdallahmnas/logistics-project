@@ -54,6 +54,17 @@ export const mockUsers: User[] = [
     isVerified: true,
     createdAt: '2024-06-15T10:00:00Z',
     updatedAt: '2024-10-01T08:00:00Z',
+  }, {
+    id: 'usr-002',
+    customerId: 'HZ-20241001',
+    firstName: 'Abdul',
+    lastName: 'User',
+    email: 'abdul@example.com',
+    phone: '+2348012345678',
+    role: 'customer',
+    isVerified: true,
+    createdAt: '2024-06-15T10:00:00Z',
+    updatedAt: '2024-10-01T08:00:00Z',
   },
   {
     id: 'usr-admin',
