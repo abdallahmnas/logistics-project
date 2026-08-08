@@ -56,6 +56,9 @@ import { UserManagement } from "./pages/admin/users/UserManagement";
 import { PermissionGroups } from "./pages/admin/permissions/PermissionGroups";
 import { CreatePermissionGroup } from "./pages/admin/permissions/CreatePermissionGroup";
 import { PermissionGroupDetails } from "./pages/admin/permissions/PermissionGroupDetails";
+import { StaffMembersList } from "./pages/admin/staff/StaffMembersList";
+import { AddStaffMember } from "./pages/admin/staff/AddStaffMember";
+import { CustomersList } from "./pages/admin/customers/CustomersList";
 import { PlatformSettings } from "./pages/admin/settings/PlatformSettings";
 import { AdminDashboardHome } from "./pages/admin/AdminDashboardHome";
 
@@ -152,6 +155,9 @@ function App() {
             <Route path="exchange/:id" element={<ExchangeReviewPage />} />
             <Route path="delivery" element={<DeliveryDispatch />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="customers" element={<CustomersList />} />
+            <Route path="staff" element={<StaffMembersList />} />
+            <Route path="staff/new" element={<AddStaffMember />} />
             <Route path="permissions" element={<PermissionGroups />} />
             <Route path="permissions/new" element={<CreatePermissionGroup />} />
             <Route path="permissions/:id" element={<PermissionGroupDetails />} />

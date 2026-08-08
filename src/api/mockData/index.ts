@@ -61,7 +61,7 @@ export const mockUsers: User[] = [
     lastName: 'User',
     email: 'abdul@example.com',
     phone: '+2348012345678',
-    role: 'customer',
+    role: 'super_admin',
     isVerified: true,
     createdAt: '2024-06-15T10:00:00Z',
     updatedAt: '2024-10-01T08:00:00Z',
