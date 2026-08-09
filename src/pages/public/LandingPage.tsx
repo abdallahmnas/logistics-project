@@ -55,14 +55,14 @@ export const LandingPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row items-stretch gap-0 max-w-lg bg-white rounded shadow-sm border border-slate-200 overflow-hidden">
                 <Form.Item
                   name="trackingNumber"
-                  className="flex-1 mb-0 [&_.ant-form-item-with-help]:mb-0 [&_.ant-form-item-explain]:hidden"
+                  noStyle
                   rules={[{ required: true, message: "" }]}
                 >
                   <Input
                     size="large"
                     placeholder="Enter Tracking Number (e.g., GLB-547291)"
                     prefix={<SearchOutlined className="text-slate-400 mr-2" />}
-                    className="!h-12 !border-0 !rounded-none !bg-white text-sm"
+                    className="flex-1 !h-12 !border-0 !rounded-none !bg-white text-sm"
                   />
                 </Form.Item>
                 <Button
