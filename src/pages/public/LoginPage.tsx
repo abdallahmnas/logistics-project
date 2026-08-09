@@ -1,21 +1,27 @@
-import React from 'react';
-import { Form, Input, Button, Checkbox, Alert } from 'antd';
-import { LockOutlined, ArrowRightOutlined, MailOutlined, GoogleOutlined, AppleOutlined } from '@ant-design/icons';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { loginUser, clearError } from '../../store/slices/authSlice';
-import type { LoginCredentials } from '../../types/auth.types';
-import { loginSchema, validateForm } from '../../utils/validators';
+import React from "react";
+import { Form, Input, Button, Checkbox, Alert } from "antd";
+import {
+  LockOutlined,
+  ArrowRightOutlined,
+  MailOutlined,
+  GoogleOutlined,
+  AppleOutlined,
+} from "@ant-design/icons";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import { loginUser, clearError } from "../../store/slices/authSlice";
+import type { LoginCredentials } from "../../types/auth.types";
+import { loginSchema, validateForm } from "../../utils/validators";
 
 export const LoginPage: React.FC = () => {
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { loading, error } = useAppSelector(state => state.auth);
+  const { loading, error } = useAppSelector((state) => state.auth);
 
   // Where to redirect after login
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
+  const from = (location.state as any)?.from?.pathname || "/dashboard";
 
   const onFinish = async (values: LoginCredentials) => {
     // Validate with Yup before dispatch
@@ -25,18 +31,19 @@ export const LoginPage: React.FC = () => {
         Object.keys(errors).map((key) => ({
           name: key,
           errors: [errors[key]],
-        }))
+        })),
       );
       return;
     }
 
     const resultAction = await dispatch(loginUser(values));
-    
+
     if (loginUser.fulfilled.match(resultAction)) {
-      if (resultAction.payload.user.role === 'customer') {
-        navigate(from, { replace: true });
+      const role = resultAction.payload.user.role as string;
+      if (role === "super_admin" || role === "admin") {
+        navigate("/admin", { replace: true });
       } else {
-        navigate('/admin', { replace: true });
+        navigate("/customer", { replace: true });
       }
     }
   };
@@ -70,15 +77,15 @@ export const LoginPage: React.FC = () => {
           </div>
 
           <p className="text-slate-300 text-lg leading-relaxed max-w-sm mt-6 font-medium">
-            Enter your credentials to access the global freight tracking and manifest management system.
-            Industrial precision, worldwide reach.
+            Enter your credentials to access the global freight tracking and
+            manifest management system. Industrial precision, worldwide reach.
           </p>
         </div>
 
         <div className="relative z-10 flex items-center gap-4 text-[10px] text-slate-400 font-mono tracking-widest uppercase mt-auto">
-           <span>SYS.UP</span>
-           <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse-slow" />
-           <span>ALL PROTOCOLS ACTIVE</span>
+          <span>SYS.UP</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse-slow" />
+          <span>ALL PROTOCOLS ACTIVE</span>
         </div>
       </div>
 
@@ -87,7 +94,9 @@ export const LoginPage: React.FC = () => {
         <div className="w-full max-w-[420px] bg-white p-10 rounded-2xl shadow-xl shadow-slate-200/50">
           <div className="mb-10">
             <h2 className="text-3xl font-bold text-slate-800 mb-2">Sign In</h2>
-            <p className="text-slate-500 font-medium text-sm">Welcome back. Please enter your details.</p>
+            <p className="text-slate-500 font-medium text-sm">
+              Welcome back. Please enter your details.
+            </p>
           </div>
 
           {error && (
@@ -113,21 +122,31 @@ export const LoginPage: React.FC = () => {
           >
             <Form.Item
               name="email"
-              label={<span className="text-xs font-bold text-slate-700">Email Address</span>}
-              rules={[{ required: true, message: 'Please input your email!' }]}
+              label={
+                <span className="text-xs font-bold text-slate-700">
+                  Email Address
+                </span>
+              }
+              rules={[{ required: true, message: "Please input your email!" }]}
               className="mb-0"
             >
-              <Input 
-                prefix={<MailOutlined className="text-slate-400 mr-1" />} 
-                placeholder="operator@globallogistics.com" 
+              <Input
+                prefix={<MailOutlined className="text-slate-400 mr-1" />}
+                placeholder="operator@globallogistics.com"
                 className="!h-12 !rounded-lg !bg-slate-50 !border-slate-200 focus:!bg-white"
               />
             </Form.Item>
 
             <Form.Item
               name="password"
-              label={<span className="text-xs font-bold text-slate-700">Password</span>}
-              rules={[{ required: true, message: 'Please input your password!' }]}
+              label={
+                <span className="text-xs font-bold text-slate-700">
+                  Password
+                </span>
+              }
+              rules={[
+                { required: true, message: "Please input your password!" },
+              ]}
               className="mb-0"
             >
               <Input.Password
@@ -138,18 +157,27 @@ export const LoginPage: React.FC = () => {
             </Form.Item>
 
             <div className="flex items-center justify-between pt-2">
-              <Form.Item name="rememberMe" valuePropName="checked" className="mb-0">
-                <Checkbox className="text-xs font-bold text-slate-600">Remember for 30 days</Checkbox>
+              <Form.Item
+                name="rememberMe"
+                valuePropName="checked"
+                className="mb-0"
+              >
+                <Checkbox className="text-xs font-bold text-slate-600">
+                  Remember for 30 days
+                </Checkbox>
               </Form.Item>
-              <Link to="/forgot-password" className="text-brand-navy font-bold hover:text-brand-orange text-xs transition-colors">
+              <Link
+                to="/forgot-password"
+                className="text-brand-navy font-bold hover:text-brand-orange text-xs transition-colors"
+              >
                 Forgot password?
               </Link>
             </div>
 
             <Form.Item className="mb-0 pt-2">
-              <Button 
-                type="primary" 
-                htmlType="submit" 
+              <Button
+                type="primary"
+                htmlType="submit"
                 className="w-full !h-12 text-sm font-bold !bg-brand-navy hover:!bg-slate-800 !rounded-lg"
                 loading={loading}
                 icon={<ArrowRightOutlined />}
@@ -160,23 +188,30 @@ export const LoginPage: React.FC = () => {
             </Form.Item>
 
             <div className="relative flex items-center py-6">
-               <div className="flex-grow border-t border-slate-200"></div>
-               <span className="flex-shrink-0 mx-4 text-slate-400 text-[10px] font-bold tracking-widest uppercase">Or Continue With</span>
-               <div className="flex-grow border-t border-slate-200"></div>
+              <div className="flex-grow border-t border-slate-200"></div>
+              <span className="flex-shrink-0 mx-4 text-slate-400 text-[10px] font-bold tracking-widest uppercase">
+                Or Continue With
+              </span>
+              <div className="flex-grow border-t border-slate-200"></div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-8">
               <Button className="!h-12 !bg-slate-50 hover:!bg-slate-100 !border-none !rounded-lg font-bold text-slate-700 text-sm shadow-sm flex items-center justify-center gap-2">
-                 <GoogleOutlined className="text-red-500" /> Google
+                <GoogleOutlined className="text-red-500" /> Google
               </Button>
               <Button className="!h-12 !bg-slate-50 hover:!bg-slate-100 !border-none !rounded-lg font-bold text-slate-700 text-sm shadow-sm flex items-center justify-center gap-2">
-                 <AppleOutlined /> Apple
+                <AppleOutlined /> Apple
               </Button>
             </div>
 
             <div className="text-center pt-2">
-              <span className="text-slate-500 text-sm">Don't have access? </span>
-              <Link to="/register" className="text-slate-800 font-bold hover:text-brand-orange text-sm transition-colors">
+              <span className="text-slate-500 text-sm">
+                Don't have access?{" "}
+              </span>
+              <Link
+                to="/register"
+                className="text-slate-800 font-bold hover:text-brand-orange text-sm transition-colors"
+              >
                 Request Account
               </Link>
             </div>

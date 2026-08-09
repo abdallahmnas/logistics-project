@@ -17,11 +17,9 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     await delay(800);
-    // Mock: admin@hamzarmb.com logs in as admin, anything else as customer
-    const isAdmin = credentials.email === 'admin@hamzarmb.com';
-    const user = isAdmin ? mockUsers[1] : mockUsers[0];
+    const user = mockUsers.find((u) => u.email === credentials.email);
     
-    if (credentials.password.length < 6) {
+    if (!user || credentials.password.length < 6) {
       return rejectWithValue('Invalid email or password');
     }
 

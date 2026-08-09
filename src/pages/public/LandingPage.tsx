@@ -1,6 +1,6 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Button, Input, Form } from 'antd';
+import React from "react";
+import { Link } from "react-router-dom";
+import { Button, Input, Form } from "antd";
 import {
   SearchOutlined,
   SafetyCertificateOutlined,
@@ -9,7 +9,7 @@ import {
   ArrowRightOutlined,
   EnvironmentOutlined,
   GlobalOutlined,
-} from '@ant-design/icons';
+} from "@ant-design/icons";
 
 export const LandingPage: React.FC = () => {
   const [form] = Form.useForm();
@@ -46,8 +46,8 @@ export const LandingPage: React.FC = () => {
             </h1>
 
             <p className="text-slate-300 text-lg md:text-xl leading-relaxed max-w-xl mb-10">
-              Industrial-grade precision for global supply chains. Track, manage,
-              and optimize your shipments in real time.
+              Industrial-grade precision for global supply chains. Track,
+              manage, and optimize your shipments in real time.
             </p>
 
             {/* Tracking Search Bar */}
@@ -55,8 +55,8 @@ export const LandingPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row items-stretch gap-0 max-w-lg bg-white rounded shadow-sm border border-slate-200 overflow-hidden">
                 <Form.Item
                   name="trackingNumber"
-                  className="flex-1 mb-0"
-                  rules={[{ required: true, message: '' }]}
+                  className="flex-1 mb-0 [&_.ant-form-item-with-help]:mb-0 [&_.ant-form-item-explain]:hidden"
+                  rules={[{ required: true, message: "" }]}
                 >
                   <Input
                     size="large"
@@ -202,7 +202,7 @@ export const LandingPage: React.FC = () => {
                     Operations In
                   </p>
                   <p className="text-3xl font-bold text-white">
-                    150+{' '}
+                    150+{" "}
                     <span className="text-base font-normal text-slate-400">
                       Countries
                     </span>
@@ -213,7 +213,7 @@ export const LandingPage: React.FC = () => {
                     Annual Volume
                   </p>
                   <p className="text-3xl font-bold text-white">
-                    2.4M{' '}
+                    2.4M{" "}
                     <span className="text-base font-normal text-slate-400">
                       TEUs
                     </span>
@@ -224,7 +224,7 @@ export const LandingPage: React.FC = () => {
                     On-Time Delivery
                   </p>
                   <p className="text-3xl font-bold text-white">
-                    99.2%{' '}
+                    99.2%{" "}
                     <span className="text-base font-normal text-slate-400">
                       Rate
                     </span>
@@ -235,7 +235,7 @@ export const LandingPage: React.FC = () => {
                     Dedicated Fleet
                   </p>
                   <p className="text-3xl font-bold text-white">
-                    4,500{' '}
+                    4,500{" "}
                     <span className="text-base font-normal text-slate-400">
                       Vehicles
                     </span>
