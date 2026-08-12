@@ -1,10 +1,19 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { mockNotifications, type MockNotification } from '../../api/mockData';
+import apiClient from '../../api/axios';
 
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'shipment' | 'procurement' | 'exchange' | 'delivery' | 'wallet' | 'system';
+  isRead: boolean;
+  referenceId?: string;
+  createdAt?: string;
+}
 
 interface NotificationState {
-  notifications: MockNotification[];
+  notifications: NotificationItem[];
   unreadCount: number;
   loading: boolean;
 }
@@ -16,8 +25,8 @@ const initialState: NotificationState = {
 };
 
 export const fetchNotifications = createAsyncThunk('notifications/fetchAll', async () => {
-  await delay(400);
-  return mockNotifications;
+  const res = await apiClient.get('/notifications');
+  return res.data.data;
 });
 
 const notificationSlice = createSlice({
@@ -29,11 +38,14 @@ const notificationSlice = createSlice({
       if (notif && !notif.isRead) {
         notif.isRead = true;
         state.unreadCount = Math.max(0, state.unreadCount - 1);
+        apiClient.patch(`/notifications/${action.payload}/read`).catch(() => {});
       }
     },
     markAllAsRead: (state) => {
       state.notifications.forEach((n) => { n.isRead = true; });
       state.unreadCount = 0;
+      // Fire-and-forget API call
+      apiClient.patch('/notifications/read-all').catch(() => {});
     },
   },
   extraReducers: (builder) => {
@@ -42,7 +54,7 @@ const notificationSlice = createSlice({
       .addCase(fetchNotifications.fulfilled, (state, action) => {
         state.loading = false;
         state.notifications = action.payload;
-        state.unreadCount = action.payload.filter((n) => !n.isRead).length;
+        state.unreadCount = action.payload.filter((n: NotificationItem) => !n.isRead).length;
       });
   },
 });

@@ -1,11 +1,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { mockUsers, mockPackages, mockBatches, mockExchangeRate } from '../../api/mockData';
+import apiClient from '../../api/axios';
 import type { User } from '../../types/auth.types';
 import type { Package, Batch } from '../../types/shipment.types';
 import type { ExchangeRate } from '../../types/exchange.types';
 import { scanPackage, createBatch, updatePackageStatus, createInboundPackage } from './shipmentSlice';
-
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 interface AdminStats {
   totalUsers: number;
@@ -39,43 +37,48 @@ const initialState: AdminState = {
 };
 
 export const fetchAdminStats = createAsyncThunk('admin/fetchStats', async () => {
-  await delay(600);
+  const res = await apiClient.get('/admin/stats');
+  const d = res.data.data;
   return {
-    totalUsers: 1247,
-    totalPackages: 8934,
-    pendingPackages: 156,
-    activeBatches: 12,
-    pendingExchanges: 23,
-    pendingProcurements: 18,
-    totalRevenue: 485000000,
-    monthlyRevenue: 42500000,
+    totalUsers: d.totalUsers || 0,
+    totalPackages: d.totalPackages || 0,
+    pendingPackages: d.pendingPackages || 0,
+    activeBatches: d.activeBatches || 0,
+    pendingExchanges: d.pendingExchanges || 0,
+    pendingProcurements: d.pendingProcurements || 0,
+    totalRevenue: d.totalRevenue || 0,
+    monthlyRevenue: d.monthlyRevenue || 0,
   };
 });
 
 export const fetchAllUsers = createAsyncThunk('admin/fetchUsers', async () => {
-  await delay(500);
-  return mockUsers;
+  const res = await apiClient.get('/admin/users');
+  return res.data.data;
 });
 
 export const fetchAllPackages = createAsyncThunk('admin/fetchAllPackages', async () => {
-  await delay(500);
-  return mockPackages;
+  const res = await apiClient.get('/shipments/packages');
+  return res.data.data;
 });
 
 export const fetchAllBatches = createAsyncThunk('admin/fetchAllBatches', async () => {
-  await delay(400);
-  return mockBatches;
+  const res = await apiClient.get('/shipments/batches');
+  return res.data.data;
 });
 
 export const updateExchangeRate = createAsyncThunk(
   'admin/updateRate',
   async (rate: { platformRate: number; buyRate: number; sellRate: number }) => {
-    await delay(500);
-    return {
-      ...mockExchangeRate,
-      ...rate,
-      effectiveFrom: new Date().toISOString(),
-    };
+    const res = await apiClient.post('/exchanges/rate', rate);
+    return res.data.data;
+  }
+);
+
+export const deleteUser = createAsyncThunk(
+  'admin/deleteUser',
+  async (userId: string) => {
+    await apiClient.delete(`/admin/users/${userId}`);
+    return userId;
   }
 );
 
@@ -102,6 +105,9 @@ const adminSlice = createSlice({
       .addCase(updateExchangeRate.fulfilled, (state, action) => {
         state.currentRate = action.payload;
       })
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        state.users = state.users.filter((u) => u.id !== action.payload);
+      })
       .addCase(scanPackage.fulfilled, (state, action) => {
         const idx = state.allPackages.findIndex((p) => p.id === action.payload.packageId);
         if (idx !== -1) {
@@ -125,7 +131,7 @@ const adminSlice = createSlice({
       .addCase(createBatch.fulfilled, (state, action) => {
         state.allBatches.unshift(action.payload);
         state.allPackages = state.allPackages.map((pkg) =>
-          action.payload.packageIds.includes(pkg.id)
+          action.payload.packageIds?.includes(pkg.id)
             ? { ...pkg, status: 'consolidating', linkedBatchId: action.payload.id, updatedAt: new Date().toISOString() }
             : pkg
         );

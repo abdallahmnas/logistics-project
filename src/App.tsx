@@ -66,7 +66,20 @@ import { TicketDetails } from "./pages/admin/support/TicketDetails";
 import { PlatformSettings } from "./pages/admin/settings/PlatformSettings";
 import { AdminDashboardHome } from "./pages/admin/AdminDashboardHome";
 
+import { useEffect } from "react";
+import { useAppDispatch } from "./store/hooks";
+import { fetchCurrentUser } from "./store/slices/authSlice";
+
 function App() {
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      dispatch(fetchCurrentUser());
+    }
+  }, [dispatch]);
+
   return (
     <ConfigProvider theme={antdTheme}>
       <BrowserRouter>

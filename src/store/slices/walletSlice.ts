@@ -1,8 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { WalletState } from '../../types/wallet.types';
-import { mockWallet, mockTransactions } from '../../api/mockData';
-
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+import apiClient from '../../api/axios';
 
 const initialState: WalletState = {
   wallet: null,
@@ -12,14 +10,34 @@ const initialState: WalletState = {
 };
 
 export const fetchWallet = createAsyncThunk('wallet/fetch', async () => {
-  await delay(500);
-  return mockWallet;
+  const res = await apiClient.get('/wallet');
+  const data = res.data.data;
+  return {
+    ...data,
+    balance: Number(data.balance),
+    escrowHeld: Number(data.escrowHeld || 0),
+    availableBalance: Number(data.availableBalance || data.balance),
+  };
 });
 
 export const fetchTransactions = createAsyncThunk('wallet/fetchTransactions', async () => {
-  await delay(500);
-  return mockTransactions;
+  const res = await apiClient.get('/wallet/transactions');
+  return res.data.data;
 });
+
+export const topUpWallet = createAsyncThunk(
+  'wallet/topUp',
+  async (payload: { amount: number; paymentMethod: string }) => {
+    const res = await apiClient.post('/wallet/top-up', payload);
+    const data = res.data.data;
+    return {
+      ...data,
+      balance: Number(data.balance),
+      escrowHeld: Number(data.escrowHeld || 0),
+      availableBalance: Number(data.availableBalance || data.balance),
+    };
+  }
+);
 
 const walletSlice = createSlice({
   name: 'wallet',
@@ -38,6 +56,9 @@ const walletSlice = createSlice({
       })
       .addCase(fetchTransactions.fulfilled, (state, action) => {
         state.transactions = action.payload;
+      })
+      .addCase(topUpWallet.fulfilled, (state, action) => {
+        state.wallet = action.payload;
       });
   },
 });

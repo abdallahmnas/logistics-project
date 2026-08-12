@@ -24,6 +24,7 @@ export interface WalletTransaction {
   balanceAfter: number;
   description: string;
   referenceId?: string; // Linked shipment/exchange/delivery ID
+  reference?: string;
   createdAt: string;
 }
 

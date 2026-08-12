@@ -7,6 +7,7 @@ import deliveryReducer from './slices/deliverySlice';
 import walletReducer from './slices/walletSlice';
 import notificationReducer from './slices/notificationSlice';
 import adminReducer from './slices/adminSlice';
+import supportReducer from './slices/supportSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     wallet: walletReducer,
     notifications: notificationReducer,
     admin: adminReducer,
+    support: supportReducer,
   },
 });
 

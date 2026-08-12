@@ -74,6 +74,24 @@ export const shipmentStatusMap: Record<ShipmentStatus, StatusConfig> = {
     badgeStatus: 'error',
     description: 'Shipment has been cancelled',
   },
+  held_customs: {
+    label: 'Held in Customs',
+    color: '#EF4444',
+    badgeStatus: 'error',
+    description: 'Package held for customs inspection',
+  },
+  received_at_warehouse: {
+    label: 'Received at Warehouse',
+    color: '#3B82F6',
+    badgeStatus: 'processing',
+    description: 'Package received at warehouse',
+  },
+  at_china_warehouse: {
+    label: 'At China Warehouse',
+    color: '#3B82F6',
+    badgeStatus: 'processing',
+    description: 'Package located at China hub',
+  },
 };
 
 // Procurement Status Mappings

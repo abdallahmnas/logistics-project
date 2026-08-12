@@ -9,6 +9,7 @@ export interface User {
   phone: string;
   role: UserRole;
   avatar?: string;
+  profilePhoto?: string;
   isVerified: boolean;
   createdAt: string;
   updatedAt: string;

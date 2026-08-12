@@ -1,17 +1,44 @@
-import React, { useState } from 'react';
-import { Form, Input, Button } from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import { Form, Input, Button, Alert } from 'antd';
 import { LockOutlined, ArrowRightOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { registerUser, clearError } from '../../store/slices/authSlice';
+import type { RegisterPayload } from '../../types/auth.types';
 
-export const SetPasswordPage: React.FC = () => {
+const SetPasswordPage: React.FC = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAppSelector((state) => state.auth);
   const [password, setPassword] = useState('');
+  const errorRef = useRef<HTMLDivElement>(null);
 
-  const onFinish = (values: any) => {
-    // In a real app, dispatch an action to set the password and complete registration
-    console.log('Password set:', values);
-    navigate('/dashboard');
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [error]);
+
+  const onFinish = async (values: any) => {
+    const rawDraft = sessionStorage.getItem('registrationDraft');
+    const draft = rawDraft ? JSON.parse(rawDraft) : {};
+
+    const payload: RegisterPayload = {
+      firstName: draft.firstName || 'Demo',
+      lastName: draft.lastName || 'User',
+      email: draft.email || `user${Date.now()}@example.com`,
+      phone: draft.phone || '+2348000000000',
+      password: values.password,
+      confirmPassword: values.confirmPassword || values.password,
+    };
+
+    const resultAction = await dispatch(registerUser(payload));
+    if (registerUser.fulfilled.match(resultAction)) {
+      sessionStorage.removeItem('registrationDraft');
+      navigate('/customer', { replace: true });
+    }
   };
 
   const requirements = [
@@ -21,7 +48,7 @@ export const SetPasswordPage: React.FC = () => {
     { label: 'One special character', met: /[^A-Za-z0-9]/.test(password) },
   ];
 
-  const allRequirementsMet = requirements.every(r => r.met);
+  const allRequirementsMet = requirements.every((r) => r.met);
 
   return (
     <div className="min-h-[calc(100vh-64px)] flex">
@@ -42,7 +69,7 @@ export const SetPasswordPage: React.FC = () => {
           </div>
 
           <h2 className="text-5xl xl:text-6xl font-extrabold text-white leading-tight mb-6">
-            Secure your<br/>Global Account
+            Secure your<br />Global Account
           </h2>
 
           <p className="text-slate-300 text-lg leading-relaxed max-w-sm mt-6 font-medium">
@@ -59,7 +86,6 @@ export const SetPasswordPage: React.FC = () => {
       {/* Right Panel - Form */}
       <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 py-12 px-4 sm:px-8 lg:px-16">
         <div className="w-full max-w-[460px] bg-white p-10 rounded-2xl shadow-xl shadow-slate-200/50">
-          
           {/* Step Indicator */}
           <div className="flex items-center gap-0 mb-12 w-full max-w-[300px] mx-auto">
             <div className="flex flex-col items-center">
@@ -73,11 +99,9 @@ export const SetPasswordPage: React.FC = () => {
               <div className="w-8 h-8 rounded-full bg-brand-orange text-white flex items-center justify-center text-sm font-bold shadow-md shadow-brand-orange/20">
                 ✓
               </div>
-              <span className="text-[10px] text-brand-orange font-bold mt-2 tracking-wider uppercase">Company</span>
+              <span className="text-[10px] text-brand-orange font-bold mt-2 tracking-wider uppercase">Verification</span>
             </div>
-            <div className="flex-1 h-[2px] bg-slate-200 mx-2 mt-[-18px]">
-              <div className="h-full bg-brand-orange w-1/2" />
-            </div>
+            <div className="flex-1 h-[2px] bg-brand-navy mx-2 mt-[-18px]" />
             <div className="flex flex-col items-center">
               <div className="w-8 h-8 rounded-full bg-brand-navy text-white flex items-center justify-center text-xs font-bold shadow-md">
                 3
@@ -86,10 +110,24 @@ export const SetPasswordPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="mb-10">
+          <div className="mb-8">
             <h2 className="text-3xl font-bold text-slate-800 mb-2">Set Password</h2>
             <p className="text-slate-500 font-medium text-sm">Create a strong password to complete your registration.</p>
           </div>
+
+          {error && (
+            <div ref={errorRef}>
+              <Alert
+                message="Registration Failed"
+                description={error}
+                type="error"
+                showIcon
+                className="mb-6"
+                onClose={() => dispatch(clearError())}
+                closable
+              />
+            </div>
+          )}
 
           <Form
             form={form}
@@ -104,9 +142,9 @@ export const SetPasswordPage: React.FC = () => {
               rules={[{ required: true, message: 'Please input your new password!' }]}
               className="mb-4"
             >
-              <Input.Password 
-                prefix={<LockOutlined className="text-slate-400 mr-1" />} 
-                placeholder="••••••••" 
+              <Input.Password
+                prefix={<LockOutlined className="text-slate-400 mr-1" />}
+                placeholder="••••••••"
                 className="!h-12 !rounded-lg !bg-white !border-slate-200 focus:!bg-white"
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -118,7 +156,11 @@ export const SetPasswordPage: React.FC = () => {
                 {requirements.map((req, idx) => (
                   <li key={idx} className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full border flex items-center justify-center ${req.met ? 'border-brand-orange bg-brand-orange text-white' : 'border-slate-300 bg-white'}`}>
-                      {req.met && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                      {req.met && (
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      )}
                     </div>
                     <span className={req.met ? 'text-slate-800' : ''}>{req.label}</span>
                   </li>
@@ -147,14 +189,14 @@ export const SetPasswordPage: React.FC = () => {
                 prefix={<LockOutlined className="text-slate-400 mr-1" />}
                 placeholder="••••••••"
                 className="!h-12 !rounded-lg !bg-white !border-slate-200 focus:!bg-white"
-                iconRender={visible => (visible ? <svg viewBox="64 64 896 896" focusable="false" data-icon="eye" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M942.2 486.2C847.4 286.5 704.1 186 512 186c-192.2 0-335.4 100.5-430.2 300.3a60.3 60.3 0 000 51.5C176.6 737.5 319.9 838 512 838c192.2 0 335.4-100.5 430.2-300.3 7.7-16.2 7.7-35 0-51.5zM512 766c-161.3 0-279.4-81.8-362.7-254C232.6 339.8 350.7 258 512 258c161.3 0 279.4 81.8 362.7 254C791.5 684.2 673.4 766 512 766zm-4-430c-97.2 0-176 78.8-176 176s78.8 176 176 176 176-78.8 176-176-78.8-176-176-176zm0 288c-61.9 0-112-50.1-112-112s50.1-112 112-112 112 50.1 112 112-50.1 112-112 112z"></path></svg> : <svg viewBox="64 64 896 896" focusable="false" data-icon="eye-invisible" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M942.2 486.2Q889.4 375 814 298.1l-66.9 66.9c53.8 56.4 96.5 125.8 124.9 203a715.36 715.36 0 01-124.9 203c-85 89.2-192.5 137.9-307 137.9-63.5 0-125-14.7-181.7-41.9l-62.8 62.8c75.6 36 158.4 54.4 244.5 54.4 192.2 0 335.4-100.5 430.2-300.3 7.7-16.2 7.7-35 0-51.5zM511.5 766c-161.3 0-279.4-81.8-362.7-254 39-81.9 92.5-151.7 158.2-206l-67-67C162.7 308.2 97.4 397 51.8 486.2a60.3 60.3 0 000 51.5C146.6 737.5 289.9 838 482 838c64.6 0 127.4-15 186-43.1l-65.7-65.7A365.17 365.17 0 01511.5 766zM320 512c0-105.9 86.1-192 192-192 23.3 0 45.6 4.1 66.1 11.7l-55.8 55.8a111.98 111.98 0 00-114.1 114.1l-55.8 55.8A191.07 191.07 0 01320 512zm354.2 133.7l-55.8-55.8a111.98 111.98 0 00-114.1-114.1l-55.8-55.8A191.07 191.07 0 01512 320c105.9 0 192 86.1 192 192 0 23.3-4.1 45.6-11.7 66.1l55.8 55.8zM890.5 130.6l-50-50L135.6 785.5l50 50z"></path></svg>)}
               />
             </Form.Item>
 
             <Form.Item className="mb-4">
-              <Button 
-                type="primary" 
-                htmlType="submit" 
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading}
                 className="w-full !h-12 text-sm font-bold !bg-brand-orange hover:!bg-orange-600 !border-brand-orange hover:!border-orange-600 !rounded-lg"
                 icon={<ArrowRightOutlined />}
                 iconPlacement="end"
@@ -163,20 +205,22 @@ export const SetPasswordPage: React.FC = () => {
                 Complete Registration
               </Button>
             </Form.Item>
-            
+
             <Form.Item className="mb-0">
-              <Button 
-                type="default" 
+              <Button
+                type="default"
                 className="w-full !h-12 text-sm font-bold !bg-slate-50 hover:!bg-slate-100 !border-slate-200 !text-slate-600 hover:!text-slate-800 !rounded-lg"
                 onClick={() => navigate('/register/verify')}
               >
                 Back to Previous Step
               </Button>
             </Form.Item>
-
           </Form>
         </div>
       </div>
     </div>
   );
 };
+
+export { SetPasswordPage };
+export default SetPasswordPage;

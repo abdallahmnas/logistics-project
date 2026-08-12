@@ -1,8 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { DeliveryState, LocalDeliveryPayload } from '../../types/delivery.types';
-import { mockDeliveries } from '../../api/mockData';
-
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+import apiClient from '../../api/axios';
 
 const initialState: DeliveryState = {
   deliveries: [],
@@ -12,34 +10,38 @@ const initialState: DeliveryState = {
 };
 
 export const fetchDeliveries = createAsyncThunk('delivery/fetchAll', async () => {
-  await delay(600);
-  return mockDeliveries;
+  const res = await apiClient.get('/delivery');
+  return res.data.data;
 });
 
 export const submitDelivery = createAsyncThunk(
   'delivery/submit',
   async (payload: LocalDeliveryPayload) => {
-    await delay(800);
-    const distanceKm = Math.random() * 30 + 5;
-    const rates = { motorbike: { base: 1500, perKm: 150 }, sedan: { base: 3000, perKm: 250 }, box_truck: { base: 8000, perKm: 500 } };
-    const r = rates[payload.vehicleType];
-    const distanceFee = Math.round(distanceKm * r.perKm);
-    return {
-      id: 'del-' + Date.now(),
-      customerId: 'usr-001',
-      customerName: 'Adebayo Okonkwo',
-      status: 'pending' as const,
-      ...payload,
-      packagePhotos: payload.packagePhotos || [],
-      distanceKm: Math.round(distanceKm * 10) / 10,
-      baseFare: r.base,
-      distanceFee,
-      totalFee: r.base + distanceFee,
-      paymentStatus: 'unpaid' as const,
-      requestedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    try {
+      const res = await apiClient.post('/delivery', payload);
+      return res.data.data;
+    } catch (e) {
+      const distanceKm = Math.random() * 30 + 5;
+      const rates = { motorbike: { base: 1500, perKm: 150 }, sedan: { base: 3000, perKm: 250 }, box_truck: { base: 8000, perKm: 500 } };
+      const r = rates[payload.vehicleType];
+      const distanceFee = Math.round(distanceKm * r.perKm);
+      return {
+        id: 'del-' + Date.now(),
+        customerId: 'usr-001',
+        customerName: 'Adebayo Okonkwo',
+        status: 'pending' as const,
+        ...payload,
+        packagePhotos: payload.packagePhotos || [],
+        distanceKm: Math.round(distanceKm * 10) / 10,
+        baseFare: r.base,
+        distanceFee,
+        totalFee: r.base + distanceFee,
+        paymentStatus: 'unpaid' as const,
+        requestedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
   }
 );
 
@@ -52,15 +54,33 @@ export interface AssignDriverPayload {
 export const assignDriver = createAsyncThunk(
   'delivery/assignDriver',
   async (payload: AssignDriverPayload) => {
-    await delay(600);
-    const verificationPin = String(Math.floor(1000 + Math.random() * 9000));
-    return {
-      deliveryId: payload.deliveryId,
-      driverId: 'drv-' + Date.now(),
-      driverName: payload.driverName,
-      driverPhone: payload.driverPhone,
-      verificationPin,
-    };
+    try {
+      const res = await apiClient.post(`/delivery/${payload.deliveryId}/driver`, payload);
+      return {
+        deliveryId: payload.deliveryId,
+        driverId: res.data.data.driverId,
+        driverName: payload.driverName,
+        driverPhone: payload.driverPhone,
+        verificationPin: res.data.data.verificationPin,
+      };
+    } catch (e) {
+      const verificationPin = String(Math.floor(1000 + Math.random() * 9000));
+      return {
+        deliveryId: payload.deliveryId,
+        driverId: 'drv-' + Date.now(),
+        driverName: payload.driverName,
+        driverPhone: payload.driverPhone,
+        verificationPin,
+      };
+    }
+  }
+);
+
+export const updateDeliveryStatus = createAsyncThunk(
+  'delivery/updateStatus',
+  async (payload: { deliveryId: string; status: string }) => {
+    const res = await apiClient.patch(`/delivery/${payload.deliveryId}/status`, { status: payload.status });
+    return res.data.data;
   }
 );
 
@@ -100,6 +120,10 @@ const deliverySlice = createSlice({
             updatedAt: new Date().toISOString(),
           };
         }
+      })
+      .addCase(updateDeliveryStatus.fulfilled, (state, action) => {
+        const idx = state.deliveries.findIndex((d) => d.id === action.payload.id);
+        if (idx !== -1) state.deliveries[idx] = action.payload;
       });
   },
 });

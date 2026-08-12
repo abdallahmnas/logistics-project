@@ -10,7 +10,7 @@ import {
   ArrowRightOutlined,
   ExportOutlined
 } from '@ant-design/icons';
-import { mockPackages } from '../../api/mockData';
+import apiClient from '../../api/axios';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { formatDate } from '../../utils/formatters';
 
@@ -31,19 +31,21 @@ export const TrackingPublicPage: React.FC = () => {
     }
   }, []);
 
-  const handleSearch = (value: string) => {
+  const handleSearch = async (value: string) => {
     if (!value.trim()) return;
     
     setLoading(true);
     setSearched(true);
     setSearchParams({ id: value });
     
-    // Simulate API lookup
-    setTimeout(() => {
-      const found = mockPackages.find(p => p.trackingId.toLowerCase() === value.toLowerCase() || p.chineseTrackingNo.toLowerCase() === value.toLowerCase());
-      setResult(found || null);
+    try {
+      const res = await apiClient.get(`/shipments/tracking/${encodeURIComponent(value.trim())}`);
+      setResult(res.data.data);
+    } catch (e) {
+      setResult(null);
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   const generateTimelineItems = (pkg: any) => {
