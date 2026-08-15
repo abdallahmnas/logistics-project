@@ -144,7 +144,7 @@ export const ProcurementReview: React.FC = () => {
         <p className="text-slate-500 mt-1 mb-0 text-sm">Review "Buy For Me" requests and issue price quotes</p>
       </div>
 
-      <Card bordered={false} className="shadow-sm rounded-2xl">
+      <Card variant="borderless" className="shadow-sm rounded-2xl">
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <Input
             placeholder="Search customer, request ID or link..."

@@ -24,7 +24,8 @@ export const getTickets = async (req: Request, res: Response): Promise<void> => 
 export const getTicket = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const ticket = await SupportService.getTicketById(id);
+    const user = (req as any).user;
+    const ticket = await SupportService.getTicketById(id, user.customerId, user.role);
     res.status(200).json({ success: true, data: ticket });
   } catch (error: any) {
     res.status(404).json({ success: false, message: error.message });

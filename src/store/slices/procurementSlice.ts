@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { ProcurementState, ProcurementSubmitPayload, ProcurementQuotePayload } from '../../types/procurement.types';
 import apiClient from '../../api/axios';
-import { DEFAULT_EXCHANGE_RATE } from '../../utils/constants';
 
 const initialState: ProcurementState = {
   requests: [],
@@ -18,55 +17,16 @@ export const fetchProcurements = createAsyncThunk('procurement/fetchAll', async 
 export const submitProcurement = createAsyncThunk(
   'procurement/submit',
   async (payload: ProcurementSubmitPayload) => {
-    try {
-      const res = await apiClient.post('/procurements', payload);
-      return res.data.data;
-    } catch (e) {
-      return {
-        id: 'proc-' + Date.now(),
-        customerId: 'usr-001',
-        customerName: 'Adebayo Okonkwo',
-        productUrl: payload.productUrl,
-        productPhotos: payload.productPhotos,
-        quantity: payload.quantity,
-        specifications: payload.specifications,
-        sizes: payload.sizes,
-        colors: payload.colors,
-        variations: payload.variations,
-        notes: payload.notes,
-        status: 'submitted' as const,
-        submittedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    }
+    const res = await apiClient.post('/procurements', payload);
+    return res.data.data;
   }
 );
 
 export const quoteProcurement = createAsyncThunk(
   'procurement/quote',
   async (payload: ProcurementQuotePayload) => {
-    try {
-      const res = await apiClient.post(`/procurements/${payload.requestId}/quote`, payload);
-      return {
-        requestId: payload.requestId,
-        ...res.data.data,
-      };
-    } catch (e) {
-      const totalCostRmb = payload.productCostRmb + payload.serviceFeeRmb;
-      const exchangeRateUsed = DEFAULT_EXCHANGE_RATE.platformRate;
-      const totalCostNaira = totalCostRmb * exchangeRateUsed;
-      return {
-        requestId: payload.requestId,
-        productCostRmb: payload.productCostRmb,
-        serviceFeeRmb: payload.serviceFeeRmb,
-        supplierName: payload.supplierName,
-        totalCostRmb,
-        exchangeRateUsed,
-        totalCostNaira,
-        quotedAt: new Date().toISOString(),
-      };
-    }
+    const res = await apiClient.post(`/procurements/${payload.requestId}/quote`, payload);
+    return { requestId: payload.requestId, ...res.data.data };
   }
 );
 

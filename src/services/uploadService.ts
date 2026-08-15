@@ -38,16 +38,6 @@ export async function uploadSingleFile(
 
     return res.data.url;
   } catch (error: any) {
-    console.warn('Dedicated upload endpoint fallback:', error);
-    // If backend upload endpoint returns warning/fallback, generate base64 url
-    if (typeof file !== 'string') {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => resolve('');
-      });
-    }
-    return file;
+    throw new Error(error?.response?.data?.message || 'File upload failed');
   }
 }

@@ -47,11 +47,15 @@ export class SupportService {
   }
 
   // ─── Get Single Ticket ────────────────────────────────────────────────────
-  public static async getTicketById(ticketId: string) {
+  public static async getTicketById(ticketId: string, customerId?: string, userRole?: string) {
     const ticket = await SupportTicket.findByPk(ticketId, {
       include: [{ model: TicketMessage, as: 'messages', order: [['createdAt', 'ASC']] }],
     });
     if (!ticket) throw new Error('Ticket not found');
+    const staffRoles = ['super_admin', 'admin', 'finance', 'procurement'];
+    if (customerId && !staffRoles.includes(userRole || '') && ticket.customerId !== customerId) {
+      throw new Error('You cannot access another customer\'s ticket');
+    }
     return ticket;
   }
 
@@ -62,6 +66,10 @@ export class SupportService {
 
     const ticket = await SupportTicket.findByPk(ticketId);
     if (!ticket) throw new Error('Ticket not found');
+    const staffRoles = ['super_admin', 'admin', 'finance', 'procurement'];
+    if (!staffRoles.includes(user.role) && ticket.customerId !== user.customerId) {
+      throw new Error('You cannot reply to another customer\'s ticket');
+    }
 
     const msg = await TicketMessage.create({
       ticketId,
@@ -78,7 +86,7 @@ export class SupportService {
       await ticket.save();
     }
 
-    return this.getTicketById(ticketId);
+    return this.getTicketById(ticketId, user.customerId, user.role);
   }
 
   // ─── Update Ticket Status ─────────────────────────────────────────────────

@@ -67,7 +67,7 @@ export const uploadReceipt = async (req: Request, res: Response): Promise<void> 
     const { id } = req.params;
     const photoBuffer = (req as any).file?.buffer;
     if (!photoBuffer) { res.status(400).json({ success: false, message: 'No receipt file provided' }); return; }
-    const exchange = await ExchangeService.uploadReceipt(id, photoBuffer);
+    const exchange = await ExchangeService.uploadReceipt(id, (req as any).user.customerId, photoBuffer);
     res.status(200).json({ success: true, data: exchange });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

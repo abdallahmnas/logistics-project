@@ -95,13 +95,17 @@ export class ExchangeService {
     return exchange;
   }
 
-  public static async uploadReceipt(exchangeId: string, photoBuffer: Buffer) {
+  public static async uploadReceipt(exchangeId: string, customerId: string, photoBuffer: Buffer) {
     const exchange = await ExchangeRequest.findByPk(exchangeId);
     if (!exchange) throw new Error('Exchange request not found');
+    if (exchange.customerId !== customerId) throw new Error('You cannot upload a receipt for another customer');
+    if (!['pending', 'awaiting_payment'].includes(exchange.status)) {
+      throw new Error(`Cannot upload a receipt while the request is ${exchange.status}`);
+    }
 
     const receiptUrl = await uploadToCloudinary(photoBuffer, 'logicore/exchange-receipts', exchangeId);
-    (exchange as any).receiptUrl = receiptUrl;
-    (exchange as any).status = 'pending'; // stays pending until admin confirms
+    exchange.nairaReceiptUrl = receiptUrl;
+    exchange.status = 'receipt_uploaded';
     await exchange.save();
     return exchange;
   }

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Form, Input, Select, message, Table, DatePicker } from 'antd';
 import { InfoCircleOutlined, SearchOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchAllPackages } from '../../../store/slices/adminSlice';
 import { createBatch, fetchConsolidations } from '../../../store/slices/shipmentSlice';
@@ -22,6 +22,7 @@ export const NewBatchPage: React.FC = () => {
   const [form] = Form.useForm<BatchFormValues>();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { consolidations, loading: shipLoading } = useAppSelector((state) => state.shipments);
   const [submitting, setSubmitting] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -31,24 +32,47 @@ export const NewBatchPage: React.FC = () => {
   const mockBatchId = useMemo(() => `BATCH-2024-${Math.floor(Math.random() * 999).toString().padStart(3, '0')}`, []);
 
   const shippingType = Form.useWatch('shippingType', form) || 'air';
-  
-  // Set default shipping type
+
+  const generateMasterId = (mode: 'air' | 'sea' = shippingType) => {
+    const typeTag = mode.toUpperCase();
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randNum = Math.floor(100 + Math.random() * 900);
+    const newId = `HZ-BATCH-${typeTag}-${dateStr}-${randNum}`;
+    form.setFieldsValue({ masterTrackingId: newId });
+  };
+
+  // Set default shipping type and pre-fill masterTrackingId
   useEffect(() => {
     form.setFieldsValue({ shippingType: 'air' });
+    generateMasterId('air');
   }, [form]);
 
   useEffect(() => {
     dispatch(fetchConsolidations());
   }, [dispatch]);
 
-  // Reset selections when shipping type changes
+  // Auto-select consolidation passed via searchParams
   useEffect(() => {
-    setSelectedRowKeys([]);
-  }, [shippingType]);
+    const paramCid = searchParams.get('consolidationId');
+    if (paramCid && consolidations.length > 0) {
+      const found = consolidations.find((c) => c.id === paramCid || c.consolidationId === paramCid);
+      if (found) {
+        if (found.shippingMethod) {
+          form.setFieldsValue({ shippingType: found.shippingMethod });
+        }
+        setSelectedRowKeys([found.id]);
+      }
+    }
+  }, [searchParams, consolidations, form]);
 
   const eligibleConsolidations = useMemo(() => {
+    const paramCid = searchParams.get('consolidationId');
     return consolidations
-      .filter((c) => c.status === 'ready_to_batch' && c.shippingMethod === shippingType)
+      .filter((c) => {
+        const matchStatus = ['ready_to_batch', 'pending_packing', 'pending', 'ready'].includes(c.status) || c.id === paramCid || c.consolidationId === paramCid;
+        const matchMethod = c.shippingMethod === shippingType;
+        return matchStatus && matchMethod;
+      })
       .filter((c) => {
         if (!searchText) return true;
         const lowerSearch = searchText.toLowerCase();
@@ -57,7 +81,7 @@ export const NewBatchPage: React.FC = () => {
           c.customerName.toLowerCase().includes(lowerSearch)
         );
       });
-  }, [consolidations, shippingType, searchText]);
+  }, [consolidations, shippingType, searchText, searchParams]);
 
   const { totalWeight, totalCbm } = useMemo(() => {
     let weight = 0;
@@ -170,8 +194,25 @@ export const NewBatchPage: React.FC = () => {
                   </Select>
                 </Form.Item>
 
-                <Form.Item name="masterTrackingId" label={<span className="text-slate-500 text-sm">Master Tracking ID</span>} rules={[{ required: true, message: 'Required' }]} className="mb-0">
-                  <Input size="large" placeholder="e.g. AWB-883-201" className="bg-white border-slate-200 shadow-sm" />
+                <Form.Item
+                  name="masterTrackingId"
+                  label={
+                    <div className="flex justify-between items-center w-full">
+                      <span className="text-slate-500 text-sm">Master Tracking ID</span>
+                      <Button
+                        type="link"
+                        size="small"
+                        className="p-0 font-bold text-xs !text-brand-orange hover:!text-brand-navy"
+                        onClick={() => generateMasterId(shippingType)}
+                      >
+                        ⚡ Auto-Generate
+                      </Button>
+                    </div>
+                  }
+                  rules={[{ required: true, message: 'Required' }]}
+                  className="mb-0"
+                >
+                  <Input size="large" placeholder="e.g. HZ-BATCH-AIR-20260815-102" className="bg-white border-slate-200 shadow-sm" />
                 </Form.Item>
 
                 <Form.Item name="carrierName" label={<span className="text-slate-500 text-sm">Carrier Name</span>} rules={[{ required: true, message: 'Required' }]} className="mb-0">

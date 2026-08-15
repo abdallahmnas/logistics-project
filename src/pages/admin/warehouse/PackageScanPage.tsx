@@ -116,7 +116,7 @@ export const PackageScanPage: React.FC = () => {
 
   const handleFileSelect = async (file: File) => {
     try {
-      message.loading({ content: `Uploading ${file.name} to Cloudinary...`, key: 'upload' });
+      message.loading({ content: `Uploading ${file.name}...`, key: 'upload' });
       // Generate instant preview URL first
       const base64Url = await getBase64(file);
       const cdnUrl = await uploadSingleFile(file, 'packages');
@@ -131,7 +131,7 @@ export const PackageScanPage: React.FC = () => {
         preview: finalUrl,
       };
       setFileList((prev) => [...prev, newFile]);
-      message.success({ content: `Uploaded ${file.name} to Cloudinary!`, key: 'upload' });
+      message.success({ content: `${file.name} uploaded successfully.`, key: 'upload' });
     } catch {
       message.error({ content: 'Failed to upload image.', key: 'upload' });
     }

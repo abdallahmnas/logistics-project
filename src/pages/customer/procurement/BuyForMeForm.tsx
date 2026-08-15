@@ -100,7 +100,7 @@ export const BuyForMeForm: React.FC = () => {
 
       <div className="flex justify-center">
         <Card
-          bordered={false}
+          variant="borderless"
           className="shadow-sm rounded-2xl w-full max-w-2xl"
         >
           <Form

@@ -67,7 +67,7 @@ export const LocalDeliveryList: React.FC = () => {
             size="large" 
             icon={<PlusOutlined />} 
             className="bg-[#0A1128] hover:bg-[#1a2542] text-white border-none font-bold w-full md:w-auto px-6"
-            onClick={() => navigate('/dashboard/delivery/new')}
+            onClick={() => navigate('/customer/delivery/new')}
           >
             NEW DISPATCH
           </Button>

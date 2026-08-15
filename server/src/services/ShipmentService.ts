@@ -149,7 +149,13 @@ export class ShipmentService {
     if (!user) throw new Error('User not found');
 
     const packages = await Package.findAll({ where: { id: payload.packageIds } });
-    if (!packages || packages.length === 0) throw new Error('No valid packages selected');
+    if (packages.length !== payload.packageIds.length) throw new Error('One or more packages do not exist');
+    if (packages.some((pkg) => pkg.customerId !== user.customerId)) {
+      throw new Error('You can only consolidate packages assigned to your account');
+    }
+    if (packages.some((pkg) => !['received_cn', 'ready_to_pack'].includes(pkg.status))) {
+      throw new Error('Only received packages can be consolidated');
+    }
 
     const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);
     const totalCbm = packages.reduce((acc, p) => acc + (p.cbm || 0), 0);
@@ -184,6 +190,7 @@ export class ShipmentService {
 
   // ─── Batches ──────────────────────────────────────────────────────────────
   public static async createBatch(payload: {
+    masterTrackingId?: string;
     carrierName: string;
     flightVoyageNo: string;
     containerNo?: string;
@@ -193,7 +200,9 @@ export class ShipmentService {
   }) {
     const count = (await Batch.count()) + 1;
     const typeTag = payload.shippingType.toUpperCase();
-    const masterTrackingId = `HZ-BATCH-${typeTag}-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${count}`;
+    const masterTrackingId =
+      payload.masterTrackingId ||
+      `HZ-BATCH-${typeTag}-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${count}`;
 
     const batch = await Batch.create({
       masterTrackingId,
@@ -210,6 +219,12 @@ export class ShipmentService {
       totalCbm: 0,
       departureDate: new Date(),
     });
+
+    // Update status of batched consolidations to in_transit
+    const targetIds = payload.consolidationIds || payload.packageIds;
+    if (targetIds && targetIds.length > 0) {
+      await Consolidation.update({ status: 'in_transit' }, { where: { id: targetIds } });
+    }
     return batch;
   }
 

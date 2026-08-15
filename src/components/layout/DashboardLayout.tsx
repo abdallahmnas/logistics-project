@@ -84,11 +84,6 @@ export const DashboardLayout: React.FC = () => {
           icon: <CustomerServiceOutlined />,
           label: "Support Tickets",
         },
-        {
-          key: "/customer/settings",
-          icon: <UserOutlined />,
-          label: "Settings",
-        },
       ],
     },
   ];
@@ -179,10 +174,10 @@ export const DashboardLayout: React.FC = () => {
               <div className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition-colors border-l border-slate-200 pl-6">
                 <div className="hidden sm:flex flex-col items-end leading-tight">
                   <span className="text-sm font-bold text-slate-800">
-                    Alex Global
+                    {`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Customer"}
                   </span>
                   <span className="text-[10px] font-bold text-slate-500">
-                    Pro Member
+                    {user?.customerId || "Customer account"}
                   </span>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-[#0A1128] text-white flex items-center justify-center text-sm font-bold shadow-sm">

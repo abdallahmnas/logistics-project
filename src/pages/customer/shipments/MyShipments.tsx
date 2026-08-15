@@ -114,7 +114,7 @@ export const MyShipments: React.FC = () => {
           <Button
             size="large"
             className="font-bold"
-            onClick={() => navigate("/customer/shipments/consolidate")}
+            onClick={() => navigate("/customer/consolidation/new")}
           >
             Consolidate Items
           </Button>
@@ -123,7 +123,7 @@ export const MyShipments: React.FC = () => {
             icon={<PlusOutlined />}
             size="large"
             className="bg-brand-gold text-brand-navy font-bold border-none hover:bg-yellow-500"
-            onClick={() => navigate("shipments/pre-alert")}
+            onClick={() => navigate("/customer/shipments/pre-alert")}
           >
             Pre-Alert Package
           </Button>

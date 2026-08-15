@@ -145,7 +145,7 @@ export const BuyForMeList: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {requests.slice(0, 3).map(req => (
-          <Card key={req.id} bordered={false} className="shadow-sm border border-slate-100 rounded-xl hover:shadow-md transition-shadow">
+          <Card key={req.id} variant="borderless" className="shadow-sm border border-slate-100 rounded-xl hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-3">
               <span className="text-xs font-medium text-slate-400">{req.id}</span>
               <Tag color={req.status === 'quoted' ? 'orange' : 'default'} className="m-0 font-bold uppercase tracking-wide border-none shadow-sm">

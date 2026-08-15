@@ -1,13 +1,45 @@
-import React from 'react';
-import { Button, Input, Select, Upload, Card } from 'antd';
+import React, { useState } from 'react';
+import { Button, Input, Select, Upload, Card, Form, message } from 'antd';
+import type { UploadFile } from 'antd';
 import { CloudUploadOutlined, CustomerServiceOutlined, FileTextOutlined, PhoneOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useAppDispatch } from '../../../store/hooks';
+import { createTicket } from '../../../store/slices/supportSlice';
+import { uploadSingleFile } from '../../../services/uploadService';
 
 const { TextArea } = Input;
 const { Dragger } = Upload;
 
 export const OpenSupportTicket: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const [form] = Form.useForm();
+  const [files, setFiles] = useState<UploadFile[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submitTicket = async (values: {
+    subject: string;
+    category: 'shipment' | 'payment' | 'exchange' | 'procurement' | 'delivery' | 'account' | 'other';
+    referenceId?: string;
+    message: string;
+  }) => {
+    setSubmitting(true);
+    try {
+      const attachments = await Promise.all(
+        files.map(async ({ originFileObj }) => {
+          if (!originFileObj) throw new Error('An attachment could not be read. Please remove it and try again.');
+          return uploadSingleFile(originFileObj, 'support-tickets');
+        })
+      );
+      await dispatch(createTicket({ ...values, attachments } as any)).unwrap();
+      message.success('Your support ticket has been submitted.');
+      navigate('/customer/support');
+    } catch (error: any) {
+      message.error(error?.message || 'Unable to submit the support ticket. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="animate-fade-in-up max-w-[1000px] mx-auto py-8">
@@ -23,25 +55,39 @@ export const OpenSupportTicket: React.FC = () => {
         {/* Form Container */}
         <div className="lg:col-span-2 relative">
           {/* Orange accent line */}
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#b34000] rounded-l-lg z-10"></div>
+          <div className="absolute left-3 top-0 bottom-0 w-1 bg-[#b34000] rounded-full pointer-events-none"></div>
           
-          <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-100 pl-10">
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={submitTicket}
+            className="bg-white rounded-lg shadow-sm border border-slate-100"
+            style={{ padding: '2rem 2rem 2rem 2.5rem' }}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-[10px] font-bold text-[#0A1128] uppercase tracking-wider mb-2">Subject</label>
-                <Input placeholder="Briefly describe your issue" className="h-12 bg-slate-50 border-transparent hover:border-slate-300 text-sm rounded-md px-4" />
+                <Form.Item name="subject" className="mb-0" rules={[{ required: true, message: 'Please describe the issue' }]}>
+                  <Input placeholder="Briefly describe your issue" className="h-12 bg-slate-50 border-transparent hover:border-slate-300 text-sm rounded-md px-4" />
+                </Form.Item>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-[#0A1128] uppercase tracking-wider mb-2">Category</label>
+                <Form.Item name="category" className="mb-0" rules={[{ required: true, message: 'Please select a category' }]}>
                 <Select
                   placeholder="Select a category"
                   className="w-full h-12 [&_.ant-select-selector]:border-transparent [&_.ant-select-selector]:hover:border-slate-300 [&_.ant-select-selector]:bg-slate-50 [&_.ant-select-selector]:h-12 [&_.ant-select-selection-item]:leading-[46px] rounded-md text-sm"
                   options={[
-                    { value: 'shipping', label: 'Shipping & Delivery' },
-                    { value: 'billing', label: 'Billing & Payments' },
-                    { value: 'technical', label: 'Technical Issue' },
+                    { value: 'shipment', label: 'Shipment' },
+                    { value: 'payment', label: 'Billing & Payments' },
+                    { value: 'exchange', label: 'Currency Exchange' },
+                    { value: 'procurement', label: 'Buy For Me' },
+                    { value: 'delivery', label: 'Local Delivery' },
+                    { value: 'account', label: 'Account' },
+                    { value: 'other', label: 'Other' },
                   ]}
                 />
+                </Form.Item>
               </div>
             </div>
 
@@ -50,20 +96,24 @@ export const OpenSupportTicket: React.FC = () => {
                 <label className="block text-[10px] font-bold text-[#0A1128] uppercase tracking-wider">Related Shipment ID</label>
                 <span className="text-[10px] font-bold text-slate-400">Optional</span>
               </div>
+              <Form.Item name="referenceId" className="mb-0">
               <Input 
                 placeholder="e.g. GL-9482-USA" 
                 prefix={<span className="text-slate-400 mr-2 text-lg">📦</span>}
                 className="h-12 bg-slate-50 border-transparent hover:border-slate-300 text-sm rounded-md px-4" 
               />
+              </Form.Item>
             </div>
 
             <div className="mb-6">
               <label className="block text-[10px] font-bold text-[#0A1128] uppercase tracking-wider mb-2">Description</label>
+              <Form.Item name="message" rules={[{ required: true, message: 'Please provide details of your issue' }, { min: 10, message: 'Please provide at least 10 characters' }]} className="mb-0">
               <TextArea 
                 placeholder="Please provide detailed information about your inquiry..." 
                 rows={6}
                 className="bg-slate-50 border-transparent hover:border-slate-300 text-sm rounded-md p-4 resize-none" 
               />
+              </Form.Item>
             </div>
 
             <div className="mb-8">
@@ -71,10 +121,10 @@ export const OpenSupportTicket: React.FC = () => {
               <Dragger
                 className="bg-slate-50 border-2 border-dashed border-slate-200 hover:border-brand-orange hover:bg-orange-50/10 transition-colors p-6 rounded-lg text-center"
                 beforeUpload={() => false}
-                onChange={({ fileList: newFileList }) => {
-                  newFileList.forEach((f) => { f.status = 'done'; });
-                }}
-                customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
+                fileList={files}
+                onChange={({ fileList: newFileList }) => setFiles(newFileList.slice(-5))}
+                accept="image/jpeg,image/png,application/pdf"
+                maxCount={5}
               >
                 <p className="ant-upload-drag-icon text-brand-orange text-4xl mb-3 flex justify-center">
                   <div className="w-16 h-16 rounded-xl bg-orange-50 flex items-center justify-center">
@@ -95,11 +145,11 @@ export const OpenSupportTicket: React.FC = () => {
               <Button type="text" className="font-bold text-[#0A1128] hover:bg-slate-100 px-6 h-12" onClick={() => navigate('/customer/support')}>
                 Cancel
               </Button>
-              <Button type="primary" className="bg-[#0A1128] hover:bg-[#1a2542] border-none font-bold px-8 h-12 shadow-md flex items-center gap-2">
+              <Button htmlType="submit" loading={submitting} type="primary" className="bg-[#0A1128] hover:bg-[#1a2542] border-none font-bold px-8 h-12 shadow-md flex items-center gap-2">
                 Submit Ticket <span className="text-brand-orange ml-1">▶</span>
               </Button>
             </div>
-          </div>
+          </Form>
         </div>
 
         {/* Right Sidebar */}

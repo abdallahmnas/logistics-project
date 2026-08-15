@@ -245,7 +245,7 @@ export const NewConsolidationPage: React.FC = () => {
         {/* Right Column — Configuration */}
         <div className="lg:col-span-1">
           <Card
-            bordered={false}
+            variant="borderless"
             className="shadow-lg border-t-4 border-brand-orange rounded-xl sticky top-24"
             bodyStyle={{ padding: "0" }}
           >
@@ -377,6 +377,7 @@ export const NewConsolidationPage: React.FC = () => {
                         Bank transfer before packing
                       </div>
                     </div>
+                  </div>
                   <div
                     className={`rounded-xl p-4 border-2 cursor-pointer transition-all flex items-center gap-3 ${
                       paymentMethod === "pay_on_delivery"

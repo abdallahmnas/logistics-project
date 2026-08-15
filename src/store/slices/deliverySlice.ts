@@ -17,31 +17,8 @@ export const fetchDeliveries = createAsyncThunk('delivery/fetchAll', async () =>
 export const submitDelivery = createAsyncThunk(
   'delivery/submit',
   async (payload: LocalDeliveryPayload) => {
-    try {
-      const res = await apiClient.post('/delivery', payload);
-      return res.data.data;
-    } catch (e) {
-      const distanceKm = Math.random() * 30 + 5;
-      const rates = { motorbike: { base: 1500, perKm: 150 }, sedan: { base: 3000, perKm: 250 }, box_truck: { base: 8000, perKm: 500 } };
-      const r = rates[payload.vehicleType];
-      const distanceFee = Math.round(distanceKm * r.perKm);
-      return {
-        id: 'del-' + Date.now(),
-        customerId: 'usr-001',
-        customerName: 'Adebayo Okonkwo',
-        status: 'pending' as const,
-        ...payload,
-        packagePhotos: payload.packagePhotos || [],
-        distanceKm: Math.round(distanceKm * 10) / 10,
-        baseFare: r.base,
-        distanceFee,
-        totalFee: r.base + distanceFee,
-        paymentStatus: 'unpaid' as const,
-        requestedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    }
+    const res = await apiClient.post('/delivery', payload);
+    return res.data.data;
   }
 );
 
@@ -54,25 +31,8 @@ export interface AssignDriverPayload {
 export const assignDriver = createAsyncThunk(
   'delivery/assignDriver',
   async (payload: AssignDriverPayload) => {
-    try {
-      const res = await apiClient.post(`/delivery/${payload.deliveryId}/driver`, payload);
-      return {
-        deliveryId: payload.deliveryId,
-        driverId: res.data.data.driverId,
-        driverName: payload.driverName,
-        driverPhone: payload.driverPhone,
-        verificationPin: res.data.data.verificationPin,
-      };
-    } catch (e) {
-      const verificationPin = String(Math.floor(1000 + Math.random() * 9000));
-      return {
-        deliveryId: payload.deliveryId,
-        driverId: 'drv-' + Date.now(),
-        driverName: payload.driverName,
-        driverPhone: payload.driverPhone,
-        verificationPin,
-      };
-    }
+    const res = await apiClient.post(`/delivery/${payload.deliveryId}/driver`, payload);
+    return { deliveryId: payload.deliveryId, ...res.data.data };
   }
 );
 

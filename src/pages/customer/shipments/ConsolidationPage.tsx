@@ -24,37 +24,21 @@ export const ConsolidationPage: React.FC = () => {
     dispatch(fetchConsolidations());
   }, [dispatch]);
 
-  // Combine real store consolidations with fallback mock items
+  // Render only persisted consolidations. Empty states must not resemble live orders.
   const consolidations = useMemo(() => {
-    if (storeConsolidations && storeConsolidations.length > 0) {
-      return storeConsolidations.map((c) => ({
+    return (storeConsolidations || []).map((c) => ({
         id: c.consolidationId || c.id,
         dateCreated: c.createdAt || new Date().toISOString(),
         items: c.packageIds?.length || 1,
         estWeight: `${c.totalWeightKg || 1} kg`,
         destination: c.destinationWarehouse ? `${c.destinationWarehouse.toUpperCase()}, NG` : 'Lagos, NG',
-        status: c.status || 'pending',
+        status: ({
+          pending_packing: 'pending',
+          ready_to_batch: 'ready',
+          batched: 'completed',
+        } as const)[c.status],
         raw: c,
-      }));
-    }
-    return [
-      {
-        id: "CNS-88210",
-        dateCreated: "2026-08-10",
-        items: 5,
-        estWeight: "12.5 kg",
-        destination: "Lagos, NG",
-        status: "packing",
-      },
-      {
-        id: "CNS-88195",
-        dateCreated: "2026-08-08",
-        items: 3,
-        estWeight: "4.2 kg",
-        destination: "Abuja, NG",
-        status: "pending",
-      },
-    ];
+    }));
   }, [storeConsolidations]);
 
   const pendingItems =
@@ -65,10 +49,8 @@ export const ConsolidationPage: React.FC = () => {
         "received_at_warehouse",
         "at_china_warehouse",
       ].includes(p.status),
-    ).length || 12;
-  const inConsolidation = consolidations.filter(
-    (c) => c.status === "packing" || c.status === "processing",
-  ).length;
+    ).length;
+  const inConsolidation = consolidations.filter((c) => c.status === "pending").length;
   const readyForShipping = consolidations.filter(
     (c) => c.status === "ready",
   ).length;
@@ -78,8 +60,7 @@ export const ConsolidationPage: React.FC = () => {
       ? consolidations
       : consolidations.filter((c) => {
           if (filter === "pending") return c.status === "pending";
-          if (filter === "processing")
-            return c.status === "packing" || c.status === "processing";
+          if (filter === "processing") return c.status === "pending";
           if (filter === "completed")
             return c.status === "ready" || c.status === "completed";
           return true;

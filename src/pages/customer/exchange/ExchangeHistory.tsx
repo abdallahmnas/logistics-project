@@ -71,7 +71,7 @@ export const ExchangeHistory: React.FC = () => {
         <Button 
           type="text" 
           icon={<ArrowLeftOutlined />} 
-          onClick={() => navigate('/dashboard/exchange')}
+          onClick={() => navigate('/customer/exchange')}
           className="text-slate-500 hover:text-[#0A1128] px-0 mb-4"
         >
           Back to Exchange

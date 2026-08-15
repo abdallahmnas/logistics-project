@@ -60,9 +60,11 @@ export class ProcurementService {
     return proc;
   }
 
-  public static async approveRequest(id: string) {
+  public static async approveRequest(id: string, customerId: string) {
     const proc = await ProcurementRequest.findByPk(id);
     if (!proc) throw new Error('Procurement request not found');
+    if (proc.customerId !== customerId) throw new Error('You cannot approve another customer\'s request');
+    if (proc.status !== 'quoted') throw new Error('Only quoted requests can be approved');
     proc.status = 'approved';
     proc.approvedAt = new Date();
     await proc.save();

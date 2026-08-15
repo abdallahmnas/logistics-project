@@ -249,7 +249,7 @@ export const ExchangeList: React.FC = () => {
         />
         
         <div className="mt-4 text-center">
-          <Button type="link" className="text-brand-orange font-bold text-xs tracking-wider" onClick={() => navigate('/dashboard/exchange/history')}>
+          <Button type="link" className="text-brand-orange font-bold text-xs tracking-wider" onClick={() => navigate('/customer/exchange/history')}>
             VIEW ALL REQUESTS ➔
           </Button>
         </div>
