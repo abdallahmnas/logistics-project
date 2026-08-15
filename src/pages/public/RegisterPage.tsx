@@ -4,16 +4,17 @@ import { UserOutlined, MailOutlined, PhoneOutlined, GlobalOutlined, BarChartOutl
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { clearError } from '../../store/slices/authSlice';
-import { step1RegisterSchema, validateForm, validateField } from '../../utils/validators';
+import type { RegisterPayload } from '../../types/auth.types';
+import { registerSchema, validateForm, validateField } from '../../utils/validators';
 import apiClient from '../../api/axios';
 
-export const RegisterPage: React.FC = () => {
+const RegisterPage: React.FC = () => {
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { loading, error } = useAppSelector((state) => state.auth);
-
-  const [countryCode, setCountryCode] = useState('+234');
+  
+  const [countryCode, setCountryCode] = useState('+234');   
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -30,8 +31,8 @@ export const RegisterPage: React.FC = () => {
   const formatPhoneWithCountryCode = (code: string, rawPhone: string) => {
     if (!rawPhone) return '';
     let cleaned = rawPhone.trim().replace(/[^\d+]/g, '');
-
-    // For Nigeria (+234): strip leading zero if user typed 080xxx or 070xxx or 090xxx
+    
+    // For Nigeria (+234): strip leading zero if user typed 080xxx or 070xxx
     if (code === '+234' && cleaned.startsWith('0')) {
       cleaned = cleaned.substring(1);
     }
@@ -44,8 +45,8 @@ export const RegisterPage: React.FC = () => {
   };
 
   const onFinish = async (values: any) => {
-    // Validate with Step 1 schema (firstName, lastName, email, phone)
-    const errors = await validateForm(step1RegisterSchema, values);
+    // Validate with Yup schema before checking backend lookup
+    const errors = await validateForm(registerSchema, values);
     if (Object.keys(errors).length > 0) {
       form.setFields(
         Object.keys(errors).map((key) => ({
@@ -82,12 +83,10 @@ export const RegisterPage: React.FC = () => {
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Email or Phone is already registered';
       setLookupError(msg);
-      
-      const lowerMsg = msg.toLowerCase();
-      if (lowerMsg.includes('email')) {
+      if (msg.toLowerCase().includes('email')) {
         form.setFields([{ name: 'email', errors: [msg] }]);
       }
-      if (lowerMsg.includes('phone')) {
+      if (msg.toLowerCase().includes('phone')) {
         form.setFields([{ name: 'phone', errors: [msg] }]);
       }
     } finally {
@@ -99,7 +98,7 @@ export const RegisterPage: React.FC = () => {
     const value = form.getFieldValue(field);
     if (!value) return;
 
-    const err = await validateField(step1RegisterSchema, field, value);
+    const err = await validateField(registerSchema, field, value);
     if (err) {
       form.setFields([{ name: field, errors: [err] }]);
     } else {
@@ -325,7 +324,7 @@ export const RegisterPage: React.FC = () => {
                 >
                   <Input
                     prefix={<PhoneOutlined className="text-slate-400" />}
-                    placeholder="8090182902 or 08090182902"
+                    placeholder="8012345678 or 08012345678"
                     onBlur={() => handleBlur('phone')}
                     className="!rounded-lg"
                   />
@@ -382,4 +381,5 @@ const RocketIcon = () => (
   </svg>
 );
 
+export { RegisterPage };
 export default RegisterPage;
