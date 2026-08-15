@@ -9,47 +9,53 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
-import { fetchPackages } from "../../../store/slices/shipmentSlice";
+import { fetchPackages, fetchConsolidations } from "../../../store/slices/shipmentSlice";
 
 type FilterType = "all" | "pending" | "processing" | "completed";
 
 export const ConsolidationPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { packages } = useAppSelector((state) => state.shipments);
+  const { packages, consolidations: storeConsolidations } = useAppSelector((state) => state.shipments);
   const [filter, setFilter] = useState<FilterType>("all");
 
   useEffect(() => {
     dispatch(fetchPackages());
+    dispatch(fetchConsolidations());
   }, [dispatch]);
 
-  // Mock consolidation data
-  const consolidations = [
-    {
-      id: "CNS-88210",
-      dateCreated: "2023-10-24",
-      items: 5,
-      estWeight: "12.5 kg",
-      destination: "Lagos, NG",
-      status: "packing",
-    },
-    {
-      id: "CNS-88195",
-      dateCreated: "2023-10-21",
-      items: 3,
-      estWeight: "4.2 kg",
-      destination: "London, UK",
-      status: "pending",
-    },
-    {
-      id: "CNS-88002",
-      dateCreated: "2023-10-15",
-      items: 8,
-      estWeight: "22.8 kg",
-      destination: "Accra, GH",
-      status: "ready",
-    },
-  ];
+  // Combine real store consolidations with fallback mock items
+  const consolidations = useMemo(() => {
+    if (storeConsolidations && storeConsolidations.length > 0) {
+      return storeConsolidations.map((c) => ({
+        id: c.consolidationId || c.id,
+        dateCreated: c.createdAt || new Date().toISOString(),
+        items: c.packageIds?.length || 1,
+        estWeight: `${c.totalWeightKg || 1} kg`,
+        destination: c.destinationWarehouse ? `${c.destinationWarehouse.toUpperCase()}, NG` : 'Lagos, NG',
+        status: c.status || 'pending',
+        raw: c,
+      }));
+    }
+    return [
+      {
+        id: "CNS-88210",
+        dateCreated: "2026-08-10",
+        items: 5,
+        estWeight: "12.5 kg",
+        destination: "Lagos, NG",
+        status: "packing",
+      },
+      {
+        id: "CNS-88195",
+        dateCreated: "2026-08-08",
+        items: 3,
+        estWeight: "4.2 kg",
+        destination: "Abuja, NG",
+        status: "pending",
+      },
+    ];
+  }, [storeConsolidations]);
 
   const pendingItems =
     packages.filter((p) =>

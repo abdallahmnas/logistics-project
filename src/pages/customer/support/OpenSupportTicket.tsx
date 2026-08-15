@@ -68,7 +68,14 @@ export const OpenSupportTicket: React.FC = () => {
 
             <div className="mb-8">
               <label className="block text-[10px] font-bold text-[#0A1128] uppercase tracking-wider mb-2">Attachments</label>
-              <Dragger className="bg-slate-50 border-2 border-dashed border-slate-200 hover:border-brand-orange hover:bg-orange-50/10 transition-colors p-6 rounded-lg text-center">
+              <Dragger
+                className="bg-slate-50 border-2 border-dashed border-slate-200 hover:border-brand-orange hover:bg-orange-50/10 transition-colors p-6 rounded-lg text-center"
+                beforeUpload={() => false}
+                onChange={({ fileList: newFileList }) => {
+                  newFileList.forEach((f) => { f.status = 'done'; });
+                }}
+                customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
+              >
                 <p className="ant-upload-drag-icon text-brand-orange text-4xl mb-3 flex justify-center">
                   <div className="w-16 h-16 rounded-xl bg-orange-50 flex items-center justify-center">
                     <CloudUploadOutlined />

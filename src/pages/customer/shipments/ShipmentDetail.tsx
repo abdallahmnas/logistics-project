@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card, Timeline, Button } from "antd";
+import { Card, Timeline, Button, Image } from "antd";
 import { ArrowLeftOutlined, RocketOutlined } from "@ant-design/icons";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import {
@@ -291,6 +291,29 @@ export const ShipmentDetail: React.FC = () => {
                     {pkg.paymentStatus.replace("_", " ")}
                   </span>
                 </div>
+              </div>
+
+              {/* Package Condition Photos */}
+              <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                  Condition Photos
+                </h3>
+                {pkg.photos && pkg.photos.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {pkg.photos.map((url, i) => (
+                      <Image
+                        key={i}
+                        src={url}
+                        alt="Condition photo"
+                        className="rounded-lg object-cover h-32 w-full border border-slate-200"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm font-medium text-slate-400 m-0 text-center py-4 italic">
+                    No condition photos uploaded for this package yet.
+                  </p>
+                )}
               </div>
 
               {batch && (

@@ -1,4 +1,5 @@
 import { Package, Consolidation, Batch, User } from '../models';
+import { uploadBase64ToCloudinary } from '../config/cloudinary';
 
 export class ShipmentService {
 
@@ -46,6 +47,18 @@ export class ShipmentService {
     const trackingId = payload.trackingId ||
       `HZ-AIR-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(count).padStart(3, '0')}`;
 
+    const length = payload.length || 20;
+    const width = payload.width || 20;
+    const height = payload.height || 20;
+    const cbm = payload.cbm || (length * width * height) / 1000000;
+
+    let uploadedPhotos: string[] = [];
+    if (payload.photos && Array.isArray(payload.photos)) {
+      uploadedPhotos = await Promise.all(
+        payload.photos.map((img: string) => uploadBase64ToCloudinary(img, 'packages'))
+      );
+    }
+
     const pkg = await Package.create({
       trackingId,
       chineseTrackingNo: payload.chineseTrackingNo || '—',
@@ -54,7 +67,9 @@ export class ShipmentService {
       status: (payload.status as any) || 'received_cn',
       description: payload.description,
       weightKg: payload.weightKg || 0,
-      cbm: payload.cbm || 0,
+      cbm,
+      dimensions: { length, width, height },
+      photos: uploadedPhotos,
       paymentStatus: 'unpaid',
       preAlertDate: new Date(),
       receivedDate: new Date(),
@@ -99,6 +114,7 @@ export class ShipmentService {
     description?: string;
     customerId?: string;
     customerName?: string;
+    photos?: string[];
   }) {
     const pkg = await Package.findByPk(packageId);
     if (!pkg) throw new Error('Package not found');
@@ -110,6 +126,12 @@ export class ShipmentService {
     if (payload.description) pkg.description = payload.description;
     if (payload.customerId) pkg.customerId = payload.customerId;
     if (payload.customerName) pkg.customerName = payload.customerName;
+    if (payload.photos && Array.isArray(payload.photos)) {
+      const uploadedCloudinaryUrls = await Promise.all(
+        payload.photos.map((img) => uploadBase64ToCloudinary(img, 'packages'))
+      );
+      pkg.photos = uploadedCloudinaryUrls;
+    }
     pkg.status = 'received_cn';
     pkg.receivedDate = new Date();
     await pkg.save();
@@ -222,6 +244,7 @@ export class ShipmentService {
     if (status === 'delivered') pkg.deliveredDate = new Date();
     if (extra?.weightKg !== undefined) pkg.weightKg = extra.weightKg;
     if (extra?.cbm !== undefined) pkg.cbm = extra.cbm;
+    if (extra?.photos !== undefined) pkg.photos = extra.photos;
 
     await pkg.save();
     return pkg;

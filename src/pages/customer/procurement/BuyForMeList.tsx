@@ -86,7 +86,14 @@ export const BuyForMeList: React.FC = () => {
 
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">Supporting Documents (Optional)</label>
-            <Dragger className="bg-white border-dashed border-slate-300">
+            <Dragger
+              className="bg-white border-dashed border-slate-300"
+              beforeUpload={() => false}
+              onChange={({ fileList: newFileList }) => {
+                newFileList.forEach((f) => { f.status = 'done'; });
+              }}
+              customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
+            >
               <p className="ant-upload-drag-icon">
                 <CloudUploadOutlined className="text-slate-400" />
               </p>

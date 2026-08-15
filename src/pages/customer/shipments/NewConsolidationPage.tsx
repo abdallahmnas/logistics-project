@@ -12,7 +12,7 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
-import { fetchPackages } from "../../../store/slices/shipmentSlice";
+import { fetchPackages, submitConsolidation } from "../../../store/slices/shipmentSlice";
 
 export const NewConsolidationPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -29,29 +29,42 @@ export const NewConsolidationPage: React.FC = () => {
     dispatch(fetchPackages());
   }, [dispatch]);
 
-  // Mock warehouse items
-  const warehouseItems = [
-    {
-      id: "WH-001",
-      name: "Electronic Components",
-      trackingId: "YT0001316925CN",
-      weight: 12.5,
-      volume: 0.08,
-      status: "stored",
-      image:
-        "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=300&auto=format&fit=crop",
-    },
-    {
-      id: "WH-002",
-      name: "Industrial Pump Parts",
-      trackingId: "SF7724818471CN",
-      weight: 45.0,
-      volume: 0.25,
-      status: "stored",
-      image:
-        "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=300&auto=format&fit=crop",
-    },
-  ];
+  // Dynamic warehouse items mapped from real store packages
+  const warehouseItems = useMemo(() => {
+    if (packages && packages.length > 0) {
+      return packages.map((p) => ({
+        id: p.id,
+        name: p.description || 'Inbound Goods',
+        trackingId: p.trackingId,
+        weight: p.weightKg || 1,
+        volume: p.cbm || 0.01,
+        status: p.status,
+        image: p.photos && p.photos.length > 0 ? p.photos[0] : 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=300',
+      }));
+    }
+    return [
+      {
+        id: "WH-001",
+        name: "Electronic Components",
+        trackingId: "HZ-AIR-2026-001",
+        weight: 12.5,
+        volume: 0.08,
+        status: "stored",
+        image:
+          "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=300&auto=format&fit=crop",
+      },
+      {
+        id: "WH-002",
+        name: "Industrial Pump Parts",
+        trackingId: "HZ-AIR-2026-002",
+        weight: 45.0,
+        volume: 0.25,
+        status: "stored",
+        image:
+          "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=300&auto=format&fit=crop",
+      },
+    ];
+  }, [packages]);
 
   const toggleItem = (id: string) => {
     setSelectedIds((prev) =>
@@ -72,6 +85,24 @@ export const NewConsolidationPage: React.FC = () => {
   );
   const totalWeight = selectedItems.reduce((sum, i) => sum + i.weight, 0);
   const totalVolume = selectedItems.reduce((sum, i) => sum + i.volume, 0);
+
+  const handleConsolidateSubmit = async () => {
+    try {
+      await dispatch(
+        submitConsolidation({
+          packageIds: selectedIds,
+          shippingMethod: freight,
+          destinationWarehouse: 'lagos',
+          paymentMethod: paymentMethod === 'pay_now' ? 'wallet' : 'pod',
+        })
+      ).unwrap();
+      message.success('Consolidation request submitted successfully!');
+      setPayModalOpen(false);
+      navigate('/customer/shipments/consolidation');
+    } catch {
+      message.error('Failed to submit consolidation request.');
+    }
+  };
 
   return (
     <div className="animate-fade-in-up max-w-[1200px] mx-auto pb-20">
@@ -346,7 +377,6 @@ export const NewConsolidationPage: React.FC = () => {
                         Bank transfer before packing
                       </div>
                     </div>
-                  </div>
                   <div
                     className={`rounded-xl p-4 border-2 cursor-pointer transition-all flex items-center gap-3 ${
                       paymentMethod === "pay_on_delivery"
@@ -385,10 +415,7 @@ export const NewConsolidationPage: React.FC = () => {
                   if (paymentMethod === "pay_now") {
                     setPayModalOpen(true);
                   } else {
-                    message.success(
-                      "Consolidation submitted! You will pay on delivery.",
-                    );
-                    navigate("/customer/consolidation");
+                    handleConsolidateSubmit();
                   }
                 }}
               >
@@ -523,13 +550,7 @@ export const NewConsolidationPage: React.FC = () => {
             block
             icon={<CheckCircleOutlined />}
             className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-md"
-            onClick={() => {
-              setPayModalOpen(false);
-              message.success(
-                "Consolidation submitted! We will confirm your payment shortly.",
-              );
-              navigate("/customer/consolidation");
-            }}
+            onClick={handleConsolidateSubmit}
           >
             I've Made Payment
           </Button>

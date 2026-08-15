@@ -36,7 +36,7 @@ export const createPreAlert = createAsyncThunk(
     } catch (e) {
       return {
         id: 'pkg-' + Date.now(),
-        trackingId: 'HZ-AIR-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(Math.random() * 999),
+        trackingId: 'HZ-AIR-' + Math.floor(100000 + Math.random() * 900000),
         chineseTrackingNo: payload.chineseTrackingNo,
         customerId: 'usr-001',
         customerName: 'Adebayo Okonkwo',
@@ -91,33 +91,27 @@ export interface ScanPackagePayload {
   description?: string;
   customerId?: string;
   customerName?: string;
+  photos?: string[];
 }
 
 export const scanPackage = createAsyncThunk(
   'shipments/scanPackage',
   async (payload: ScanPackagePayload) => {
-    const cbm = (payload.length * payload.width * payload.height) / 1000000;
-    try {
-      await apiClient.patch(`/shipments/packages/${payload.packageId}/status`, {
-        status: 'received_cn',
-        weightKg: payload.weightKg,
-        cbm,
-      });
-    } catch (e) {
-      // fallback
-    }
+    const res = await apiClient.patch(`/shipments/packages/${payload.packageId}/scan`, payload);
+    const updatedPkg = res.data?.data;
     return {
       packageId: payload.packageId,
-      weightKg: payload.weightKg,
-      cbm,
-      dimensions: {
+      weightKg: updatedPkg?.weightKg ?? payload.weightKg,
+      cbm: updatedPkg?.cbm ?? (payload.length * payload.width * payload.height) / 1000000,
+      dimensions: updatedPkg?.dimensions ?? {
         length: payload.length,
         width: payload.width,
         height: payload.height,
       },
-      description: payload.description,
-      customerId: payload.customerId,
-      customerName: payload.customerName,
+      description: updatedPkg?.description ?? payload.description,
+      customerId: updatedPkg?.customerId ?? payload.customerId,
+      customerName: updatedPkg?.customerName ?? payload.customerName,
+      photos: updatedPkg?.photos ?? payload.photos ?? [],
     };
   }
 );
@@ -140,10 +134,7 @@ export const createInboundPackage = createAsyncThunk(
     const cbm = (payload.length * payload.width * payload.height) / 1000000;
     const now = new Date().toISOString();
     try {
-      const res = await apiClient.post('/shipments/pre-alert', {
-        chineseTrackingNo: payload.chineseTrackingNo || '—',
-        description: payload.description,
-      });
+      const res = await apiClient.post('/shipments/packages/admin', payload);
       return res.data.data;
     } catch (e) {
       return {

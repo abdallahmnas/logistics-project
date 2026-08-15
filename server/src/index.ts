@@ -28,6 +28,7 @@ import deliveryRoutes from './routes/delivery.routes';
 import notificationRoutes from './routes/notification.routes';
 import adminRoutes from './routes/admin.routes';
 import supportRoutes from './routes/support.routes';
+import uploadRoutes from './routes/upload.routes';
 
 // Health check endpoint
 app.get('/api/v1/health', (_req: Request, res: Response) => {
@@ -49,6 +50,7 @@ app.use('/api/v1/delivery', deliveryRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/support', supportRoutes);
+app.use('/api/v1/upload', uploadRoutes);
 
 // Serve frontend static build in production
 if (process.env.NODE_ENV === 'production') {

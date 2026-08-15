@@ -24,3 +24,22 @@ export async function uploadToCloudinary(
     uploadStream.end(buffer);
   });
 }
+
+export async function uploadBase64ToCloudinary(
+  base64Data: string,
+  folder: string = 'packages'
+): Promise<string> {
+  if (!base64Data.startsWith('data:image')) {
+    return base64Data; // Already a URL or non-base64 string
+  }
+  try {
+    const result = await cloudinary.uploader.upload(base64Data, {
+      folder,
+      resource_type: 'auto',
+    });
+    return result.secure_url;
+  } catch (error) {
+    console.error('Cloudinary base64 upload warning/error:', error);
+    return base64Data; // Return fallback base64 string if upload credentials missing
+  }
+}

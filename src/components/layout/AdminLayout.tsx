@@ -91,7 +91,7 @@ export const AdminLayout: React.FC = () => {
   const handleCreateShipment = async (values: any) => {
     setCreatingShipment(true);
     try {
-      const trackingId = `HZ-AIR-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`;
+      const trackingId = `HZ-AIR-${Math.floor(100000 + Math.random() * 900000)}`;
       const selectedUser = users.find((u) => u.id === values.userId || u.customerId === values.userId);
       const customerName = selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}` : values.customerName || 'Walk-in Client';
       const customerId = selectedUser ? selectedUser.customerId : values.userId || `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -114,6 +114,14 @@ export const AdminLayout: React.FC = () => {
       form.resetFields();
       setNewShipmentModalOpen(false);
       dispatch(fetchAllPackages());
+
+      const w = values.weightKg || 1;
+      const l = values.length || 20;
+      const wid = values.width || 20;
+      const h = values.height || 20;
+      const desc = encodeURIComponent(values.description || '');
+
+      navigate(`/admin/warehouse/scan?trackingId=${trackingId}&userId=${values.userId}&weightKg=${w}&length=${l}&width=${wid}&height=${h}&desc=${desc}`);
     } catch {
       message.error("Failed to create new shipment.");
     } finally {

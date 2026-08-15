@@ -105,8 +105,8 @@ export const adminCreatePackage = async (req: Request, res: Response): Promise<v
 export const updatePackageStatus = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { status, weightKg, cbm } = req.body;
-    const updated = await ShipmentService.updatePackageStatus(id, status, { weightKg, cbm });
+    const { status, weightKg, cbm, photos } = req.body;
+    const updated = await ShipmentService.updatePackageStatus(id, status, { weightKg, cbm, photos });
     res.status(200).json({ success: true, data: updated });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

@@ -122,6 +122,7 @@ const adminSlice = createSlice({
             ...(action.payload.description ? { description: action.payload.description } : {}),
             ...(action.payload.customerId ? { customerId: action.payload.customerId } : {}),
             ...(action.payload.customerName ? { customerName: action.payload.customerName } : {}),
+            ...(action.payload.photos ? { photos: action.payload.photos } : {}),
           };
         }
       })
