@@ -1,5 +1,6 @@
 import { ExchangeRate, ExchangeRequest, User } from '../models';
 import { uploadToCloudinary } from '../config/cloudinary';
+import { ActivityLogService } from './ActivityLogService';
 
 export class ExchangeService {
   public static async getActiveRate() {
@@ -52,6 +53,17 @@ export class ExchangeService {
       requestedAt: new Date(),
       expiresAt,
     });
+
+    ActivityLogService.logActivity({
+      userId: user.id,
+      userName: `${user.firstName} ${user.lastName}`,
+      userRole: user.role,
+      module: 'exchange',
+      action: 'CREATE_EXCHANGE',
+      description: `Created RMB exchange request for ₦${payload.amountNaira.toLocaleString()} (¥${amountRmb})`,
+      entityId: exchange.id,
+    });
+
     return exchange;
   }
 
@@ -62,13 +74,25 @@ export class ExchangeService {
 
   public static async updateRate(payload: { buyRate: number; sellRate: number; platformRate: number }) {
     await ExchangeRate.update({ isActive: false }, { where: { isActive: true } });
-    return ExchangeRate.create({
+    const newRate = await ExchangeRate.create({
       buyRate: payload.buyRate,
       sellRate: payload.sellRate,
       platformRate: payload.platformRate,
       effectiveFrom: new Date(),
       isActive: true,
     });
+
+    ActivityLogService.logActivity({
+      userId: 'system',
+      userName: 'Finance Admin',
+      userRole: 'finance',
+      module: 'exchange',
+      action: 'UPDATE_EXCHANGE_RATE',
+      description: `Updated active RMB exchange rate to ₦${payload.platformRate}/¥`,
+      entityId: newRate.id,
+    });
+
+    return newRate;
   }
 
   public static async verifyNairaPayment(exchangeId: string, adminId: string) {
@@ -79,6 +103,17 @@ export class ExchangeService {
     (exchange as any).status = 'naira_confirmed';
     (exchange as any).nairaConfirmedAt = new Date();
     await exchange.save();
+
+    ActivityLogService.logActivity({
+      userId: adminId,
+      userName: 'Finance Manager',
+      userRole: 'finance',
+      module: 'exchange',
+      action: 'VERIFY_NAIRA_PAYMENT',
+      description: `Verified Naira escrow deposit for exchange request ${exchange.id}`,
+      entityId: exchange.id,
+    });
+
     return exchange;
   }
 
@@ -92,6 +127,17 @@ export class ExchangeService {
     (exchange as any).rmbReleasedAt = now;
     (exchange as any).completedAt = now;
     await exchange.save();
+
+    ActivityLogService.logActivity({
+      userId: adminId,
+      userName: 'Finance Manager',
+      userRole: 'finance',
+      module: 'exchange',
+      action: 'RELEASE_RMB',
+      description: `Released RMB payment (¥${exchange.amountRmb}) to ${exchange.rmbDestName} (${exchange.rmbDestType})`,
+      entityId: exchange.id,
+    });
+
     return exchange;
   }
 

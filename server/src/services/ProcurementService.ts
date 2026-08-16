@@ -1,4 +1,5 @@
 import { ProcurementRequest, User } from '../models';
+import { ActivityLogService } from './ActivityLogService';
 
 export class ProcurementService {
   public static async createRequest(userId: string, payload: {
@@ -14,7 +15,7 @@ export class ProcurementService {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('User not found');
 
-    return ProcurementRequest.create({
+    const req = await ProcurementRequest.create({
       customerId: user.customerId,
       customerName: `${user.firstName} ${user.lastName}`,
       productUrl: payload.productUrl,
@@ -28,6 +29,18 @@ export class ProcurementService {
       status: 'submitted',
       submittedAt: new Date(),
     });
+
+    ActivityLogService.logActivity({
+      userId: user.id,
+      userName: `${user.firstName} ${user.lastName}`,
+      userRole: user.role,
+      module: 'procurement',
+      action: 'SUBMIT_PROCUREMENT',
+      description: `Customer submitted Buy-For-Me request for ${payload.quantity} items`,
+      entityId: req.id,
+    });
+
+    return req;
   }
 
   public static async getRequests(customerId?: string) {
@@ -57,6 +70,17 @@ export class ProcurementService {
     proc.status = 'quoted';
     proc.quotedAt = new Date();
     await proc.save();
+
+    ActivityLogService.logActivity({
+      userId: proc.customerId,
+      userName: proc.customerName,
+      userRole: 'procurement',
+      module: 'procurement',
+      action: 'QUOTE_REQUEST',
+      description: `Issued quote for procurement request ${proc.id} (¥${totalCostRmb} / ₦${totalCostNaira.toLocaleString()})`,
+      entityId: proc.id,
+    });
+
     return proc;
   }
 
@@ -68,6 +92,17 @@ export class ProcurementService {
     proc.status = 'approved';
     proc.approvedAt = new Date();
     await proc.save();
+
+    ActivityLogService.logActivity({
+      userId: proc.customerId,
+      userName: proc.customerName,
+      userRole: 'customer',
+      module: 'procurement',
+      action: 'APPROVE_QUOTE',
+      description: `Customer approved procurement quote ${proc.id}`,
+      entityId: proc.id,
+    });
+
     return proc;
   }
 
@@ -80,6 +115,17 @@ export class ProcurementService {
 
     (proc as any).status = status;
     await proc.save();
+
+    ActivityLogService.logActivity({
+      userId: proc.customerId,
+      userName: proc.customerName,
+      userRole: 'admin',
+      module: 'procurement',
+      action: 'UPDATE_PROCUREMENT_STATUS',
+      description: `Updated procurement request ${proc.id} status to ${status}`,
+      entityId: proc.id,
+    });
+
     return proc;
   }
 }

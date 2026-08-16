@@ -1,5 +1,6 @@
 import { Package, Consolidation, Batch, User } from '../models';
 import { uploadBase64ToCloudinary } from '../config/cloudinary';
+import { ActivityLogService } from './ActivityLogService';
 
 export class ShipmentService {
 
@@ -158,6 +159,17 @@ export class ShipmentService {
       pkg.receivedDate = new Date();
       await pkg.save();
     }
+
+    ActivityLogService.logActivity({
+      userId: 'warehouse_staff',
+      userName: 'Warehouse Scanner',
+      userRole: 'warehouse_cn',
+      module: 'warehouse',
+      action: 'SCAN_PACKAGE',
+      description: `Scanned package ${pkg.trackingNumber || pkg.id} at China Hub (${payload.weightKg || 0}kg, ${payload.cbm || 0} CBM)`,
+      entityId: pkg.id,
+    });
+
     return pkg;
   }
 
@@ -203,6 +215,17 @@ export class ShipmentService {
     });
 
     await Package.update({ status: 'consolidating' }, { where: { id: payload.packageIds } });
+
+    ActivityLogService.logActivity({
+      userId: user.id,
+      userName: `${user.firstName} ${user.lastName}`,
+      userRole: user.role,
+      module: 'shipments',
+      action: 'CREATE_CONSOLIDATION',
+      description: `Created consolidation shipment ${consolidationId} for ${packages.length} packages`,
+      entityId: consolidation.id,
+    });
+
     return consolidation;
   }
 
@@ -248,6 +271,17 @@ export class ShipmentService {
     if (targetIds && targetIds.length > 0) {
       await Consolidation.update({ status: 'in_transit' }, { where: { id: targetIds } });
     }
+
+    ActivityLogService.logActivity({
+      userId: 'warehouse_cn',
+      userName: 'Warehouse Export Manager',
+      userRole: 'warehouse_cn',
+      module: 'warehouse',
+      action: 'CREATE_MASTER_BATCH',
+      description: `Created Master ${typeTag} Batch ${masterTrackingId} with Carrier ${payload.carrierName}`,
+      entityId: batch.id,
+    });
+
     return batch;
   }
 
