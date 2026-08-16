@@ -65,7 +65,7 @@ if (process.env.NODE_ENV === 'production') {
 export const startServer = async () => {
   const isDbConnected = await connectDatabase();
   if (isDbConnected) {
-    await sequelize.sync({ alter: false });
+    await sequelize.sync({ alter: true });
   }
 
   await connectRedis();

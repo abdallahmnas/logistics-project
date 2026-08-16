@@ -63,6 +63,7 @@ import { AddStaffMember } from "./pages/admin/staff/AddStaffMember";
 import { CustomersList } from "./pages/admin/customers/CustomersList";
 import { SupportTicketsList } from "./pages/admin/support/SupportTicketsList";
 import { TicketDetails } from "./pages/admin/support/TicketDetails";
+import { ActivityTrailPage } from "./pages/admin/activity/ActivityTrailPage";
 import { PlatformSettings } from "./pages/admin/settings/PlatformSettings";
 import { AdminDashboardHome } from "./pages/admin/AdminDashboardHome";
 
@@ -186,6 +187,7 @@ function App() {
               path="permissions/:id"
               element={<PermissionGroupDetails />}
             />
+            <Route path="activity-trail" element={<ActivityTrailPage />} />
             <Route path="settings" element={<PlatformSettings />} />
           </Route>
 

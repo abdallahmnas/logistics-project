@@ -39,6 +39,7 @@ import {
   PlusOutlined,
   PhoneOutlined,
   GlobalOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import { Logo } from "../common/Logo";
 import { SidebarNav, type SidebarNavSection } from "./SidebarNav";
@@ -213,6 +214,11 @@ export const AdminLayout: React.FC = () => {
           key: "/admin/permissions",
           icon: <SafetyCertificateOutlined />,
           label: "Permissions",
+        },
+        {
+          key: "/admin/activity-trail",
+          icon: <HistoryOutlined />,
+          label: "Activity Trail",
         },
         {
           key: "/admin/settings",

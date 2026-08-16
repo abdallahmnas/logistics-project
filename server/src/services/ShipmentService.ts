@@ -105,7 +105,6 @@ export class ShipmentService {
     };
   }
 
-  // ─── Scan Package (warehouse: update weight + dimensions) ─────────────────
   public static async scanPackage(packageId: string, payload: {
     weightKg: number;
     length: number;
@@ -116,25 +115,49 @@ export class ShipmentService {
     customerName?: string;
     photos?: string[];
   }) {
-    const pkg = await Package.findByPk(packageId);
-    if (!pkg) throw new Error('Package not found');
+    let pkg = await Package.findByPk(packageId);
+    if (!pkg) {
+      pkg = await Package.findOne({ where: { trackingNumber: packageId } });
+    }
 
-    const cbm = (payload.length * payload.width * payload.height) / 1_000_000;
-    pkg.weightKg = payload.weightKg;
-    pkg.cbm = cbm;
-    (pkg as any).dimensions = { length: payload.length, width: payload.width, height: payload.height };
-    if (payload.description) pkg.description = payload.description;
-    if (payload.customerId) pkg.customerId = payload.customerId;
-    if (payload.customerName) pkg.customerName = payload.customerName;
+    const cbm = ((payload.length || 0) * (payload.width || 0) * (payload.height || 0)) / 1_000_000;
+
+    let uploadedCloudinaryUrls: string[] = [];
     if (payload.photos && Array.isArray(payload.photos)) {
-      const uploadedCloudinaryUrls = await Promise.all(
+      uploadedCloudinaryUrls = await Promise.all(
         payload.photos.map((img) => uploadBase64ToCloudinary(img, 'packages'))
       );
-      pkg.photos = uploadedCloudinaryUrls;
     }
-    pkg.status = 'received_cn';
-    pkg.receivedDate = new Date();
-    await pkg.save();
+
+    if (!pkg) {
+      pkg = await Package.create({
+        trackingNumber: packageId,
+        weightKg: payload.weightKg || 0,
+        cbm: cbm,
+        dimensions: { length: payload.length || 0, width: payload.width || 0, height: payload.height || 0 },
+        description: payload.description || 'Intake Package',
+        customerId: payload.customerId || 'CUST-DEFAULT',
+        customerName: payload.customerName || 'Walk-in Customer',
+        photos: uploadedCloudinaryUrls,
+        status: 'received_cn',
+        originWarehouse: 'Guangzhou Hub',
+        destinationWarehouse: 'Lagos Main Hub',
+        receivedDate: new Date(),
+      });
+    } else {
+      pkg.weightKg = payload.weightKg;
+      pkg.cbm = cbm;
+      (pkg as any).dimensions = { length: payload.length, width: payload.width, height: payload.height };
+      if (payload.description) pkg.description = payload.description;
+      if (payload.customerId) pkg.customerId = payload.customerId;
+      if (payload.customerName) pkg.customerName = payload.customerName;
+      if (uploadedCloudinaryUrls.length > 0) {
+        pkg.photos = uploadedCloudinaryUrls;
+      }
+      pkg.status = 'received_cn';
+      pkg.receivedDate = new Date();
+      await pkg.save();
+    }
     return pkg;
   }
 

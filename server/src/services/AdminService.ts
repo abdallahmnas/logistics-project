@@ -1,5 +1,7 @@
-import { User, Package, Batch, ExchangeRequest, ProcurementRequest, LocalDelivery, WalletTransaction } from '../models';
+import { User, Package, Batch, ExchangeRequest, ProcurementRequest, LocalDelivery, WalletTransaction, PermissionGroup } from '../models';
+import type { PermissionMatrix } from '../models/PermissionGroup';
 import { Op } from 'sequelize';
+import { ActivityLogService } from './ActivityLogService';
 
 export class AdminService {
   public static async getDashboardStats() {
@@ -43,6 +45,48 @@ export class AdminService {
     });
   }
 
+  public static async createStaffMember(data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    role: string;
+    password?: string;
+  }) {
+    const bcrypt = await import('bcryptjs');
+    const existing = await User.findOne({ where: { email: data.email } });
+    if (existing) throw new Error('A user with this email already exists');
+
+    const hashedPassword = await bcrypt.default.hash(data.password || 'Logistics123!', 10);
+    const count = (await User.count()) + 1;
+    const customerId = `STF-${String(count).padStart(4, '0')}`;
+
+    const user = await User.create({
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      phone: data.phone,
+      role: data.role as any,
+      passwordHash: hashedPassword,
+      isVerified: true,
+      customerId,
+    });
+
+    // Log Activity Trail
+    ActivityLogService.logActivity({
+      userId: user.id,
+      userName: `${user.firstName} ${user.lastName}`,
+      userRole: 'super_admin',
+      module: 'staff',
+      action: 'CREATE_STAFF',
+      description: `Onboarded new staff member ${user.firstName} ${user.lastName} with role ${user.role}`,
+      entityId: user.id,
+    });
+
+    const { passwordHash, otpCode, ...safeUser } = user.toJSON() as any;
+    return safeUser;
+  }
+
   public static async updateUser(userId: string, data: {
     role?: string;
     isActive?: boolean;
@@ -69,6 +113,36 @@ export class AdminService {
     if (!user) throw new Error('User not found');
     if (user.role === 'super_admin') throw new Error('Cannot delete super admin');
     await user.destroy();
+    return { deleted: true };
+  }
+
+  public static async getPermissionGroups() {
+    return PermissionGroup.findAll({ include: [{ model: User, as: 'members', attributes: ['id'] }], order: [['name', 'ASC']] });
+  }
+
+  public static async createPermissionGroup(data: { name: string; description?: string; permissions: PermissionMatrix; isActive?: boolean }) {
+    if (!data.name?.trim()) throw new Error('Permission group name is required');
+    if (!data.permissions || typeof data.permissions !== 'object') throw new Error('A permission matrix is required');
+    return PermissionGroup.create({ name: data.name.trim(), description: data.description?.trim(), permissions: data.permissions, isActive: data.isActive ?? true });
+  }
+
+  public static async updatePermissionGroup(id: string, data: Partial<{ name: string; description: string; permissions: PermissionMatrix; isActive: boolean }>) {
+    const group = await PermissionGroup.findByPk(id);
+    if (!group) throw new Error('Permission group not found');
+    if (data.name !== undefined) group.name = data.name.trim();
+    if (data.description !== undefined) group.description = data.description.trim();
+    if (data.permissions !== undefined) group.permissions = data.permissions;
+    if (data.isActive !== undefined) group.isActive = data.isActive;
+    await group.save();
+    return group;
+  }
+
+  public static async deletePermissionGroup(id: string) {
+    const group = await PermissionGroup.findByPk(id);
+    if (!group) throw new Error('Permission group not found');
+    const members = await User.count({ where: { permissionGroupId: id } });
+    if (members) throw new Error('Reassign staff before deleting this permission group');
+    await group.destroy();
     return { deleted: true };
   }
 }

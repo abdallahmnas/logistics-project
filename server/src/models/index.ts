@@ -12,6 +12,8 @@ import { LocalDelivery } from './LocalDelivery';
 import { Notification } from './Notification';
 import { SupportTicket } from './SupportTicket';
 import { TicketMessage } from './TicketMessage';
+import { PermissionGroup } from './PermissionGroup';
+import { ActivityLog } from './ActivityLog';
 
 // Define Relationships
 User.hasOne(Wallet, { foreignKey: 'userId', as: 'wallet' });
@@ -19,6 +21,8 @@ Wallet.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 SupportTicket.hasMany(TicketMessage, { foreignKey: 'ticketId', as: 'messages' });
 TicketMessage.belongsTo(SupportTicket, { foreignKey: 'ticketId', as: 'ticket' });
+PermissionGroup.hasMany(User, { foreignKey: 'permissionGroupId', as: 'members' });
+User.belongsTo(PermissionGroup, { foreignKey: 'permissionGroupId', as: 'permissionGroup' });
 
 export {
   sequelize,
@@ -35,4 +39,6 @@ export {
   Notification,
   SupportTicket,
   TicketMessage,
+  PermissionGroup,
+  ActivityLog,
 };

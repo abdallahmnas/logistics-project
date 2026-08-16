@@ -16,6 +16,7 @@ export interface UserAttributes {
   resetToken?: string;
   resetTokenExpiry?: Date;
   profilePhoto?: string;
+  permissionGroupId?: string;
   isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -38,6 +39,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public declare resetToken?: string;
   public declare resetTokenExpiry?: Date;
   public declare profilePhoto?: string;
+  public declare permissionGroupId?: string;
   public declare isActive?: boolean;
   public declare readonly createdAt: Date;
   public declare readonly updatedAt: Date;
@@ -103,6 +105,10 @@ User.init(
     },
     profilePhoto: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    permissionGroupId: {
+      type: DataTypes.UUID,
       allowNull: true,
     },
     isActive: {

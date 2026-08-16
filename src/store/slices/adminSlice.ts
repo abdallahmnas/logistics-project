@@ -74,6 +74,29 @@ export const updateExchangeRate = createAsyncThunk(
   }
 );
 
+export const createStaffMember = createAsyncThunk(
+  'admin/createStaffMember',
+  async (payload: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    role: string;
+    password?: string;
+  }) => {
+    const res = await apiClient.post('/admin/staff', payload);
+    return res.data.data;
+  }
+);
+
+export const updateUser = createAsyncThunk(
+  'admin/updateUser',
+  async ({ userId, data }: { userId: string; data: Partial<User> }) => {
+    const res = await apiClient.patch(`/admin/users/${userId}`, data);
+    return res.data.data;
+  }
+);
+
 export const deleteUser = createAsyncThunk(
   'admin/deleteUser',
   async (userId: string) => {
@@ -107,6 +130,15 @@ const adminSlice = createSlice({
       })
       .addCase(deleteUser.fulfilled, (state, action) => {
         state.users = state.users.filter((u) => u.id !== action.payload);
+      })
+      .addCase(createStaffMember.fulfilled, (state, action) => {
+        state.users.unshift(action.payload);
+      })
+      .addCase(updateUser.fulfilled, (state, action) => {
+        const idx = state.users.findIndex((u) => u.id === action.payload.id);
+        if (idx !== -1) {
+          state.users[idx] = action.payload;
+        }
       })
       .addCase(scanPackage.fulfilled, (state, action) => {
         const idx = state.allPackages.findIndex((p) => p.id === action.payload.packageId);
