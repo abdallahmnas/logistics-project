@@ -86,7 +86,14 @@ export const BuyForMeList: React.FC = () => {
 
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">Supporting Documents (Optional)</label>
-            <Dragger className="bg-white border-dashed border-slate-300">
+            <Dragger
+              className="bg-white border-dashed border-slate-300"
+              beforeUpload={() => false}
+              onChange={({ fileList: newFileList }) => {
+                newFileList.forEach((f) => { f.status = 'done'; });
+              }}
+              customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
+            >
               <p className="ant-upload-drag-icon">
                 <CloudUploadOutlined className="text-slate-400" />
               </p>
@@ -138,7 +145,7 @@ export const BuyForMeList: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {requests.slice(0, 3).map(req => (
-          <Card key={req.id} bordered={false} className="shadow-sm border border-slate-100 rounded-xl hover:shadow-md transition-shadow">
+          <Card key={req.id} variant="borderless" className="shadow-sm border border-slate-100 rounded-xl hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-3">
               <span className="text-xs font-medium text-slate-400">{req.id}</span>
               <Tag color={req.status === 'quoted' ? 'orange' : 'default'} className="m-0 font-bold uppercase tracking-wide border-none shadow-sm">

@@ -17,7 +17,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ children, allowedRoles }) 
 
   if (!allowedRoles.includes(user.role)) {
     // If not authorized, send back to appropriate dashboard
-    return <Navigate to={user.role === 'customer' ? '/dashboard' : '/admin'} replace />;
+    return <Navigate to={user.role === 'customer' ? '/customer' : '/admin'} replace />;
   }
 
   return <>{children}</>;

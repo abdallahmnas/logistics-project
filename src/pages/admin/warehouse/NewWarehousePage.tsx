@@ -1,21 +1,42 @@
 import React, { useState } from 'react';
-import { Form, Input, Select, Button, Checkbox, Row, Col } from 'antd';
+import { Form, Input, Select, Button, Checkbox, Row, Col, message } from 'antd';
 import { EnvironmentOutlined, SafetyCertificateOutlined, UserOutlined, PhoneOutlined, MailOutlined, BuildOutlined, SettingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useAppDispatch } from '../../../store/hooks';
+import { createFacility } from '../../../store/slices/facilitySlice';
 
 const { Option } = Select;
 
 export const NewWarehousePage: React.FC = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [submitting, setSubmitting] = useState(false);
 
-  const onFinish = (values: any) => {
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+  const onFinish = async (values: any) => {
+    try {
+      setSubmitting(true);
+      await dispatch(
+        createFacility({
+          code: values.internalCode || `WH-${Date.now().toString().slice(-4)}`,
+          name: values.facilityDesignation,
+          location: `${values.municipality || 'City'}, ${values.sector || values.region || 'Region'}`,
+          country: values.region === 'china' ? 'CN' : 'NG',
+          type: values.classificationType || 'regional_hub',
+          status: 'active',
+          address: values.address,
+          contactName: values.managerName,
+          contactPhone: values.managerPhone,
+          contactEmail: values.managerEmail,
+        })
+      ).unwrap();
+      message.success('Facility provisioned successfully!');
       navigate('/admin/warehouse/facilities');
-    }, 1000);
+    } catch (error: any) {
+      message.error(error?.message || 'Failed to create facility');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

@@ -58,7 +58,7 @@ export const ExchangeRequestForm: React.FC = () => {
         })
       ).unwrap();
       message.success('Exchange request created. Fund the escrow account to proceed.');
-      navigate('/dashboard/exchange');
+      navigate('/customer/exchange');
     } finally {
       setSubmitting(false);
     }
@@ -70,7 +70,7 @@ export const ExchangeRequestForm: React.FC = () => {
         <Button
           type="text"
           icon={<ArrowLeftOutlined />}
-          onClick={() => navigate('/dashboard/exchange')}
+          onClick={() => navigate('/customer/exchange')}
           className="mb-2 -ml-2 text-slate-500"
         >
           Back to Exchange History
@@ -188,7 +188,7 @@ export const ExchangeRequestForm: React.FC = () => {
             )}
 
             <Form.Item className="mb-0 mt-8 text-right">
-              <Button onClick={() => navigate('/dashboard/exchange')} className="mr-2" size="large">
+              <Button onClick={() => navigate('/customer/exchange')} className="mr-2" size="large">
                 Cancel
               </Button>
               <Button

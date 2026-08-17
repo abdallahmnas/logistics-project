@@ -8,6 +8,21 @@ export const VerifyOTPPage: React.FC = () => {
   const navigate = useNavigate();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timeLeft, setTimeLeft] = useState(52); // seconds
+  const [userEmail, setUserEmail] = useState<string>('your registered email');
+
+  useEffect(() => {
+    const savedDraft = sessionStorage.getItem('registrationDraft');
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed.email) {
+          setUserEmail(parsed.email);
+        }
+      } catch (e) {
+        console.error('Failed to parse registration draft:', e);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (timeLeft <= 0) return;
@@ -123,7 +138,7 @@ export const VerifyOTPPage: React.FC = () => {
           </h2>
           <p className="text-slate-500 text-base mb-10 max-w-xs mx-auto">
             A 6-digit verification code has been sent to<br/>
-            <span className="font-semibold text-slate-700">user.name@company.com</span>
+            <span className="font-semibold text-slate-700">{userEmail}</span>
           </p>
 
           {/* OTP Inputs */}
@@ -184,3 +199,5 @@ export const VerifyOTPPage: React.FC = () => {
     </div>
   );
 };
+
+export default VerifyOTPPage;

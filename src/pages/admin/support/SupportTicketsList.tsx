@@ -1,42 +1,39 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Button, Table, Input, Select, Tag, Avatar } from 'antd';
-import { SearchOutlined, FilterOutlined, ExclamationCircleOutlined, CheckCircleOutlined, ClockCircleOutlined, FormOutlined } from '@ant-design/icons';
+import { SearchOutlined, FilterOutlined, ExclamationCircleOutlined, CheckCircleOutlined, ClockCircleOutlined, FormOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { fetchTickets } from '../../../store/slices/supportSlice';
+import type { SupportTicket } from '../../../store/slices/supportSlice';
+import { formatDate } from '../../../utils/formatters';
 
 export const SupportTicketsList: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { tickets, loading } = useAppSelector((state) => state.support);
   const [searchText, setSearchText] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPriority, setFilterPriority] = useState('all');
 
-  const tickets = [
-    {
-      id: 'TK-8821',
-      customerName: 'Adeola Ojo',
-      avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1bf98c?q=80&w=150&auto=format&fit=crop',
-      subject: 'Delayed Shipment TRK-9902X',
-      priority: 'Urgent',
-      status: 'Open',
-      category: 'Shipping',
-    },
-    {
-      id: 'TK-8815',
-      customerName: 'TechCorp Ng',
-      avatar: '',
-      initials: 'TN',
-      subject: 'API Integration Issue - Webhook ...',
-      priority: 'High',
-      status: 'In Progress',
-      category: 'Technical',
-    },
-    {
-      id: 'TK-8790',
-      customerName: 'Marcus Vance',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop',
-      subject: 'Invoice #INV-2023-11 Dispute',
-      priority: 'Medium',
-      status: 'Pending',
-      category: 'Billing',
-    },
-  ];
+  useEffect(() => {
+    dispatch(fetchTickets());
+  }, [dispatch]);
+
+  const openCount = useMemo(() => tickets.filter(t => t.status === 'open').length, [tickets]);
+  const pendingCount = useMemo(() => tickets.filter(t => t.status === 'in_progress').length, [tickets]);
+  const resolvedCount = useMemo(() => tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length, [tickets]);
+
+  const filtered = useMemo(() => {
+    return tickets.filter((t) => {
+      const matchesSearch =
+        t.customerName.toLowerCase().includes(searchText.toLowerCase()) ||
+        t.subject.toLowerCase().includes(searchText.toLowerCase()) ||
+        t.id.toLowerCase().includes(searchText.toLowerCase());
+      const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
+      const matchesPriority = filterPriority === 'all' || t.priority === filterPriority;
+      return matchesSearch && matchesStatus && matchesPriority;
+    });
+  }, [tickets, searchText, filterStatus, filterPriority]);
 
   const columns = [
     {
@@ -45,25 +42,19 @@ export const SupportTicketsList: React.FC = () => {
       key: 'id',
       render: (id: string) => (
         <a 
-          className="font-mono text-sm font-bold text-[#0A1128] cursor-pointer hover:text-brand-orange"
+          className="font-mono text-xs font-bold text-[#0A1128] cursor-pointer hover:text-brand-orange"
           onClick={() => navigate(`/admin/support/${id}`)}
         >
-          #{id}
+          #{id.substring(0, 8)}
         </a>
       ),
     },
     {
       title: 'Customer',
       key: 'customer',
-      render: (record: any) => (
+      render: (record: SupportTicket) => (
         <div className="flex items-center gap-3">
-          {record.avatar ? (
-             <Avatar src={record.avatar} size={32} />
-          ) : (
-             <Avatar size={32} className="bg-orange-100 text-brand-orange font-bold">
-               {record.initials}
-             </Avatar>
-          )}
+          <Avatar icon={<UserOutlined />} size={32} className="bg-slate-200 text-slate-700" />
           <span className="text-sm font-medium text-[#0A1128]">{record.customerName}</span>
         </div>
       ),
@@ -83,15 +74,15 @@ export const SupportTicketsList: React.FC = () => {
       render: (priority: string) => {
         let colorClass = "bg-slate-100 text-slate-700";
         let dotColor = "bg-slate-400";
-        if (priority === 'Urgent') {
+        if (priority === 'urgent' || priority === 'high') {
           colorClass = "bg-red-50 text-red-600";
           dotColor = "bg-red-500";
-        } else if (priority === 'High') {
+        } else if (priority === 'medium') {
           colorClass = "bg-orange-50 text-orange-600";
           dotColor = "bg-orange-500";
         }
         return (
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${colorClass}`}>
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${colorClass}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`}></span>
             {priority}
           </span>
@@ -104,11 +95,11 @@ export const SupportTicketsList: React.FC = () => {
       key: 'status',
       render: (status: string) => {
         let borderClass = "border-slate-300 text-slate-600";
-        if (status === 'In Progress') borderClass = "border-brand-orange text-brand-orange bg-orange-50/30";
-        if (status === 'Pending') borderClass = "border-[#0A1128] text-[#0A1128] bg-slate-50";
+        if (status === 'in_progress') borderClass = "border-brand-orange text-brand-orange bg-orange-50/30";
+        if (status === 'resolved' || status === 'closed') borderClass = "border-emerald-500 text-emerald-700 bg-emerald-50";
         return (
-          <span className={`inline-block px-3 py-1 rounded-full border text-xs font-bold ${borderClass}`}>
-            {status}
+          <span className={`inline-block px-3 py-1 rounded-full border text-xs font-bold uppercase tracking-wider ${borderClass}`}>
+            {status.replace('_', ' ')}
           </span>
         );
       },
@@ -117,7 +108,13 @@ export const SupportTicketsList: React.FC = () => {
       title: 'Category',
       dataIndex: 'category',
       key: 'category',
-      render: (cat: string) => <span className="text-slate-500 text-sm">{cat}</span>,
+      render: (cat: string) => <span className="text-slate-500 text-xs font-medium uppercase">{cat}</span>,
+    },
+    {
+      title: 'Date',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (d: string) => <span className="text-slate-400 text-xs">{d ? formatDate(d) : '—'}</span>,
     },
   ];
 
@@ -127,7 +124,7 @@ export const SupportTicketsList: React.FC = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-[#0A1128] m-0 mb-2 tracking-tight">Support Tickets</h1>
         <p className="text-slate-600 text-base m-0 max-w-2xl">
-          Manage and resolve customer inquiries and technical issues.
+          Manage and resolve customer inquiries and support issues live from database.
         </p>
       </div>
 
@@ -139,38 +136,34 @@ export const SupportTicketsList: React.FC = () => {
             <ExclamationCircleOutlined className="text-red-500 text-lg" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-extrabold text-[#0A1128]">142</span>
-            <span className="text-xs font-bold text-red-500">↑12%</span>
+            <span className="text-4xl font-extrabold text-[#0A1128]">{openCount}</span>
           </div>
         </div>
         <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PENDING RESPONSE</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">IN PROGRESS</span>
             <FormOutlined className="text-brand-orange text-lg bg-orange-100 p-1 rounded" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-extrabold text-[#0A1128]">56</span>
-            <span className="text-xs font-bold text-brand-orange">- 0%</span>
+            <span className="text-4xl font-extrabold text-[#0A1128]">{pendingCount}</span>
           </div>
         </div>
         <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">RESOLVED TODAY</span>
-            <CheckCircleOutlined className="text-slate-600 text-lg bg-slate-200 p-1 rounded-full" />
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">RESOLVED</span>
+            <CheckCircleOutlined className="text-emerald-600 text-lg bg-emerald-100 p-1 rounded-full" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-extrabold text-[#0A1128]">318</span>
-            <span className="text-xs font-bold text-slate-600">↑5%</span>
+            <span className="text-4xl font-extrabold text-[#0A1128]">{resolvedCount}</span>
           </div>
         </div>
         <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">AVG RESPONSE TIME</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">TOTAL TICKETS</span>
             <ClockCircleOutlined className="text-slate-500 text-lg" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-extrabold text-[#0A1128]">1h 45m</span>
-            <span className="text-xs font-bold text-slate-500">↓8%</span>
+            <span className="text-4xl font-extrabold text-[#0A1128]">{tickets.length}</span>
           </div>
         </div>
       </div>
@@ -185,60 +178,46 @@ export const SupportTicketsList: React.FC = () => {
           onChange={(e) => setSearchText(e.target.value)}
         />
         <Select
-          defaultValue="status"
-          className="w-32 h-10 [&_.ant-select-selector]:border-slate-200"
+          defaultValue="all"
+          className="w-36 h-10 [&_.ant-select-selector]:border-slate-200"
+          value={filterStatus}
+          onChange={setFilterStatus}
           options={[
-            { value: 'status', label: 'Status' },
+            { value: 'all', label: 'All Statuses' },
             { value: 'open', label: 'Open' },
+            { value: 'in_progress', label: 'In Progress' },
+            { value: 'resolved', label: 'Resolved' },
             { value: 'closed', label: 'Closed' },
           ]}
         />
         <Select
-          defaultValue="priority"
-          className="w-32 h-10 [&_.ant-select-selector]:border-slate-200"
+          defaultValue="all"
+          className="w-36 h-10 [&_.ant-select-selector]:border-slate-200"
+          value={filterPriority}
+          onChange={setFilterPriority}
           options={[
-            { value: 'priority', label: 'Priority' },
+            { value: 'all', label: 'All Priority' },
+            { value: 'urgent', label: 'Urgent' },
             { value: 'high', label: 'High' },
+            { value: 'medium', label: 'Medium' },
             { value: 'low', label: 'Low' },
           ]}
         />
-        <Select
-          defaultValue="category"
-          className="w-32 h-10 [&_.ant-select-selector]:border-slate-200"
-          options={[
-            { value: 'category', label: 'Category' },
-            { value: 'shipping', label: 'Shipping' },
-            { value: 'billing', label: 'Billing' },
-          ]}
-        />
-        <Button className="h-10 w-10 p-0 border-slate-200 text-slate-500 bg-slate-100 flex items-center justify-center">
-          <FilterOutlined />
-        </Button>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden mb-6">
         <Table
           columns={columns}
-          dataSource={tickets}
+          dataSource={filtered}
           rowKey="id"
-          pagination={false}
-          className="[&_.ant-table-thead_th]:!bg-white [&_.ant-table-thead_th]:!text-slate-500 [&_.ant-table-thead_th]:!text-xs [&_.ant-table-thead_th]:!font-bold [&_.ant-table-thead_th]:!border-b-2 [&_.ant-table-thead_th]:!border-slate-100 [&_.ant-table-thead_th]:!py-5 [&_.ant-table-tbody_td]:!py-5 border-b border-slate-100"
+          loading={loading}
+          pagination={{ pageSize: 10 }}
+          onRow={(record) => ({
+            onClick: () => navigate(`/admin/support/${record.id}`),
+          })}
+          className="[&_.ant-table-thead_th]:!bg-white [&_.ant-table-thead_th]:!text-slate-500 [&_.ant-table-thead_th]:!text-xs [&_.ant-table-thead_th]:!font-bold [&_.ant-table-thead_th]:!border-b-2 [&_.ant-table-thead_th]:!border-slate-100 [&_.ant-table-thead_th]:!py-5 [&_.ant-table-tbody_td]:!py-5 border-b border-slate-100 cursor-pointer"
         />
-      </div>
-
-      {/* Footer Pagination */}
-      <div className="flex justify-between items-center text-sm text-slate-600">
-        <div>Showing <span className="font-bold text-[#0A1128]">1</span> to <span className="font-bold text-[#0A1128]">10</span> of <span className="font-bold text-[#0A1128]">1,248</span> tickets</div>
-        <div className="flex items-center gap-1">
-          <Button size="small" className="w-8 h-8 flex items-center justify-center text-slate-400">&lt;</Button>
-          <Button size="small" className="w-8 h-8 flex items-center justify-center bg-[#0A1128] text-white border-none font-bold">1</Button>
-          <Button size="small" className="w-8 h-8 flex items-center justify-center border-none hover:bg-slate-100 font-bold">2</Button>
-          <Button size="small" className="w-8 h-8 flex items-center justify-center border-none hover:bg-slate-100 font-bold">3</Button>
-          <span className="w-8 text-center text-slate-400">...</span>
-          <Button size="small" className="w-8 h-8 flex items-center justify-center border-none hover:bg-slate-100 font-bold">125</Button>
-          <Button size="small" className="w-8 h-8 flex items-center justify-center text-slate-600">&gt;</Button>
-        </div>
       </div>
     </div>
   );

@@ -10,10 +10,14 @@ export type ShipmentStatus =
   | 'arrived_ng'
   | 'ready_for_pickup'
   | 'delivered'
-  | 'cancelled';
+  | 'cancelled'
+  | 'held_customs'
+  | 'received_at_warehouse'
+  | 'at_china_warehouse';
 
 export interface Package {
   id: string;
+  userId?: string;
   trackingId: string; // Hamza RMB tracking ID
   chineseTrackingNo: string; // Chinese domestic tracking
   customerId: string;
@@ -31,6 +35,9 @@ export interface Package {
   linkedBatchId?: string;
   shippingMethod?: ShippingMethod;
   destinationWarehouse?: DestinationWarehouse;
+  originCountry?: string;
+  destinationCity?: string;
+  estimatedDelivery?: string;
   invoiceAmount?: number;
   paymentMethod?: PaymentMethod;
   paymentStatus: 'unpaid' | 'paid' | 'pod_pending';
@@ -68,9 +75,10 @@ export interface Batch {
   containerNo?: string;
   shippingType: ShippingMethod;
   status: ShipmentStatus;
-  consolidationIds: string[];
+  consolidationIds?: string[];
   packageIds: string[];
-  consolidationCount: number;
+  consolidationCount?: number;
+  packageCount?: number;
   totalWeightKg: number;
   totalCbm: number;
   departureDate?: string;

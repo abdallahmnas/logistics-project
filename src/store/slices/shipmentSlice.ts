@@ -1,8 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { ShipmentState, PreAlertPayload, ConsolidationRequest } from '../../types/shipment.types';
-import { mockPackages, mockBatches, mockConsolidations } from '../../api/mockData';
-
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+import apiClient from '../../api/axios';
 
 const initialState: ShipmentState = {
   packages: [],
@@ -15,68 +13,35 @@ const initialState: ShipmentState = {
 };
 
 export const fetchPackages = createAsyncThunk('shipments/fetchPackages', async () => {
-  await delay(600);
-  return mockPackages;
+  const res = await apiClient.get('/shipments/packages');
+  return res.data.data;
 });
 
 export const fetchBatches = createAsyncThunk('shipments/fetchBatches', async () => {
-  await delay(400);
-  return mockBatches;
+  const res = await apiClient.get('/shipments/batches');
+  return res.data.data;
 });
 
 export const fetchConsolidations = createAsyncThunk('shipments/fetchConsolidations', async () => {
-  await delay(500);
-  return mockConsolidations;
+  const res = await apiClient.get('/shipments/consolidations');
+  return res.data.data;
 });
 
 export const createPreAlert = createAsyncThunk(
   'shipments/createPreAlert',
   async (payload: PreAlertPayload) => {
-    await delay(800);
-    return {
-      id: 'pkg-' + Date.now(),
-      trackingId: 'HZ-AIR-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(Math.random() * 999),
-      chineseTrackingNo: payload.chineseTrackingNo,
-      customerId: 'usr-001',
-      customerName: 'Adebayo Okonkwo',
-      status: 'pre_alerted' as const,
-      description: payload.description,
-      weightKg: 0,
-      cbm: 0,
-      photos: payload.photos || [],
-      paymentStatus: 'unpaid' as const,
-      preAlertDate: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const res = await apiClient.post('/shipments/pre-alert', payload);
+    return res.data.data;
   }
 );
 
 export const submitConsolidation = createAsyncThunk(
   'shipments/submitConsolidation',
   async (request: ConsolidationRequest) => {
-    await delay(1000);
-    const now = new Date().toISOString();
-    return {
-      id: 'cons-' + Date.now(),
-      consolidationId: 'CON-' + Math.floor(Math.random() * 99999),
-      customerId: 'usr-001',
-      customerName: 'Adebayo Okonkwo',
-      packageIds: request.packageIds,
-      shippingMethod: request.shippingMethod,
-      destinationWarehouse: request.destinationWarehouse,
-      paymentMethod: request.paymentMethod,
-      totalWeightKg: 0,
-      totalCbm: 0,
-      shippingFee: 0,
-      status: 'pending_packing' as const,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const res = await apiClient.post('/shipments/consolidate', request);
+    return res.data.data;
   }
 );
-
-// ─── Admin Thunks ─────────────────────────────────────────
 
 export interface ScanPackagePayload {
   packageId: string;
@@ -87,25 +52,27 @@ export interface ScanPackagePayload {
   description?: string;
   customerId?: string;
   customerName?: string;
+  photos?: string[];
 }
 
 export const scanPackage = createAsyncThunk(
   'shipments/scanPackage',
   async (payload: ScanPackagePayload) => {
-    await delay(700);
-    const cbm = (payload.length * payload.width * payload.height) / 1000000;
+    const res = await apiClient.patch(`/shipments/packages/${payload.packageId}/scan`, payload);
+    const updatedPkg = res.data?.data;
     return {
       packageId: payload.packageId,
-      weightKg: payload.weightKg,
-      cbm,
-      dimensions: {
+      weightKg: updatedPkg?.weightKg ?? payload.weightKg,
+      cbm: updatedPkg?.cbm ?? (payload.length * payload.width * payload.height) / 1000000,
+      dimensions: updatedPkg?.dimensions ?? {
         length: payload.length,
         width: payload.width,
         height: payload.height,
       },
-      description: payload.description,
-      customerId: payload.customerId,
-      customerName: payload.customerName,
+      description: updatedPkg?.description ?? payload.description,
+      customerId: updatedPkg?.customerId ?? payload.customerId,
+      customerName: updatedPkg?.customerName ?? payload.customerName,
+      photos: updatedPkg?.photos ?? payload.photos ?? [],
     };
   }
 );
@@ -125,26 +92,8 @@ export interface CreateInboundPackagePayload {
 export const createInboundPackage = createAsyncThunk(
   'shipments/createInboundPackage',
   async (payload: CreateInboundPackagePayload) => {
-    await delay(800);
-    const cbm = (payload.length * payload.width * payload.height) / 1000000;
-    const now = new Date().toISOString();
-    return {
-      id: 'pkg-' + Date.now(),
-      trackingId: payload.trackingId,
-      chineseTrackingNo: payload.chineseTrackingNo || '—',
-      customerId: payload.customerId,
-      customerName: payload.customerName,
-      status: 'received_cn' as const,
-      description: payload.description,
-      weightKg: payload.weightKg,
-      cbm,
-      dimensions: { length: payload.length, width: payload.width, height: payload.height },
-      paymentStatus: 'unpaid' as const,
-      preAlertDate: now,
-      receivedDate: now,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const res = await apiClient.post('/shipments/packages/admin', payload);
+    return res.data.data;
   }
 );
 
@@ -154,30 +103,15 @@ export interface CreateBatchPayload {
   flightVoyageNo: string;
   containerNo?: string;
   shippingType: 'air' | 'sea';
-  packageIds: string[]; // This is actually consolidationIds now but keeping payload name for simplicity, or we can just use consolidationIds
+  packageIds?: string[];
+  consolidationIds?: string[];
 }
 
 export const createBatch = createAsyncThunk(
   'shipments/createBatch',
   async (payload: CreateBatchPayload) => {
-    await delay(900);
-    return {
-      id: 'batch-' + Date.now(),
-      masterTrackingId: payload.masterTrackingId,
-      carrierName: payload.carrierName,
-      flightVoyageNo: payload.flightVoyageNo,
-      containerNo: payload.containerNo,
-      shippingType: payload.shippingType,
-      status: 'consolidating' as const,
-      consolidationIds: payload.packageIds,
-      consolidationCount: payload.packageIds.length,
-      totalWeightKg: 0,
-      totalCbm: 0,
-      departureDate: undefined,
-      expectedArrivalDate: undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const res = await apiClient.post('/shipments/batches', payload);
+    return res.data.data;
   }
 );
 
@@ -189,8 +123,10 @@ export interface AddPackagesToBatchPayload {
 export const addPackagesToBatch = createAsyncThunk(
   'shipments/addPackagesToBatch',
   async (payload: AddPackagesToBatchPayload) => {
-    await delay(500);
-    return payload;
+    const res = await apiClient.patch(`/shipments/batches/${payload.batchId}/packages`, {
+      packageIds: payload.packageIds,
+    });
+    return res.data.data;
   }
 );
 
@@ -202,8 +138,8 @@ export interface UpdatePackageStatusPayload {
 export const updatePackageStatus = createAsyncThunk(
   'shipments/updatePackageStatus',
   async (payload: UpdatePackageStatusPayload) => {
-    await delay(500);
-    return payload;
+    const res = await apiClient.patch(`/shipments/packages/${payload.packageId}/status`, { status: payload.status });
+    return res.data.data;
   }
 );
 
@@ -241,7 +177,7 @@ const shipmentSlice = createSlice({
       .addCase(submitConsolidation.fulfilled, (state, action) => {
         state.consolidations.push(action.payload);
         state.packages = state.packages.map((pkg) =>
-          action.payload.packageIds.includes(pkg.id) ? { ...pkg, status: 'under_packing' } : pkg
+          action.payload.packageIds?.includes(pkg.id) ? { ...pkg, status: 'under_packing' } : pkg
         );
       })
       .addCase(fetchConsolidations.fulfilled, (state, action) => {
@@ -270,31 +206,27 @@ const shipmentSlice = createSlice({
       .addCase(createBatch.fulfilled, (state, action) => {
         state.batches.unshift(action.payload);
         state.packages = state.packages.map((pkg) =>
-          action.payload.packageIds.includes(pkg.id)
+          action.payload.packageIds?.includes(pkg.id)
             ? { ...pkg, status: 'consolidating', linkedBatchId: action.payload.id, updatedAt: new Date().toISOString() }
             : pkg
         );
       })
       .addCase(addPackagesToBatch.fulfilled, (state, action) => {
-        const batch = state.batches.find((b) => b.id === action.payload.batchId);
+        const batch = state.batches.find((b) => b.id === action.payload.id);
         if (batch) {
-          batch.consolidationIds = [...new Set([...(batch.consolidationIds || []), ...action.payload.packageIds])];
-          batch.consolidationCount = batch.consolidationIds.length;
+          batch.packageIds = action.payload.packageIds || [];
+          batch.packageCount = batch.packageIds.length;
         }
-        state.consolidations = state.consolidations.map((c) =>
-          action.payload.packageIds.includes(c.id)
-            ? { ...c, status: 'batched', updatedAt: new Date().toISOString() }
-            : c
+        state.packages = state.packages.map((pkg) =>
+          action.payload.packageIds?.includes(pkg.id)
+            ? { ...pkg, status: 'consolidating', linkedBatchId: action.payload.id, updatedAt: new Date().toISOString() }
+            : pkg
         );
       })
       .addCase(updatePackageStatus.fulfilled, (state, action) => {
-        const idx = state.packages.findIndex((p) => p.id === action.payload.packageId);
+        const idx = state.packages.findIndex((p) => p.id === action.payload.id);
         if (idx !== -1) {
-          state.packages[idx] = {
-            ...state.packages[idx],
-            status: action.payload.status,
-            updatedAt: new Date().toISOString(),
-          };
+          state.packages[idx] = action.payload;
         }
       });
   },

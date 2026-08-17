@@ -210,7 +210,14 @@ export const ExchangeReviewPage: React.FC = () => {
                 compliance logging.
               </p>
 
-              <Dragger className="bg-white">
+              <Dragger
+                className="bg-white"
+                beforeUpload={() => false}
+                onChange={({ fileList: newFileList }) => {
+                  newFileList.forEach((f) => { f.status = 'done'; });
+                }}
+                customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
+              >
                 <p className="ant-upload-drag-icon">
                   <CloudUploadOutlined className="text-brand-orange" />
                 </p>

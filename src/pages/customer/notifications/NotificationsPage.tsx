@@ -10,11 +10,10 @@ import {
   CheckOutlined,
 } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchNotifications, markAllAsRead, markAsRead } from '../../../store/slices/notificationSlice';
+import { fetchNotifications, markAllAsRead, markAsRead, type NotificationItem } from '../../../store/slices/notificationSlice';
 import { formatRelativeTime, formatDate } from '../../../utils/formatters';
-import type { MockNotification } from '../../../api/mockData';
 
-const typeIcon: Record<MockNotification['type'], React.ReactNode> = {
+const typeIcon: Record<NotificationItem['type'], React.ReactNode> = {
   shipment: <InboxOutlined />,
   procurement: <ShoppingCartOutlined />,
   exchange: <SwapOutlined />,
@@ -23,7 +22,7 @@ const typeIcon: Record<MockNotification['type'], React.ReactNode> = {
   system: <SettingOutlined />,
 };
 
-const typeColor: Record<MockNotification['type'], string> = {
+const typeColor: Record<NotificationItem['type'], string> = {
   shipment: 'bg-blue-100 text-blue-600',
   procurement: 'bg-purple-100 text-purple-600',
   exchange: 'bg-green-100 text-green-600',
@@ -32,10 +31,10 @@ const typeColor: Record<MockNotification['type'], string> = {
   system: 'bg-slate-100 text-slate-600',
 };
 
-const groupByDate = (notifications: MockNotification[]) => {
-  const groups: Record<string, MockNotification[]> = {};
+const groupByDate = (notifications: NotificationItem[]) => {
+  const groups: Record<string, NotificationItem[]> = {};
   notifications.forEach((n) => {
-    const key = formatDate(n.createdAt);
+    const key = formatDate(n.createdAt || '');
     if (!groups[key]) groups[key] = [];
     groups[key].push(n);
   });
@@ -52,7 +51,7 @@ export const NotificationsPage: React.FC = () => {
     }
   }, [dispatch, notifications.length]);
 
-  const sorted = [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const sorted = [...notifications].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   const grouped = groupByDate(sorted);
 
   return (
@@ -88,15 +87,15 @@ export const NotificationsPage: React.FC = () => {
                           : 'bg-brand-blue-light border-brand-blue/20 border-l-4 border-l-brand-blue hover:bg-blue-50'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${typeColor[notif.type]}`}>
-                        {typeIcon[notif.type]}
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${typeColor[notif.type] || typeColor.system}`}>
+                        {typeIcon[notif.type] || typeIcon.system}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`m-0 ${notif.isRead ? 'font-medium text-slate-700' : 'font-bold text-slate-900'}`}>
                           {notif.title}
                         </p>
                         <p className="text-sm text-slate-500 m-0 mt-1">{notif.message}</p>
-                        <p className="text-xs text-slate-400 m-0 mt-2">{formatRelativeTime(notif.createdAt)}</p>
+                        <p className="text-xs text-slate-400 m-0 mt-2">{formatRelativeTime(notif.createdAt || '')}</p>
                       </div>
                       {!notif.isRead && <span className="w-2 h-2 rounded-full bg-brand-blue mt-2 shrink-0" />}
                     </div>
@@ -110,3 +109,5 @@ export const NotificationsPage: React.FC = () => {
     </div>
   );
 };
+
+export default NotificationsPage;

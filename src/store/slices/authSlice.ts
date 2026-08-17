@@ -1,62 +1,81 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { AuthState, LoginCredentials, RegisterPayload } from '../../types/auth.types';
-import { mockUsers } from '../../api/mockData';
+import apiClient from '../../api/axios';
+
+const savedToken = localStorage.getItem('token');
+const savedUserStr = localStorage.getItem('user');
+let savedUser = null;
+try {
+  savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+} catch (e) {
+  savedUser = null;
+}
 
 const initialState: AuthState = {
-  user: null,
-  token: null,
-  isAuthenticated: false,
+  user: savedUser,
+  token: savedToken || null,
+  isAuthenticated: !!(savedToken && savedUser),
   loading: false,
   error: null,
 };
 
-// Simulated API delay
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+export const fetchCurrentUser = createAsyncThunk(
+  'auth/fetchMe',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get('/auth/me');
+      const user = response.data.data;
+      localStorage.setItem('user', JSON.stringify(user));
+      return user;
+    } catch (err: any) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      const message = err.response?.data?.message || 'Session expired';
+      return rejectWithValue(message);
+    }
+  }
+);
 
 export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
-    await delay(800);
-    const user = mockUsers.find((u) => u.email === credentials.email);
-    
-    if (!user || credentials.password.length < 6) {
-      return rejectWithValue('Invalid email or password');
+    try {
+      const response = await apiClient.post('/auth/login', credentials);
+      const { user, token } = response.data.data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      return { user, token };
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || 'Invalid email or password';
+      return rejectWithValue(message);
     }
-
-    return {
-      user: { ...user, email: credentials.email },
-      token: 'mock-jwt-token-' + Date.now(),
-    };
   }
 );
 
 export const registerUser = createAsyncThunk(
   'auth/register',
   async (payload: RegisterPayload, { rejectWithValue }) => {
-    await delay(1000);
-    if (payload.email === 'exists@example.com') {
-      return rejectWithValue('Email already registered');
+    try {
+      const response = await apiClient.post('/auth/register', payload);
+      const { user, token } = response.data.data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      return { user, token };
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || 'Registration failed';
+      return rejectWithValue(message);
     }
-
-    const newUser = {
-      ...mockUsers[0],
-      id: 'usr-' + Date.now(),
-      customerId: 'HZ-' + Date.now(),
-      firstName: payload.firstName,
-      lastName: payload.lastName,
-      email: payload.email,
-      phone: payload.phone,
-    };
-
-    return {
-      user: newUser,
-      token: 'mock-jwt-token-' + Date.now(),
-    };
   }
 );
 
 export const logoutUser = createAsyncThunk('auth/logout', async () => {
-  await delay(300);
+  try {
+    await apiClient.post('/auth/logout');
+  } catch (e) {
+    // ignore error
+  }
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
   return null;
 });
 
@@ -70,6 +89,16 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Fetch me
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.user = action.payload;
+        state.isAuthenticated = true;
+      })
+      .addCase(fetchCurrentUser.rejected, (state) => {
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
+      })
       // Login
       .addCase(loginUser.pending, (state) => {
         state.loading = true;

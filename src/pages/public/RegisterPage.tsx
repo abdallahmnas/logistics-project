@@ -1,21 +1,51 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Form, Input, Button, Alert, Select } from 'antd';
-import { UserOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
+import { UserOutlined, MailOutlined, PhoneOutlined, GlobalOutlined, BarChartOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { registerUser, clearError } from '../../store/slices/authSlice';
+import { clearError } from '../../store/slices/authSlice';
 import type { RegisterPayload } from '../../types/auth.types';
 import { registerSchema, validateForm, validateField } from '../../utils/validators';
-import { GlobalOutlined, BarChartOutlined, ArrowRightOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import apiClient from '../../api/axios';
 
-export const RegisterPage: React.FC = () => {
+const RegisterPage: React.FC = () => {
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { loading, error } = useAppSelector(state => state.auth);
+  const { loading, error } = useAppSelector((state) => state.auth);
+  
+  const [countryCode, setCountryCode] = useState('+234');   
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
 
-  const onFinish = async (values: RegisterPayload) => {
-    // Validate with Yup before dispatch
+  const displayError = lookupError || error;
+
+  useEffect(() => {
+    if (displayError) {
+      errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [displayError]);
+
+  const formatPhoneWithCountryCode = (code: string, rawPhone: string) => {
+    if (!rawPhone) return '';
+    let cleaned = rawPhone.trim().replace(/[^\d+]/g, '');
+    
+    // For Nigeria (+234): strip leading zero if user typed 080xxx or 070xxx
+    if (code === '+234' && cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+    }
+
+    if (cleaned.startsWith('+')) {
+      return cleaned;
+    }
+
+    return `${code}${cleaned}`;
+  };
+
+  const onFinish = async (values: any) => {
+    // Validate with Yup schema before checking backend lookup
     const errors = await validateForm(registerSchema, values);
     if (Object.keys(errors).length > 0) {
       form.setFields(
@@ -27,16 +57,47 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
-    const resultAction = await dispatch(registerUser(values));
-    if (registerUser.fulfilled.match(resultAction)) {
-      navigate('/register/verify');
+    const formattedPhone = formatPhoneWithCountryCode(countryCode, values.phone);
+
+    setSubmitting(true);
+    setLookupError(null);
+
+    try {
+      // Lookup email and phone availability on backend DB before proceeding
+      const res = await apiClient.post('/auth/check-availability', {
+        email: values.email,
+        phone: formattedPhone,
+      });
+
+      if (res.data.status === 'success') {
+        const draft = {
+          firstName: values.firstName,
+          lastName: values.lastName,
+          email: values.email,
+          phone: formattedPhone,
+          countryCode,
+        };
+        sessionStorage.setItem('registrationDraft', JSON.stringify(draft));
+        navigate('/register/verify');
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Email or Phone is already registered';
+      setLookupError(msg);
+      if (msg.toLowerCase().includes('email')) {
+        form.setFields([{ name: 'email', errors: [msg] }]);
+      }
+      if (msg.toLowerCase().includes('phone')) {
+        form.setFields([{ name: 'phone', errors: [msg] }]);
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleBlur = async (field: string) => {
     const value = form.getFieldValue(field);
-    if (!value) return; // let required rule handle empty
-    
+    if (!value) return;
+
     const err = await validateField(registerSchema, field, value);
     if (err) {
       form.setFields([{ name: field, errors: [err] }]);
@@ -149,22 +210,28 @@ export const RegisterPage: React.FC = () => {
             </div>
           </div>
 
-          {error && (
-            <Alert
-              message="Registration Failed"
-              description={error}
-              type="error"
-              showIcon
-              className="mb-6"
-              onClose={() => dispatch(clearError())}
-              closable
-            />
+          {displayError && (
+            <div ref={errorRef}>
+              <Alert
+                message="Validation Error"
+                description={displayError}
+                type="error"
+                showIcon
+                className="mb-6"
+                onClose={() => {
+                  setLookupError(null);
+                  dispatch(clearError());
+                }}
+                closable
+              />
+            </div>
           )}
 
           <Form
             form={form}
             name="register"
             layout="vertical"
+            initialValues={{ countryCode: '+234' }}
             onFinish={onFinish}
             size="large"
             scrollToFirstError
@@ -235,9 +302,10 @@ export const RegisterPage: React.FC = () => {
               required={false}
             >
               <div className="flex gap-3">
-                <Form.Item className="mb-0 w-28">
+                <Form.Item name="countryCode" className="mb-0 w-28" initialValue="+234">
                   <Select
-                    defaultValue="+234"
+                    value={countryCode}
+                    onChange={(val) => setCountryCode(val)}
                     className="!rounded-lg"
                     options={[
                       { value: '+234', label: '🇳🇬 +234' },
@@ -256,7 +324,7 @@ export const RegisterPage: React.FC = () => {
                 >
                   <Input
                     prefix={<PhoneOutlined className="text-slate-400" />}
-                    placeholder="801-234-5678"
+                    placeholder="8012345678 or 08012345678"
                     onBlur={() => handleBlur('phone')}
                     className="!rounded-lg"
                   />
@@ -264,20 +332,12 @@ export const RegisterPage: React.FC = () => {
               </div>
             </Form.Item>
 
-            {/* Hidden password fields - filled in step 3, use defaults for now */}
-            <Form.Item name="password" initialValue="Temp1234!" hidden>
-              <Input.Password />
-            </Form.Item>
-            <Form.Item name="confirmPassword" initialValue="Temp1234!" hidden>
-              <Input.Password />
-            </Form.Item>
-
             <Form.Item className="mt-8 mb-4">
               <Button
                 type="primary"
                 htmlType="submit"
                 className="w-full !h-12 text-base font-semibold !bg-brand-navy hover:!bg-slate-800 !rounded-lg"
-                loading={loading}
+                loading={loading || submitting}
                 icon={<ArrowRightOutlined />}
                 iconPlacement="end"
               >
@@ -303,7 +363,6 @@ export const RegisterPage: React.FC = () => {
   );
 };
 
-// Small rocket icon component
 const RocketIcon = () => (
   <svg
     width="14"
@@ -321,3 +380,6 @@ const RocketIcon = () => (
     <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
   </svg>
 );
+
+export { RegisterPage };
+export default RegisterPage;

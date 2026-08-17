@@ -184,7 +184,14 @@ export const ExchangeList: React.FC = () => {
 
             <div className="mb-6">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">UPLOAD RECEIVING QR CODE</label>
-              <Dragger className="bg-white border-dashed border-slate-300">
+              <Dragger
+                className="bg-white border-dashed border-slate-300"
+                beforeUpload={() => false}
+                onChange={({ fileList: newFileList }) => {
+                  newFileList.forEach((f) => { f.status = 'done'; });
+                }}
+                customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
+              >
                 <p className="ant-upload-drag-icon">
                   <CloudUploadOutlined className="text-slate-400" />
                 </p>
@@ -242,7 +249,7 @@ export const ExchangeList: React.FC = () => {
         />
         
         <div className="mt-4 text-center">
-          <Button type="link" className="text-brand-orange font-bold text-xs tracking-wider" onClick={() => navigate('/dashboard/exchange/history')}>
+          <Button type="link" className="text-brand-orange font-bold text-xs tracking-wider" onClick={() => navigate('/customer/exchange/history')}>
             VIEW ALL REQUESTS ➔
           </Button>
         </div>

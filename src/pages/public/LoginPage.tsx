@@ -13,12 +13,20 @@ import { loginUser, clearError } from "../../store/slices/authSlice";
 import type { LoginCredentials } from "../../types/auth.types";
 import { loginSchema, validateForm } from "../../utils/validators";
 
-export const LoginPage: React.FC = () => {
+const LoginPage: React.FC = () => {
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const { loading, error } = useAppSelector((state) => state.auth);
+  const errorRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (error) {
+      errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [error]);
 
   // Where to redirect after login
   const from = (location.state as any)?.from?.pathname || "/dashboard";
@@ -100,15 +108,17 @@ export const LoginPage: React.FC = () => {
           </div>
 
           {error && (
-            <Alert
-              message="Login Failed"
-              description={error}
-              type="error"
-              showIcon
-              className="mb-6"
-              onClose={() => dispatch(clearError())}
-              closable
-            />
+            <div ref={errorRef}>
+              <Alert
+                message="Login Failed"
+                description={error}
+                type="error"
+                showIcon
+                className="mb-6"
+                onClose={() => dispatch(clearError())}
+                closable
+              />
+            </div>
           )}
 
           <Form
@@ -221,3 +231,6 @@ export const LoginPage: React.FC = () => {
     </div>
   );
 };
+
+export { LoginPage };
+export default LoginPage;

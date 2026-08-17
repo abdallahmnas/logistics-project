@@ -16,7 +16,7 @@ export const LocalDeliveryForm: React.FC = () => {
           type="text" 
           icon={<ArrowLeftOutlined />} 
           className="bg-slate-100 hover:bg-slate-200 w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-          onClick={() => navigate('/dashboard/delivery')}
+          onClick={() => navigate('/customer/delivery')}
         />
         <div>
           <h1 className="text-3xl font-extrabold text-[#0A1128] m-0 mb-1 tracking-tight">New Delivery Request</h1>

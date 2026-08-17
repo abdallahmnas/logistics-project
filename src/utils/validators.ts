@@ -11,6 +11,23 @@ export const loginSchema = Yup.object().shape({
     .required('Password is required'),
 });
 
+export const step1RegisterSchema = Yup.object().shape({
+  firstName: Yup.string()
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name must not exceed 50 characters')
+    .required('First name is required'),
+  lastName: Yup.string()
+    .min(2, 'Last name must be at least 2 characters')
+    .max(50, 'Last name must not exceed 50 characters')
+    .required('Last name is required'),
+  email: Yup.string()
+    .email('Please enter a valid email address')
+    .required('Email is required'),
+  phone: Yup.string()
+    .matches(/^(\+?234|0)?[789]\d{9}$/, 'Please enter a valid phone number (e.g. 080... or 80...)')
+    .required('Phone number is required'),
+});
+
 export const registerSchema = Yup.object().shape({
   firstName: Yup.string()
     .min(2, 'First name must be at least 2 characters')
@@ -24,7 +41,7 @@ export const registerSchema = Yup.object().shape({
     .email('Please enter a valid email address')
     .required('Email is required'),
   phone: Yup.string()
-    .matches(/^(\+234|0)[789]\d{9}$/, 'Please enter a valid Nigerian phone number')
+    .matches(/^(\+?234|0)?[789]\d{9}$/, 'Please enter a valid phone number')
     .required('Phone number is required'),
   password: Yup.string()
     .min(8, 'Password must be at least 8 characters')

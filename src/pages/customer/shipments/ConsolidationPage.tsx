@@ -9,47 +9,37 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
-import { fetchPackages } from "../../../store/slices/shipmentSlice";
+import { fetchPackages, fetchConsolidations } from "../../../store/slices/shipmentSlice";
 
 type FilterType = "all" | "pending" | "processing" | "completed";
 
 export const ConsolidationPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { packages } = useAppSelector((state) => state.shipments);
+  const { packages, consolidations: storeConsolidations } = useAppSelector((state) => state.shipments);
   const [filter, setFilter] = useState<FilterType>("all");
 
   useEffect(() => {
     dispatch(fetchPackages());
+    dispatch(fetchConsolidations());
   }, [dispatch]);
 
-  // Mock consolidation data
-  const consolidations = [
-    {
-      id: "CNS-88210",
-      dateCreated: "2023-10-24",
-      items: 5,
-      estWeight: "12.5 kg",
-      destination: "Lagos, NG",
-      status: "packing",
-    },
-    {
-      id: "CNS-88195",
-      dateCreated: "2023-10-21",
-      items: 3,
-      estWeight: "4.2 kg",
-      destination: "London, UK",
-      status: "pending",
-    },
-    {
-      id: "CNS-88002",
-      dateCreated: "2023-10-15",
-      items: 8,
-      estWeight: "22.8 kg",
-      destination: "Accra, GH",
-      status: "ready",
-    },
-  ];
+  // Render only persisted consolidations. Empty states must not resemble live orders.
+  const consolidations = useMemo(() => {
+    return (storeConsolidations || []).map((c) => ({
+        id: c.consolidationId || c.id,
+        dateCreated: c.createdAt || new Date().toISOString(),
+        items: c.packageIds?.length || 1,
+        estWeight: `${c.totalWeightKg || 1} kg`,
+        destination: c.destinationWarehouse ? `${c.destinationWarehouse.toUpperCase()}, NG` : 'Lagos, NG',
+        status: ({
+          pending_packing: 'pending',
+          ready_to_batch: 'ready',
+          batched: 'completed',
+        } as const)[c.status],
+        raw: c,
+    }));
+  }, [storeConsolidations]);
 
   const pendingItems =
     packages.filter((p) =>
@@ -59,10 +49,8 @@ export const ConsolidationPage: React.FC = () => {
         "received_at_warehouse",
         "at_china_warehouse",
       ].includes(p.status),
-    ).length || 12;
-  const inConsolidation = consolidations.filter(
-    (c) => c.status === "packing" || c.status === "processing",
-  ).length;
+    ).length;
+  const inConsolidation = consolidations.filter((c) => c.status === "pending").length;
   const readyForShipping = consolidations.filter(
     (c) => c.status === "ready",
   ).length;
@@ -72,8 +60,7 @@ export const ConsolidationPage: React.FC = () => {
       ? consolidations
       : consolidations.filter((c) => {
           if (filter === "pending") return c.status === "pending";
-          if (filter === "processing")
-            return c.status === "packing" || c.status === "processing";
+          if (filter === "processing") return c.status === "pending";
           if (filter === "completed")
             return c.status === "ready" || c.status === "completed";
           return true;
