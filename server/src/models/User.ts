@@ -17,6 +17,7 @@ export interface UserAttributes {
   resetTokenExpiry?: Date;
   profilePhoto?: string;
   permissionGroupId?: string;
+  pushToken?: string;
   isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -109,6 +110,10 @@ User.init(
     },
     permissionGroupId: {
       type: DataTypes.UUID,
+      allowNull: true,
+    },
+    pushToken: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     isActive: {

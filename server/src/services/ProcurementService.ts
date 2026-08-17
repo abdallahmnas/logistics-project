@@ -1,5 +1,6 @@
 import { ProcurementRequest, User } from '../models';
 import { ActivityLogService } from './ActivityLogService';
+import { NotificationService } from './NotificationService';
 
 export class ProcurementService {
   public static async createRequest(userId: string, payload: {
@@ -38,6 +39,14 @@ export class ProcurementService {
       action: 'SUBMIT_PROCUREMENT',
       description: `Customer submitted Buy-For-Me request for ${payload.quantity} items`,
       entityId: req.id,
+    });
+
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: user.id,
+      orderType: 'Procurement',
+      orderId: req.id,
+      newStatus: 'submitted',
+      statusDescription: `Buy-For-Me procurement request submitted for ${payload.quantity} items. Our team is verifying stock with Chinese suppliers.`,
     });
 
     return req;
@@ -81,6 +90,14 @@ export class ProcurementService {
       entityId: proc.id,
     });
 
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: proc.customerId,
+      orderType: 'Procurement',
+      orderId: proc.id,
+      newStatus: 'quoted',
+      statusDescription: `Supplier quote ready: ¥${totalCostRmb} (₦${totalCostNaira.toLocaleString()}). Please log in to approve and pay.`,
+    });
+
     return proc;
   }
 
@@ -101,6 +118,14 @@ export class ProcurementService {
       action: 'APPROVE_QUOTE',
       description: `Customer approved procurement quote ${proc.id}`,
       entityId: proc.id,
+    });
+
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: proc.customerId,
+      orderType: 'Procurement',
+      orderId: proc.id,
+      newStatus: 'approved',
+      statusDescription: `Payment confirmed. ₦${proc.totalCostNaira.toLocaleString()} deducted from wallet. Order queued for purchasing.`,
     });
 
     return proc;
@@ -124,6 +149,14 @@ export class ProcurementService {
       action: 'UPDATE_PROCUREMENT_STATUS',
       description: `Updated procurement request ${proc.id} status to ${status}`,
       entityId: proc.id,
+    });
+
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: proc.customerId,
+      orderType: 'Procurement',
+      orderId: proc.id,
+      newStatus: status,
+      statusDescription: `Procurement order status updated to ${status}.`,
     });
 
     return proc;

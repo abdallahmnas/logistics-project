@@ -90,6 +90,17 @@ export const logout = async (_req: Request, res: Response): Promise<void> => {
   res.status(200).json({ status: 'success', message: 'Logged out successfully' });
 };
 
+export const updatePushToken = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const { pushToken } = req.body;
+    await authService.updatePushToken(userId, pushToken);
+    res.status(200).json({ status: 'success', message: 'Push token updated successfully' });
+  } catch (error: any) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
+
 export const checkAvailability = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, phone } = req.body;

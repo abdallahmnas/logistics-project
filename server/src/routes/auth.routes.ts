@@ -11,6 +11,7 @@ import {
   forgotPassword,
   resetPassword,
   updateProfile,
+  updatePushToken,
 } from '../controllers/auth.controller';
 import { requireAuth } from '../middlewares/auth.middleware';
 
@@ -30,5 +31,6 @@ router.post('/resend-otp', requireAuth, resendOtp);
 router.post('/logout', requireAuth, logout);
 router.get('/me', requireAuth, getMe);
 router.patch('/profile', requireAuth, upload.single('photo'), updateProfile);
+router.post('/push-token', requireAuth, updatePushToken);
 
 export default router;

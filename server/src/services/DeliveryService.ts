@@ -1,4 +1,6 @@
 import { LocalDelivery, User } from '../models';
+import { ActivityLogService } from './ActivityLogService';
+import { NotificationService } from './NotificationService';
 
 export class DeliveryService {
   public static async createDelivery(userId: string, payload: {
@@ -46,6 +48,25 @@ export class DeliveryService {
       paymentStatus: payload.paymentMethod === 'wallet' ? 'paid' : 'unpaid',
       requestedAt: new Date(),
     });
+
+    ActivityLogService.logActivity({
+      userId: user.id,
+      userName: `${user.firstName} ${user.lastName}`,
+      userRole: user.role,
+      module: 'shipments',
+      action: 'CREATE_DELIVERY',
+      description: `Requested doorstep delivery to ${payload.dropoffAddress}`,
+      entityId: delivery.id,
+    });
+
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: user.id,
+      orderType: 'Delivery',
+      orderId: delivery.id,
+      newStatus: 'pending',
+      statusDescription: `Doorstep delivery requested for address: ${payload.dropoffAddress}. Total fare: ₦${totalFee.toLocaleString()}.`,
+    });
+
     return delivery;
   }
 
@@ -66,6 +87,15 @@ export class DeliveryService {
     del.confirmedAt = new Date();
 
     await del.save();
+
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: del.customerId,
+      orderType: 'Delivery',
+      orderId: del.id,
+      newStatus: 'driver_assigned',
+      statusDescription: `Driver ${payload.driverName} (${payload.driverPhone}) assigned. Your 4-digit pickup PIN is ${del.verificationPin}.`,
+    });
+
     return del;
   }
 
@@ -80,6 +110,15 @@ export class DeliveryService {
     if (status === 'in_transit') (del as any).pickedUpAt = new Date();
     if (status === 'delivered') (del as any).deliveredAt = new Date();
     await del.save();
+
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: del.customerId,
+      orderType: 'Delivery',
+      orderId: del.id,
+      newStatus: status,
+      statusDescription: `Doorstep delivery status updated to ${status}.`,
+    });
+
     return del;
   }
 }

@@ -14,6 +14,7 @@ import { SupportTicket } from './SupportTicket';
 import { TicketMessage } from './TicketMessage';
 import { PermissionGroup } from './PermissionGroup';
 import { ActivityLog } from './ActivityLog';
+import { Facility } from './Facility';
 
 // Define Relationships
 User.hasOne(Wallet, { foreignKey: 'userId', as: 'wallet' });
@@ -41,4 +42,5 @@ export {
   TicketMessage,
   PermissionGroup,
   ActivityLog,
+  Facility,
 };

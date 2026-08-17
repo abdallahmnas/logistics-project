@@ -1,6 +1,7 @@
 import { ExchangeRate, ExchangeRequest, User } from '../models';
 import { uploadToCloudinary } from '../config/cloudinary';
 import { ActivityLogService } from './ActivityLogService';
+import { NotificationService } from './NotificationService';
 
 export class ExchangeService {
   public static async getActiveRate() {
@@ -64,6 +65,14 @@ export class ExchangeService {
       entityId: exchange.id,
     });
 
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: user.id,
+      orderType: 'Exchange',
+      orderId: exchange.id,
+      newStatus: 'pending',
+      statusDescription: `Exchange request initiated for ₦${payload.amountNaira.toLocaleString()} (¥${amountRmb}). Please deposit funds into the GTBank Escrow Account.`,
+    });
+
     return exchange;
   }
 
@@ -114,6 +123,14 @@ export class ExchangeService {
       entityId: exchange.id,
     });
 
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: exchange.customerId,
+      orderType: 'Exchange',
+      orderId: exchange.id,
+      newStatus: 'naira_confirmed',
+      statusDescription: 'Naira escrow deposit verified by finance manager. RMB transfer processing to supplier account.',
+    });
+
     return exchange;
   }
 
@@ -136,6 +153,14 @@ export class ExchangeService {
       action: 'RELEASE_RMB',
       description: `Released RMB payment (¥${exchange.amountRmb}) to ${exchange.rmbDestName} (${exchange.rmbDestType})`,
       entityId: exchange.id,
+    });
+
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: exchange.customerId,
+      orderType: 'Exchange',
+      orderId: exchange.id,
+      newStatus: 'completed',
+      statusDescription: `RMB payment of ¥${exchange.amountRmb} released to ${exchange.rmbDestName} (${exchange.rmbDestType}). Exchange complete.`,
     });
 
     return exchange;

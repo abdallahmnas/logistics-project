@@ -8,6 +8,7 @@ import walletReducer from './slices/walletSlice';
 import notificationReducer from './slices/notificationSlice';
 import adminReducer from './slices/adminSlice';
 import supportReducer from './slices/supportSlice';
+import facilityReducer from './slices/facilitySlice';
 
 export const store = configureStore({
   reducer: {
@@ -20,6 +21,7 @@ export const store = configureStore({
     notifications: notificationReducer,
     admin: adminReducer,
     support: supportReducer,
+    facilities: facilityReducer,
   },
 });
 

@@ -1,6 +1,7 @@
 import { Package, Consolidation, Batch, User } from '../models';
 import { uploadBase64ToCloudinary } from '../config/cloudinary';
 import { ActivityLogService } from './ActivityLogService';
+import { NotificationService } from './NotificationService';
 
 export class ShipmentService {
 
@@ -170,6 +171,15 @@ export class ShipmentService {
       entityId: pkg.id,
     });
 
+    // Multi-Channel Order Status Notification
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: pkg.customerId,
+      orderType: 'Shipment',
+      orderId: pkg.trackingNumber || pkg.id,
+      newStatus: 'received_cn',
+      statusDescription: `Package received and weighed at China Hub (${payload.weightKg || 0}kg). Ready for consolidation packing.`,
+    });
+
     return pkg;
   }
 
@@ -226,6 +236,15 @@ export class ShipmentService {
       entityId: consolidation.id,
     });
 
+    // Multi-Channel Order Status Notification
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: user.id,
+      orderType: 'Shipment',
+      orderId: consolidationId,
+      newStatus: 'ready_to_batch',
+      statusDescription: `Consolidation ${consolidationId} created with ${packages.length} packages (${totalWeightKg}kg). Queued for overseas freight batch.`,
+    });
+
     return consolidation;
   }
 
@@ -245,10 +264,19 @@ export class ShipmentService {
     consolidationIds?: string[];
   }) {
     const count = (await Batch.count()) + 1;
-    const typeTag = payload.shippingType.toUpperCase();
-    const masterTrackingId =
-      payload.masterTrackingId ||
-      `HZ-BATCH-${typeTag}-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${count}`;
+    const typeTag = (payload.shippingType || 'AIR').toUpperCase();
+    let masterTrackingId = payload.masterTrackingId;
+    if (!masterTrackingId) {
+      masterTrackingId = `HZ-BATCH-${typeTag}-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${count}`;
+    }
+
+    const existing = await Batch.findOne({ where: { masterTrackingId } });
+    if (existing) {
+      masterTrackingId = `${masterTrackingId}-${Math.floor(100 + Math.random() * 900)}`;
+    }
+
+    const consolidationIds = payload.consolidationIds || payload.packageIds || [];
+    const packageIds = payload.packageIds || [];
 
     const batch = await Batch.create({
       masterTrackingId,
@@ -257,19 +285,31 @@ export class ShipmentService {
       containerNo: payload.containerNo,
       shippingType: payload.shippingType,
       status: 'shipping_exported',
-      consolidationIds: payload.consolidationIds || [],
-      packageIds: payload.packageIds || [],
-      consolidationCount: (payload.consolidationIds || []).length,
-      packageCount: (payload.packageIds || []).length,
+      consolidationIds,
+      packageIds,
+      consolidationCount: consolidationIds.length,
+      packageCount: packageIds.length,
       totalWeightKg: 0,
       totalCbm: 0,
       departureDate: new Date(),
     });
 
-    // Update status of batched consolidations to in_transit
-    const targetIds = payload.consolidationIds || payload.packageIds;
+    // Update status of batched consolidations to batched
+    const targetIds = consolidationIds.length > 0 ? consolidationIds : packageIds;
     if (targetIds && targetIds.length > 0) {
-      await Consolidation.update({ status: 'in_transit' }, { where: { id: targetIds } });
+      await Consolidation.update({ status: 'batched' }, { where: { id: targetIds } });
+
+      // Notify customers of batched consolidations
+      const consolidations = await Consolidation.findAll({ where: { id: targetIds } });
+      for (const c of consolidations) {
+        NotificationService.sendOrderStatusNotification({
+          userIdOrCustomerId: c.customerId,
+          orderType: 'Shipment',
+          orderId: c.consolidationId,
+          newStatus: 'batched',
+          statusDescription: `Shipment assigned to Master Batch ${batch.masterTrackingId} via ${batch.carrierName} (${batch.flightVoyageNo}).`,
+        });
+      }
     }
 
     ActivityLogService.logActivity({

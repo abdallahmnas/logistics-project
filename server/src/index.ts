@@ -29,6 +29,17 @@ import notificationRoutes from './routes/notification.routes';
 import adminRoutes from './routes/admin.routes';
 import supportRoutes from './routes/support.routes';
 import uploadRoutes from './routes/upload.routes';
+import facilityRoutes from './routes/facility.routes';
+
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
+
+// Swagger UI & OpenAPI Specification
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/api/v1/swagger.json', (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
 // Health check endpoint
 app.get('/api/v1/health', (_req: Request, res: Response) => {
@@ -51,6 +62,7 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/support', supportRoutes);
 app.use('/api/v1/upload', uploadRoutes);
+app.use('/api/v1/facilities', facilityRoutes);
 
 // Serve frontend static build in production
 if (process.env.NODE_ENV === 'production') {

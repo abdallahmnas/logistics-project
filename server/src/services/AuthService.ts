@@ -218,4 +218,12 @@ export class AuthService {
     }
     return { available: true };
   }
+
+  public async updatePushToken(userId: string, pushToken: string) {
+    const user = await this.userRepository.findById(userId);
+    if (!user) throw new Error('User not found');
+    (user as any).pushToken = pushToken;
+    await user.save();
+    return { success: true };
+  }
 }

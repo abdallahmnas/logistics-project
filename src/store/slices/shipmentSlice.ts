@@ -103,7 +103,8 @@ export interface CreateBatchPayload {
   flightVoyageNo: string;
   containerNo?: string;
   shippingType: 'air' | 'sea';
-  packageIds: string[];
+  packageIds?: string[];
+  consolidationIds?: string[];
 }
 
 export const createBatch = createAsyncThunk(

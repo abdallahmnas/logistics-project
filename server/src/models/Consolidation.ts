@@ -87,7 +87,7 @@ Consolidation.init(
       defaultValue: 0,
     },
     status: {
-      type: DataTypes.ENUM('pending_packing', 'ready_to_batch', 'batched'),
+      type: DataTypes.STRING,
       defaultValue: 'ready_to_batch',
     },
   },

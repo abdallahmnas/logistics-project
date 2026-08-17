@@ -110,7 +110,8 @@ export const NewBatchPage: React.FC = () => {
           flightVoyageNo: values.flightVoyageNo,
           containerNo: values.containerNo,
           shippingType: values.shippingType,
-          packageIds: selectedRowKeys as string[], // consolidationIds
+          consolidationIds: selectedRowKeys as string[],
+          packageIds: selectedRowKeys as string[],
         })
       ).unwrap();
       
