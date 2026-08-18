@@ -17,6 +17,22 @@ services:
         fromDatabase:
           name: logicore-db
           property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: logicore-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: logicore-redis
+          property: port
+
+  # Managed Redis Instance
+  - type: redis
+    name: logicore-redis
+    plan: free
+    ipAllowList: []
 
 databases:
   # Managed PostgreSQL Database Instance
