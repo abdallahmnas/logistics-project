@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import apiClient from '../../api/client';
+import apiClient from '../../api/axios';
 
 export interface Facility {
   id: string;

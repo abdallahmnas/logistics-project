@@ -15,7 +15,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchAllPackages } from '../../../store/slices/adminSlice';
-import { fetchFacilities, updateFacility, deleteFacility, Facility } from '../../../store/slices/facilitySlice';
+import { fetchFacilities, updateFacility, deleteFacility } from '../../../store/slices/facilitySlice';
+import type { Facility } from '../../../store/slices/facilitySlice';
 
 const { Option } = Select;
 
