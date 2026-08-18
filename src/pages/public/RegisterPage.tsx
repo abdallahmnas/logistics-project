@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { clearError } from '../../store/slices/authSlice';
 import type { RegisterPayload } from '../../types/auth.types';
-import { registerSchema, validateForm, validateField } from '../../utils/validators';
+import { step1RegisterSchema, validateForm, validateField } from '../../utils/validators';
 import apiClient from '../../api/axios';
 
 const RegisterPage: React.FC = () => {
@@ -46,7 +46,7 @@ const RegisterPage: React.FC = () => {
 
   const onFinish = async (values: any) => {
     // Validate with Yup schema before checking backend lookup
-    const errors = await validateForm(registerSchema, values);
+    const errors = await validateForm(step1RegisterSchema, values);
     if (Object.keys(errors).length > 0) {
       form.setFields(
         Object.keys(errors).map((key) => ({
@@ -98,7 +98,7 @@ const RegisterPage: React.FC = () => {
     const value = form.getFieldValue(field);
     if (!value) return;
 
-    const err = await validateField(registerSchema, field, value);
+    const err = await validateField(step1RegisterSchema, field, value);
     if (err) {
       form.setFields([{ name: field, errors: [err] }]);
     } else {
