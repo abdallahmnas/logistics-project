@@ -10,6 +10,7 @@ export class ShipmentService {
     chineseTrackingNo: string;
     supplierName?: string;
     description: string;
+    originCountry?: string;
     estimatedItems?: number;
     notes?: string;
   }) {
@@ -26,6 +27,7 @@ export class ShipmentService {
       customerName: `${user.firstName} ${user.lastName}`,
       status: 'pre_alerted',
       description: payload.description,
+      originCountry: payload.originCountry || 'Guangzhou Hub, China',
       weightKg: 0,
       cbm: 0,
       paymentStatus: 'unpaid',

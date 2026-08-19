@@ -99,6 +99,7 @@ export interface PreAlertPayload {
   chineseTrackingNo: string;
   supplierName: string;
   description: string;
+  originCountry?: string;
   estimatedItems?: number;
   notes?: string;
   photos?: string[];
