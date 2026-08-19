@@ -1,17 +1,37 @@
-import React, { useState } from 'react';
-import { Button, Input, Card, Form, message } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Button, Input, Card, Form, Select, message } from 'antd';
 import { ArrowLeftOutlined, EnvironmentOutlined, FlagOutlined, InboxOutlined, CarOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { submitDelivery } from '../../../store/slices/deliverySlice';
+import { fetchPackages, fetchConsolidations } from '../../../store/slices/shipmentSlice';
 
 export const LocalDeliveryForm: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [form] = Form.useForm();
   const { user } = useAppSelector((state) => state.auth);
+  const { packages, consolidations } = useAppSelector((state) => state.shipments);
   const [priority, setPriority] = useState<'standard' | 'express'>('standard');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchPackages());
+    dispatch(fetchConsolidations());
+  }, [dispatch]);
+
+  const arrivedItems = [
+    ...packages.filter(p => ['arrived_destination', 'received_at_wh', 'cleared_customs', 'arrived_lagos', 'ready_for_dispatch'].includes(p.status)).map(p => ({
+      label: `Package: ${p.trackingId} - ${p.description || 'Imported Goods'} (${p.weightKg || 1}kg)`,
+      value: `pkg_${p.id}`,
+      description: `Package ${p.trackingId}: ${p.description || 'Imported Goods'}`,
+    })),
+    ...consolidations.filter(c => ['arrived_destination', 'received_at_wh', 'cleared_customs', 'arrived_lagos', 'ready_for_dispatch'].includes(c.status)).map(c => ({
+      label: `Consolidation: ${c.consolidationId} - ${c.packageIds.length} Packages (${c.totalWeightKg || 1}kg)`,
+      value: `con_${c.id}`,
+      description: `Consolidation ${c.consolidationId}: ${c.packageIds.length} Packages (${c.totalWeightKg || 1}kg)`,
+    })),
+  ];
 
   const baseRate = priority === 'express' ? 1500 : 3000;
   const distanceFee = 2250;
@@ -123,9 +143,28 @@ export const LocalDeliveryForm: React.FC = () => {
             {/* Package Details */}
             <Card bordered={false} className="shadow-sm border border-slate-100 rounded-xl" bodyStyle={{ padding: '24px' }}>
               <h2 className="text-xl font-bold text-[#0A1128] mb-6 flex items-center gap-2">
-                <InboxOutlined /> Package Details
+                <InboxOutlined /> Goods Arrived in Nigeria (Lagos Hub)
               </h2>
               
+              {arrivedItems.length > 0 && (
+                <Form.Item 
+                  name="arrivedItem" 
+                  label={<span className="text-[10px] font-bold text-brand-orange uppercase tracking-wider">SELECT ARRIVED SHIPMENT (PRE-FILL DETAILS)</span>}
+                >
+                  <Select 
+                    size="large"
+                    placeholder="Select package or consolidation arrived at Lagos Hub..."
+                    options={arrivedItems}
+                    onChange={(val) => {
+                      const item = arrivedItems.find(i => i.value === val);
+                      if (item) {
+                        form.setFieldsValue({ packageDescription: item.description });
+                      }
+                    }}
+                  />
+                </Form.Item>
+              )}
+
               <Form.Item 
                 name="packageDescription" 
                 label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">CONTENTS DESCRIPTION <span className="text-red-500">*</span></span>}
