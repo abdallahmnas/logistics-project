@@ -7,7 +7,7 @@ import { fetchFacilities } from '../../../store/slices/facilitySlice';
 export const WarehouseAddresses: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const { facilities } = useAppSelector((state) => state.facility);
+  const { facilities } = useAppSelector((state) => state.facilities || { facilities: [] });
 
   const memberCode = user?.customerId || 'HZ-20260819-0001';
   const phone = user?.phone || '';
