@@ -175,8 +175,10 @@ export const PackageScanPage: React.FC = () => {
       setSubmitting(false);
       form.resetFields();
       navigate('/admin/warehouse/inbound');
-    } catch (e) {
+    } catch (e: any) {
       setSubmitting(false);
+      const errMsg = e?.message || e?.data?.message || 'Failed to confirm package intake. Please check fields and try again.';
+      message.error(errMsg);
     }
   };
 
@@ -416,7 +418,7 @@ export const PackageScanPage: React.FC = () => {
               loading={submitting} 
               onClick={handleConfirm} 
               type="primary" 
-              className="!h-12 !px-8 font-bold !bg-[#D3A889] hover:!bg-[#C0906D] !border-none uppercase tracking-wider text-xs flex items-center gap-2 shadow-lg shadow-[#D3A889]/30"
+              className="!h-12 !px-8 font-bold !bg-brand-orange hover:!bg-[#D95D10] !text-white !border-none uppercase tracking-wider text-xs flex items-center gap-2 shadow-lg shadow-brand-orange/30 cursor-pointer"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
               Confirm Intake

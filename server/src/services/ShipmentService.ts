@@ -119,7 +119,10 @@ export class ShipmentService {
   }) {
     let pkg = await Package.findByPk(packageId);
     if (!pkg) {
-      pkg = await Package.findOne({ where: { trackingNumber: packageId } });
+      pkg = await Package.findOne({ where: { trackingId: packageId } });
+    }
+    if (!pkg) {
+      pkg = await Package.findOne({ where: { chineseTrackingNo: packageId } });
     }
 
     const cbm = ((payload.length || 0) * (payload.width || 0) * (payload.height || 0)) / 1_000_000;
@@ -127,13 +130,21 @@ export class ShipmentService {
     let uploadedCloudinaryUrls: string[] = [];
     if (payload.photos && Array.isArray(payload.photos)) {
       uploadedCloudinaryUrls = await Promise.all(
-        payload.photos.map((img) => uploadBase64ToCloudinary(img, 'packages'))
+        payload.photos.map(async (img) => {
+          if (!img) return '';
+          if (img.startsWith('http://') || img.startsWith('https://')) return img;
+          if (img.startsWith('data:image')) return uploadBase64ToCloudinary(img, 'packages');
+          return img;
+        })
       );
+      uploadedCloudinaryUrls = uploadedCloudinaryUrls.filter(Boolean);
     }
 
     if (!pkg) {
+      const generatedTrackingId = packageId.startsWith('HZ-') ? packageId : `HZ-AIR-${Date.now().toString().slice(-6)}`;
       pkg = await Package.create({
-        trackingNumber: packageId,
+        trackingId: generatedTrackingId,
+        chineseTrackingNo: packageId.startsWith('HZ-') ? '' : packageId,
         weightKg: payload.weightKg || 0,
         cbm: cbm,
         dimensions: { length: payload.length || 0, width: payload.width || 0, height: payload.height || 0 },
@@ -142,8 +153,8 @@ export class ShipmentService {
         customerName: payload.customerName || 'Walk-in Customer',
         photos: uploadedCloudinaryUrls,
         status: 'received_cn',
-        originWarehouse: 'Guangzhou Hub',
-        destinationWarehouse: 'Lagos Main Hub',
+        paymentStatus: 'unpaid',
+        preAlertDate: new Date(),
         receivedDate: new Date(),
       });
     } else {
@@ -167,7 +178,7 @@ export class ShipmentService {
       userRole: 'warehouse_cn',
       module: 'warehouse',
       action: 'SCAN_PACKAGE',
-      description: `Scanned package ${pkg.trackingNumber || pkg.id} at China Hub (${payload.weightKg || 0}kg, ${payload.cbm || 0} CBM)`,
+      description: `Scanned package ${pkg.trackingId || pkg.id} at China Hub (${payload.weightKg || 0}kg, ${payload.cbm || 0} CBM)`,
       entityId: pkg.id,
     });
 
@@ -175,7 +186,7 @@ export class ShipmentService {
     NotificationService.sendOrderStatusNotification({
       userIdOrCustomerId: pkg.customerId,
       orderType: 'Shipment',
-      orderId: pkg.trackingNumber || pkg.id,
+      orderId: pkg.trackingId || pkg.id,
       newStatus: 'received_cn',
       statusDescription: `Package received and weighed at China Hub (${payload.weightKg || 0}kg). Ready for consolidation packing.`,
     });
