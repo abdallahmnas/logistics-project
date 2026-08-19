@@ -5,8 +5,8 @@ import { useAppSelector } from '../../../store/hooks';
 
 export const WarehouseAddresses: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
-  const memberCode = user?.customerId || 'GL-129254';
-  const phone = '08011223344';
+  const memberCode = user?.customerId || 'HZ-20260819-0001';
+  const phone = user?.phone || '';
 
   const guangzhouAddress = {
     hub: 'Guangzhou Hub',
