@@ -204,13 +204,17 @@ export class ShipmentService {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('User not found');
 
+    if (!payload.packageIds || payload.packageIds.length === 0) {
+      throw new Error('Please select at least one package to consolidate');
+    }
+
     const packages = await Package.findAll({ where: { id: payload.packageIds } });
-    if (packages.length !== payload.packageIds.length) throw new Error('One or more packages do not exist');
+    if (packages.length !== payload.packageIds.length) throw new Error('One or more selected packages do not exist');
     if (packages.some((pkg) => pkg.customerId !== user.customerId)) {
       throw new Error('You can only consolidate packages assigned to your account');
     }
-    if (packages.some((pkg) => !['received_cn', 'ready_to_pack'].includes(pkg.status))) {
-      throw new Error('Only received packages can be consolidated');
+    if (packages.some((pkg) => ['consolidating', 'shipping_exported', 'arrived_ng', 'ready_for_pickup', 'delivered', 'cancelled'].includes(pkg.status))) {
+      throw new Error('One or more selected packages have already been consolidated or shipped');
     }
 
     const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);

@@ -77,8 +77,9 @@ export const NewConsolidationPage: React.FC = () => {
       message.success('Consolidation request submitted successfully!');
       setPayModalOpen(false);
       navigate('/customer/shipments/consolidation');
-    } catch {
-      message.error('Failed to submit consolidation request.');
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to submit consolidation request.';
+      message.error(msg);
     }
   };
 
