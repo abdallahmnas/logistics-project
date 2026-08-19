@@ -7,15 +7,16 @@ export const WarehouseAddresses: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   const memberCode = user?.customerId || 'HZ-20260819-0001';
   const phone = user?.phone || '';
+  const userName = user ? `${user.firstName}${user.lastName}`.replace(/\s+/g, '') : 'Customer';
 
   const guangzhouAddress = {
     hub: 'Guangzhou Hub',
     type: 'AIR FREIGHT',
     lines: [
-      `收货人名字：${memberCode}转abdallahmnas ${phone}`,
+      `收货人名字：${memberCode}转${userName} ${phone}`,
       `收货人号码：13246490077`,
       `收货人地址：广东省广州市白云区均禾街道清湖村苏元庄街888号`,
-      `${memberCode}转abdallahmnas ${phone}赛捷集运(AIR)`,
+      `${memberCode}转${userName} ${phone}赛捷集运(AIR)`,
     ],
   };
 
@@ -23,10 +24,10 @@ export const WarehouseAddresses: React.FC = () => {
     hub: 'Shanghai Hub',
     type: 'SEA FREIGHT',
     lines: [
-      `收货人名字：${memberCode}转abdallahmnas ${phone}`,
+      `收货人名字：${memberCode}转${userName} ${phone}`,
       `收货人号码：13246490077`,
       `收货人地址：上海市浦东新区外高桥保税区富特北路211号302部位`,
-      `${memberCode}转abdallahmnas ${phone}赛捷集运(SEA)`,
+      `${memberCode}转${userName} ${phone}赛捷集运(SEA)`,
     ],
   };
 
