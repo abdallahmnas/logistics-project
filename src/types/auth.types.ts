@@ -10,6 +10,8 @@ export interface User {
   role: UserRole;
   avatar?: string;
   profilePhoto?: string;
+  pushToken?: string;
+  deviceId?: string;
   isVerified: boolean;
   createdAt: string;
   updatedAt: string;
@@ -18,6 +20,8 @@ export interface User {
 export interface LoginCredentials {
   email: string;
   password: string;
+  deviceId?: string;
+  pushToken?: string;
   rememberMe?: boolean;
 }
 

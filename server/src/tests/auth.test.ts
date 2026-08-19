@@ -59,16 +59,28 @@ describe('Auth & RBAC API', () => {
     expect(res.body.message).toContain('already registered');
   });
 
-  it('should login an existing user', async () => {
+  it('should login an existing user and update deviceId', async () => {
     const res = await request(app).post('/api/v1/auth/login').send({
       email: 'testcustomer@example.com',
       password: 'password123',
+      deviceId: 'ExponentPushToken[device-aaa-111]',
     });
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('success');
     expect(res.body.data.user.email).toBe('testcustomer@example.com');
+    expect(res.body.data.user.pushToken).toBe('ExponentPushToken[device-aaa-111]');
     expect(res.body.data).toHaveProperty('token');
+
+    // Test deviceId replacement when logging in from a new device
+    const newDeviceRes = await request(app).post('/api/v1/auth/login').send({
+      email: 'testcustomer@example.com',
+      password: 'password123',
+      deviceId: 'ExponentPushToken[device-bbb-222]',
+    });
+
+    expect(newDeviceRes.status).toBe(200);
+    expect(newDeviceRes.body.data.user.pushToken).toBe('ExponentPushToken[device-bbb-222]');
   });
 
   it('should fetch the current user profile (me)', async () => {
