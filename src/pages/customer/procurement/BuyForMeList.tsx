@@ -1,19 +1,56 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, InputNumber, Upload, Tag } from 'antd';
+import { Card, Button, Input, InputNumber, Upload, Tag, Form, message } from 'antd';
+import type { UploadFile } from 'antd';
 import { LinkOutlined, CloudUploadOutlined, SafetyCertificateOutlined, InboxOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchProcurements } from '../../../store/slices/procurementSlice';
+import { fetchProcurements, submitProcurement } from '../../../store/slices/procurementSlice';
 
 const { Dragger } = Upload;
 const { TextArea } = Input;
 
 export const BuyForMeList: React.FC = () => {
   const dispatch = useAppDispatch();
+  const [form] = Form.useForm();
   const { requests, loading } = useAppSelector((state) => state.procurement);
+  const [submitting, setSubmitting] = useState(false);
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   useEffect(() => {
     dispatch(fetchProcurements());
   }, [dispatch]);
+
+  const handleSubmit = async (values: any) => {
+    try {
+      setSubmitting(true);
+      const uploadedFiles = fileList.map((f) => f.name || f.url || 'document.pdf');
+      
+      const fullSpecs = [
+        values.itemName ? `Item: ${values.itemName}` : '',
+        values.estPrice ? `Est. Price: $${values.estPrice}` : '',
+        values.specifications ? `Specs: ${values.specifications}` : '',
+      ].filter(Boolean).join('. ');
+
+      await dispatch(
+        submitProcurement({
+          productUrl: values.productUrl,
+          quantity: Number(values.quantity) || 1,
+          specifications: fullSpecs || 'Buy For Me Item',
+          notes: values.notes,
+          productPhotos: uploadedFiles,
+        })
+      ).unwrap();
+
+      message.success('Buy-For-Me request submitted successfully! Our agents will review and send a quote.');
+      form.resetFields();
+      setFileList([]);
+      dispatch(fetchProcurements());
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to submit procurement request. Please check inputs and try again.';
+      message.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const activeRequests = requests.filter(r => ['submitted', 'under_review', 'quoted', 'purchasing'].includes(r.status)).length;
   const pendingPayment = requests.filter(r => r.status === 'quoted').length;
@@ -51,38 +88,40 @@ export const BuyForMeList: React.FC = () => {
           <ShoppingCartIcon /> New Request
         </h2>
 
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Item URL <span className="text-red-500">*</span></label>
+        <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false} className="space-y-6">
+          <Form.Item name="productUrl" label={<span className="font-bold text-slate-700">Item URL <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'Please enter product URL' }]}>
             <Input size="large" prefix={<LinkOutlined className="text-slate-400 mr-2" />} placeholder="https://www.example.com/product/123" className="bg-slate-50 border-slate-200" />
-          </div>
+          </Form.Item>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2">
-              <label className="block text-sm font-bold text-slate-700 mb-2">Item Name / Brief Description <span className="text-red-500">*</span></label>
-              <Input size="large" placeholder="e.g. Industrial Steel Widget v2" className="bg-slate-50 border-slate-200" />
+              <Form.Item name="itemName" label={<span className="font-bold text-slate-700">Item Name / Brief Description <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'Please enter item name' }]}>
+                <Input size="large" placeholder="e.g. Industrial Steel Widget v2" className="bg-slate-50 border-slate-200" />
+              </Form.Item>
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Est. Price (USD)</label>
-              <InputNumber size="large" className="w-full bg-slate-50 border-slate-200" prefix="$" placeholder="0.00" />
+              <Form.Item name="estPrice" label={<span className="font-bold text-slate-700">Est. Price (USD)</span>}>
+                <InputNumber size="large" className="w-full bg-slate-50 border-slate-200" prefix="$" placeholder="0.00" />
+              </Form.Item>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Quantity <span className="text-red-500">*</span></label>
-              <InputNumber size="large" min={1} defaultValue={1} className="w-full bg-slate-50 border-slate-200" />
+              <Form.Item name="quantity" initialValue={1} label={<span className="font-bold text-slate-700">Quantity <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'Please specify quantity' }]}>
+                <InputNumber size="large" min={1} className="w-full bg-slate-50 border-slate-200" />
+              </Form.Item>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-bold text-slate-700 mb-2">Specifications (Size, Color, Model, etc.)</label>
-              <Input size="large" placeholder="e.g. Size Large, Matte Black finish" className="bg-slate-50 border-slate-200" />
+              <Form.Item name="specifications" label={<span className="font-bold text-slate-700">Specifications (Size, Color, Model, etc.)</span>}>
+                <Input size="large" placeholder="e.g. Size Large, Matte Black finish" className="bg-slate-50 border-slate-200" />
+              </Form.Item>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Additional Instructions</label>
+          <Form.Item name="notes" label={<span className="font-bold text-slate-700">Additional Instructions</span>}>
             <TextArea rows={4} placeholder="Any specific requirements for purchasing or handling..." className="bg-slate-50 border-slate-200 resize-none" />
-          </div>
+          </Form.Item>
 
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">Supporting Documents (Optional)</label>
@@ -91,6 +130,7 @@ export const BuyForMeList: React.FC = () => {
               beforeUpload={() => false}
               onChange={({ fileList: newFileList }) => {
                 newFileList.forEach((f) => { f.status = 'done'; });
+                setFileList(newFileList);
               }}
               customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
             >
@@ -103,11 +143,11 @@ export const BuyForMeList: React.FC = () => {
           </div>
 
           <div className="flex justify-end pt-4">
-            <Button type="primary" size="large" className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold px-8 shadow-md">
+            <Button type="primary" htmlType="submit" loading={submitting} size="large" className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold px-8 shadow-md">
               Submit Request ➔
             </Button>
           </div>
-        </div>
+        </Form>
       </Card>
 
       {/* Info Boxes */}
