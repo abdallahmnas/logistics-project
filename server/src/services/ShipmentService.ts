@@ -213,8 +213,8 @@ export class ShipmentService {
     if (packages.some((pkg) => pkg.customerId !== user.customerId)) {
       throw new Error('You can only consolidate packages assigned to your account');
     }
-    if (packages.some((pkg) => ['consolidating', 'shipping_exported', 'arrived_ng', 'ready_for_pickup', 'delivered', 'cancelled'].includes(pkg.status))) {
-      throw new Error('One or more selected packages have already been consolidated or shipped');
+    if (packages.some((pkg) => !['received_cn', 'ready_to_pack', 'received_at_warehouse', 'at_china_warehouse'].includes(pkg.status))) {
+      throw new Error('Only packages physically received at the warehouse (received_cn or ready_to_pack) can be consolidated');
     }
 
     const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);
