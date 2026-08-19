@@ -86,6 +86,21 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
   }
 };
 
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ status: 'error', message: 'Current and new password are required' });
+      return;
+    }
+    const result = await authService.changePassword(userId, currentPassword, newPassword);
+    res.status(200).json({ status: 'success', ...result });
+  } catch (error: any) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
+
 export const logout = async (_req: Request, res: Response): Promise<void> => {
   res.status(200).json({ status: 'success', message: 'Logged out successfully' });
 };
