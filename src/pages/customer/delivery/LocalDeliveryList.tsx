@@ -1,10 +1,21 @@
-import React from 'react';
-import { Button, Checkbox, Table } from 'antd';
+import React, { useEffect } from 'react';
+import { Button, Checkbox, Table, Tag } from 'antd';
 import { EnvironmentOutlined, PlusOutlined, PhoneOutlined, InboxOutlined, CarOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { fetchDeliveries } from '../../../store/slices/deliverySlice';
 
 export const LocalDeliveryList: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { deliveries, loading } = useAppSelector((state) => state.delivery);
+
+  useEffect(() => {
+    dispatch(fetchDeliveries());
+  }, [dispatch]);
+
+  const activeDeliveriesCount = deliveries.filter(d => ['pending', 'confirmed', 'driver_assigned', 'in_transit'].includes(d.status)).length;
+  const completedCount = deliveries.filter(d => d.status === 'delivered').length;
 
   const readyForDispatch = [
     { id: 'SHP-UK-9021', contents: 'Zara Clothing Haul', weight: '4.2 kg' },
@@ -83,8 +94,8 @@ export const LocalDeliveryList: React.FC = () => {
             Ready for Dispatch
           </div>
           <div className="flex items-baseline gap-2 relative z-10">
-            <span className="text-5xl font-extrabold text-[#0A1128] tracking-tighter">14</span>
-            <span className="text-slate-400 text-sm font-medium">+3 today</span>
+            <span className="text-5xl font-extrabold text-[#0A1128] tracking-tighter">{readyForDispatch.length}</span>
+            <span className="text-slate-400 text-sm font-medium">Lagos Hub</span>
           </div>
         </div>
 
@@ -95,7 +106,7 @@ export const LocalDeliveryList: React.FC = () => {
             Active Deliveries
           </div>
           <div className="flex items-baseline gap-2 relative z-10">
-            <span className="text-5xl font-extrabold text-[#0A1128] tracking-tighter">04</span>
+            <span className="text-5xl font-extrabold text-[#0A1128] tracking-tighter">{activeDeliveriesCount.toString().padStart(2, '0')}</span>
             <span className="text-brand-orange text-sm font-bold">In transit</span>
           </div>
         </div>
@@ -107,8 +118,8 @@ export const LocalDeliveryList: React.FC = () => {
             Completed Today
           </div>
           <div className="flex items-baseline gap-2 relative z-10">
-            <span className="text-5xl font-extrabold text-[#0A1128] tracking-tighter">08</span>
-            <span className="text-slate-400 text-sm font-medium">100% success</span>
+            <span className="text-5xl font-extrabold text-[#0A1128] tracking-tighter">{completedCount.toString().padStart(2, '0')}</span>
+            <span className="text-slate-400 text-sm font-medium">delivered</span>
           </div>
         </div>
 
