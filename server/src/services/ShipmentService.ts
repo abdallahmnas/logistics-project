@@ -270,6 +270,68 @@ export class ShipmentService {
     return Consolidation.findAll({ order: [['createdAt', 'DESC']] });
   }
 
+  public static async updateConsolidationPackages(
+    consolidationId: string,
+    payload: { packageIds: string[] },
+    adminUser?: { id: string; name: string; role: string }
+  ) {
+    const consolidation = await Consolidation.findByPk(consolidationId);
+    if (!consolidation) throw new Error('Consolidation request not found');
+
+    if (consolidation.status !== 'ready_to_batch') {
+      throw new Error('Cannot modify consolidation after it has been assigned to a batch or shipped');
+    }
+
+    const newPackageIds = payload.packageIds || [];
+    if (newPackageIds.length === 0) {
+      throw new Error('Consolidation must contain at least one package');
+    }
+
+    const currentPackageIds = consolidation.packageIds || [];
+
+    // Removed packages
+    const removedIds = currentPackageIds.filter(id => !newPackageIds.includes(id));
+    // Added packages
+    const addedIds = newPackageIds.filter(id => !currentPackageIds.includes(id));
+
+    // Update removed packages status back to received_cn
+    if (removedIds.length > 0) {
+      await Package.update({ status: 'received_cn' }, { where: { id: removedIds } });
+    }
+
+    // Update added packages status to consolidating
+    if (addedIds.length > 0) {
+      await Package.update({ status: 'consolidating' }, { where: { id: addedIds } });
+    }
+
+    // Recalculate metrics
+    const packages = await Package.findAll({ where: { id: newPackageIds } });
+    const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);
+    const totalCbm = packages.reduce((acc, p) => acc + (p.cbm || 0), 0);
+    const ratePerKg = consolidation.shippingMethod === 'air' ? 10 : 2;
+    const shippingFee = totalWeightKg * ratePerKg;
+
+    (consolidation as any).packageIds = newPackageIds;
+    (consolidation as any).totalWeightKg = totalWeightKg;
+    (consolidation as any).totalCbm = totalCbm;
+    (consolidation as any).shippingFee = shippingFee;
+    await consolidation.save();
+
+    if (adminUser) {
+      ActivityLogService.logActivity({
+        userId: adminUser.id,
+        userName: adminUser.name,
+        userRole: adminUser.role,
+        module: 'shipments',
+        action: 'UPDATE_CONSOLIDATION',
+        description: `Updated consolidation ${consolidation.consolidationId} (Added: ${addedIds.length}, Removed: ${removedIds.length})`,
+        entityId: consolidation.id,
+      });
+    }
+
+    return consolidation;
+  }
+
   // ─── Batches ──────────────────────────────────────────────────────────────
   public static async createBatch(payload: {
     masterTrackingId?: string;
