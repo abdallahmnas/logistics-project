@@ -183,6 +183,22 @@ export class AuthService {
     return { message: 'Password reset successfully' };
   }
 
+  // ─── Change Password ──────────────────────────────────────────────────────
+  public async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const { User } = await import('../models');
+    const user = await User.findByPk(userId);
+    if (!user || !(user as any).passwordHash) throw new Error('User not found');
+
+    const isMatch = await bcrypt.compare(currentPassword, (user as any).passwordHash);
+    if (!isMatch) throw new Error('Current password is incorrect');
+
+    const salt = await bcrypt.genSalt(10);
+    (user as any).passwordHash = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    return { message: 'Password updated successfully' };
+  }
+
   // ─── Get Profile ──────────────────────────────────────────────────────────
   public async getUserProfile(userId: string) {
     const user = await this.userRepository.findById(userId, {

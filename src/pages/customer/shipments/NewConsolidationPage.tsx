@@ -12,12 +12,12 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
-import { fetchPackages, submitConsolidation } from "../../../store/slices/shipmentSlice";
+import { fetchPackages, fetchConsolidations, submitConsolidation } from "../../../store/slices/shipmentSlice";
 
 export const NewConsolidationPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { packages } = useAppSelector((state) => state.shipments);
+  const { packages, consolidations } = useAppSelector((state) => state.shipments);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [freight, setFreight] = useState<"air" | "sea">("air");
   const [paymentMethod, setPaymentMethod] = useState<
@@ -27,43 +27,21 @@ export const NewConsolidationPage: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchPackages());
+    dispatch(fetchConsolidations());
   }, [dispatch]);
 
-  // Dynamic warehouse items mapped from real store packages
+  // Dynamic warehouse items mapped directly from real user packages
   const warehouseItems = useMemo(() => {
-    if (packages && packages.length > 0) {
-      return packages.map((p) => ({
-        id: p.id,
-        name: p.description || 'Inbound Goods',
-        trackingId: p.trackingId,
-        weight: p.weightKg || 1,
-        volume: p.cbm || 0.01,
-        status: p.status,
-        image: p.photos && p.photos.length > 0 ? p.photos[0] : 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=300',
-      }));
-    }
-    return [
-      {
-        id: "WH-001",
-        name: "Electronic Components",
-        trackingId: "HZ-AIR-2026-001",
-        weight: 12.5,
-        volume: 0.08,
-        status: "stored",
-        image:
-          "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=300&auto=format&fit=crop",
-      },
-      {
-        id: "WH-002",
-        name: "Industrial Pump Parts",
-        trackingId: "HZ-AIR-2026-002",
-        weight: 45.0,
-        volume: 0.25,
-        status: "stored",
-        image:
-          "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=300&auto=format&fit=crop",
-      },
-    ];
+    if (!packages || packages.length === 0) return [];
+    return packages.map((p) => ({
+      id: p.id,
+      name: p.description || 'Inbound Goods',
+      trackingId: p.trackingId,
+      weight: p.weightKg || 0,
+      volume: p.cbm || 0,
+      status: p.status,
+      image: p.photos && p.photos.length > 0 ? p.photos[0] : 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=300',
+    }));
   }, [packages]);
 
   const toggleItem = (id: string) => {
@@ -155,90 +133,102 @@ export const NewConsolidationPage: React.FC = () => {
             </span>
           </div>
 
-          {warehouseItems.map((item) => (
-            <div
-              key={item.id}
-              className={`bg-white rounded-xl border-2 shadow-sm p-4 flex items-center gap-4 transition-all cursor-pointer ${
-                selectedIds.includes(item.id)
-                  ? "border-brand-orange shadow-md"
-                  : "border-slate-100 hover:border-slate-200"
-              }`}
-              onClick={() => toggleItem(item.id)}
-            >
-              <Checkbox
-                checked={selectedIds.includes(item.id)}
-                onClick={(e) => e.stopPropagation()}
-                onChange={() => toggleItem(item.id)}
-              />
-              <img
-                src={item.image}
-                alt={item.name}
-                className="w-20 h-20 rounded-lg object-cover shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-[#0A1128] text-base m-0 mb-1">
-                  {item.name}
-                </h3>
-                <div className="text-xs text-slate-400 font-mono mb-2">
-                  3K {item.trackingId}
-                </div>
-                <div className="flex gap-4 text-xs text-slate-600">
-                  <span>
-                    • Weight: <strong>{item.weight} kg</strong>
-                  </span>
-                  <span>
-                    • Vol: <strong>{item.volume} CBM</strong>
-                  </span>
-                </div>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Status
-                </div>
-                <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>{" "}
-                  Stored
-                </span>
-              </div>
+          {warehouseItems.length === 0 ? (
+            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-8 text-center space-y-3">
+              <InboxOutlined className="text-4xl text-slate-300" />
+              <h3 className="font-bold text-[#0A1128] text-base m-0">No Warehouse Packages Stored</h3>
+              <p className="text-slate-500 text-xs max-w-sm mx-auto m-0">
+                You do not have any packages currently stored at our China Hub ready for consolidation. Pre-alert your packages or submit inbound shipments to get started.
+              </p>
             </div>
-          ))}
+          ) : (
+            warehouseItems.map((item) => (
+              <div
+                key={item.id}
+                className={`bg-white rounded-xl border-2 shadow-sm p-4 flex items-center gap-4 transition-all cursor-pointer ${
+                  selectedIds.includes(item.id)
+                    ? "border-brand-orange shadow-md"
+                    : "border-slate-100 hover:border-slate-200"
+                }`}
+                onClick={() => toggleItem(item.id)}
+              >
+                <Checkbox
+                  checked={selectedIds.includes(item.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => toggleItem(item.id)}
+                />
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="w-20 h-20 rounded-lg object-cover shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-[#0A1128] text-base m-0 mb-1">
+                    {item.name}
+                  </h3>
+                  <div className="text-xs text-slate-400 font-mono mb-2">
+                    {item.trackingId}
+                  </div>
+                  <div className="flex gap-4 text-xs text-slate-600">
+                    <span>
+                      • Weight: <strong>{item.weight} kg</strong>
+                    </span>
+                    <span>
+                      • Vol: <strong>{item.volume} CBM</strong>
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Status
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>{" "}
+                    {item.status.replace('_', ' ')}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
 
           {/* Recent Requests */}
           <div className="mt-8">
             <h2 className="text-lg font-bold text-[#0A1128] m-0 mb-4">
               Recent Requests
             </h2>
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="text-xs font-mono text-brand-orange font-bold mb-1">
-                    RFQ-202-A10-44
-                  </div>
-                  <h3 className="font-bold text-[#0A1128] text-sm m-0 mb-2">
-                    Air Freight to Lagos
-                  </h3>
-                  <div className="flex gap-4 text-xs text-slate-500 mb-2">
-                    <span>3 Items</span>
-                    <span className="text-slate-300">|</span>
-                    <span>Est. 28.5 kg</span>
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    <EnvironmentOutlined className="mr-1" /> Submitted: Oct 24,
-                    08:30 AM
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2">
-                    Under Packing
-                  </span>
-                  <div className="mt-2">
-                    <span className="text-brand-orange text-xs font-bold cursor-pointer hover:underline">
-                      Details ›
-                    </span>
-                  </div>
-                </div>
+            {(!consolidations || consolidations.length === 0) ? (
+              <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 text-center text-slate-400 text-xs">
+                No recent consolidation requests submitted yet.
               </div>
-            </div>
+            ) : (
+              consolidations.map((c) => (
+                <div key={c.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="text-xs font-mono text-brand-orange font-bold mb-1">
+                        {c.masterTrackingId || c.id}
+                      </div>
+                      <h3 className="font-bold text-[#0A1128] text-sm m-0 mb-2">
+                        {c.shippingType ? c.shippingType.toUpperCase() : 'AIR'} Freight to {c.destinationWarehouse || 'Lagos'}
+                      </h3>
+                      <div className="flex gap-4 text-xs text-slate-500 mb-2">
+                        <span>{c.packageIds ? c.packageIds.length : 0} Items</span>
+                        <span className="text-slate-300">|</span>
+                        <span>Est. {c.totalWeight || 0} kg</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        <EnvironmentOutlined className="mr-1" /> Status: {c.status}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2">
+                        {c.status ? c.status.replace('_', ' ') : 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

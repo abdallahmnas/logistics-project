@@ -1,25 +1,59 @@
-import React, { useEffect } from 'react';
-import { Card, Button, Input, InputNumber, Upload, Table, Tag } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Card, Button, Input, InputNumber, Upload, Table, Tag, Form, message } from 'antd';
 import { SwapOutlined, CloudUploadOutlined, BankOutlined, QuestionCircleOutlined, DownloadOutlined, SyncOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchExchanges, fetchActiveRate } from '../../../store/slices/exchangeSlice';
+import { fetchExchanges, fetchActiveRate, submitExchangeRequest } from '../../../store/slices/exchangeSlice';
 import { useNavigate } from 'react-router-dom';
-import type { ExchangeRequest } from '../../../types/exchange.types';
+import type { ExchangeRequest, RmbDestinationType } from '../../../types/exchange.types';
 
 const { Dragger } = Upload;
 
 export const ExchangeList: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [form] = Form.useForm();
   const { exchanges, activeRate, loading } = useAppSelector((state) => state.exchange);
+
+  const [rmbDestType, setRmbDestType] = useState<RmbDestinationType>('wechat_pay');
+  const [sendAmount, setSendAmount] = useState<number>(500000);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     dispatch(fetchExchanges());
     dispatch(fetchActiveRate());
   }, [dispatch]);
 
-  const platformRate = activeRate?.platformRate || 164.50;
+  const platformRate = activeRate?.platformRate || 215.00;
+  const receiveAmount = sendAmount ? Number((sendAmount / platformRate).toFixed(2)) : 0;
+  const processingFee = sendAmount ? sendAmount * 0.015 : 0;
+  const totalToPay = sendAmount + processingFee;
   const recentExchanges = exchanges.slice(0, 3);
+
+  const handleSubmit = async (values: any) => {
+    try {
+      setSubmitting(true);
+      await dispatch(
+        submitExchangeRequest({
+          amountNaira: Number(sendAmount) || 500000,
+          rmbDestType: rmbDestType,
+          rmbDestAccount: values.rmbDestAccount,
+          rmbDestName: values.rmbDestName || 'Customer Account',
+          rmbDestQrCode: qrCodeUrl || undefined,
+        })
+      ).unwrap();
+
+      message.success('Currency Exchange request submitted successfully!');
+      form.resetFields();
+      setSendAmount(500000);
+      dispatch(fetchExchanges());
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to submit exchange request. Please check inputs and try again.';
+      message.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const columns = [
     {
@@ -122,87 +156,122 @@ export const ExchangeList: React.FC = () => {
             <h2 className="text-xl font-bold text-[#0A1128] m-0 mb-1">Request Exchange</h2>
             <p className="text-sm text-slate-500 mb-6">Submit a request to fund your RMB wallet from NGN.</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">RECEIVING WALLET</label>
-                <div className="flex bg-slate-100 p-1 rounded-lg">
-                  <Button type="primary" className="flex-1 bg-[#0A1128] border-none font-bold shadow-sm">WeChat</Button>
-                  <Button type="text" className="flex-1 text-slate-600 font-bold">Alipay</Button>
+            <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">RECEIVING WALLET</label>
+                  <div className="flex bg-slate-100 p-1 rounded-lg">
+                    <Button 
+                      type={rmbDestType === 'wechat_pay' ? 'primary' : 'text'} 
+                      onClick={() => setRmbDestType('wechat_pay')}
+                      className={`flex-1 font-bold ${rmbDestType === 'wechat_pay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
+                    >
+                      WeChat
+                    </Button>
+                    <Button 
+                      type={rmbDestType === 'alipay' ? 'primary' : 'text'} 
+                      onClick={() => setRmbDestType('alipay')}
+                      className={`flex-1 font-bold ${rmbDestType === 'alipay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
+                    >
+                      Alipay
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">WALLET ID / PHONE</label>
-                <Input size="large" placeholder="Enter WeChat/Alipay ID" className="bg-slate-50 border-slate-200" />
-              </div>
-            </div>
-
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">YOU SEND (NGN)</label>
-                <InputNumber 
-                  size="large" 
-                  className="w-full bg-slate-50 border-slate-200 text-xl font-bold font-mono py-1" 
-                  prefix={<span className="text-slate-400 mr-2">₦</span>} 
-                  defaultValue={500000}
-                  addonAfter={<span className="text-xs font-bold text-slate-500">NGN</span>}
-                />
-              </div>
-              
-              <div className="flex justify-center -my-3 relative z-10">
-                <div className="bg-slate-100 p-2 rounded-full border border-white">
-                  <SwapOutlined className="text-slate-400 rotate-90" />
+                <div>
+                  <Form.Item name="rmbDestAccount" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">WALLET ID / PHONE</span>} rules={[{ required: true, message: 'Please enter WeChat/Alipay ID' }]}>
+                    <Input size="large" placeholder="Enter WeChat/Alipay ID" className="bg-slate-50 border-slate-200" />
+                  </Form.Item>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">YOU RECEIVE (CNY)</label>
-                <InputNumber 
-                  size="large" 
-                  className="w-full bg-slate-50 border-slate-200 text-xl font-bold font-mono py-1" 
-                  prefix={<span className="text-slate-400 mr-2">¥</span>} 
-                  value={500000 / platformRate}
-                  addonAfter={<span className="text-xs font-bold text-slate-500">CNY</span>}
-                  readOnly
-                />
-              </div>
-            </div>
+              {/* Full Width Expanded Inputs */}
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">YOU SEND (NGN)</label>
+                  <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 w-full shadow-inner focus-within:border-brand-orange focus-within:ring-1 focus-within:ring-brand-orange transition-all">
+                    <span className="text-slate-400 font-extrabold text-2xl mr-3">₦</span>
+                    <InputNumber 
+                      controls={false}
+                      size="large" 
+                      className="!w-full bg-transparent border-none text-2xl font-black font-mono p-0 focus:shadow-none shadow-none [&_input]:!bg-transparent" 
+                      value={sendAmount}
+                      onChange={(val) => setSendAmount(Number(val) || 0)}
+                      min={1000}
+                      placeholder="500000"
+                    />
+                    <span className="text-xs font-black text-slate-600 bg-slate-200/80 px-3 py-1.5 rounded-lg ml-3 uppercase tracking-wider shrink-0">NGN</span>
+                  </div>
+                </div>
+                
+                <div className="flex justify-center -my-2 relative z-10">
+                  <div className="bg-slate-100 p-2.5 rounded-full border-2 border-white shadow-sm">
+                    <SwapOutlined className="text-brand-orange rotate-90 text-base" />
+                  </div>
+                </div>
 
-            <div className="bg-slate-50 rounded-lg p-4 border border-slate-100 space-y-3 mb-6 text-sm">
-              <div className="flex justify-between items-center text-slate-600">
-                <span>Exchange Rate</span>
-                <span className="font-mono">1 CNY = {platformRate.toFixed(2)} NGN</span>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">YOU RECEIVE (CNY)</label>
+                  <div className="flex items-center bg-slate-100/70 border border-slate-200 rounded-xl px-4 py-2 w-full">
+                    <span className="text-slate-400 font-extrabold text-2xl mr-3">¥</span>
+                    <InputNumber 
+                      controls={false}
+                      size="large" 
+                      className="!w-full bg-transparent border-none text-2xl font-black font-mono p-0 focus:shadow-none shadow-none [&_input]:!bg-transparent" 
+                      value={receiveAmount}
+                      readOnly
+                    />
+                    <span className="text-xs font-black text-brand-orange bg-brand-orange/15 px-3 py-1.5 rounded-lg ml-3 uppercase tracking-wider shrink-0">CNY</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between items-center text-slate-600">
-                <span>Processing Fee (1.5%)</span>
-                <span className="font-mono">₦ 7,500.00</span>
-              </div>
-              <div className="pt-3 border-t border-slate-200 flex justify-between items-center font-bold text-[#0A1128]">
-                <span>Total to Pay</span>
-                <span className="font-mono text-base">₦ 507,500.00</span>
-              </div>
-            </div>
 
-            <div className="mb-6">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">UPLOAD RECEIVING QR CODE</label>
-              <Dragger
-                className="bg-white border-dashed border-slate-300"
-                beforeUpload={() => false}
-                onChange={({ fileList: newFileList }) => {
-                  newFileList.forEach((f) => { f.status = 'done'; });
-                }}
-                customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3 mb-6 text-sm">
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>Exchange Rate</span>
+                  <span className="font-mono font-bold text-slate-800">1 CNY = {platformRate.toFixed(2)} NGN</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>Processing Fee (1.5%)</span>
+                  <span className="font-mono font-bold text-slate-800">₦ {processingFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="pt-3 border-t border-slate-200 flex justify-between items-center font-bold text-[#0A1128]">
+                  <span>Total to Pay</span>
+                  <span className="font-mono text-lg font-black text-brand-orange">₦ {totalToPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">UPLOAD RECEIVING QR CODE (OPTIONAL)</label>
+                <Dragger
+                  className="bg-white border-dashed border-slate-300 rounded-xl"
+                  beforeUpload={() => false}
+                  onChange={({ fileList: newFileList }) => {
+                    newFileList.forEach((f) => { f.status = 'done'; });
+                    if (newFileList.length > 0) {
+                      setQrCodeUrl(newFileList[0].name || 'qrcode.png');
+                    }
+                  }}
+                  customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
+                >
+                  <p className="ant-upload-drag-icon">
+                    <CloudUploadOutlined className="text-slate-400 text-3xl" />
+                  </p>
+                  <p className="ant-upload-text font-bold text-slate-700 text-sm">Click or drag QR code image</p>
+                  <p className="ant-upload-hint text-xs text-slate-400">PNG, JPG up to 5MB</p>
+                </Dragger>
+              </div>
+
+              <Button 
+                type="primary" 
+                htmlType="submit"
+                loading={submitting} 
+                size="large" 
+                block 
+                className="bg-brand-orange hover:bg-[#E86E21] border-none font-extrabold shadow-md h-13 text-base rounded-xl"
               >
-                <p className="ant-upload-drag-icon">
-                  <CloudUploadOutlined className="text-slate-400" />
-                </p>
-                <p className="ant-upload-text font-bold text-slate-700 text-sm">Click or drag QR code image</p>
-                <p className="ant-upload-hint text-xs text-slate-400">PNG, JPG up to 5MB</p>
-              </Dragger>
-            </div>
-
-            <Button type="primary" size="large" block className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-md h-12 text-base">
-              Submit Exchange Request ➔
-            </Button>
+                Submit Exchange Request ➔
+              </Button>
+            </Form>
           </Card>
         </div>
 
