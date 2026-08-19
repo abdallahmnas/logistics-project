@@ -118,7 +118,7 @@ export class AuthService {
 
   // ─── Login ────────────────────────────────────────────────────────────────
   public async loginUser(data: any) {
-    const { email, password } = data;
+    const { email, password, deviceId, pushToken } = data;
     if (!email || !password) throw new Error('Please provide email and password');
 
     const user = await this.userRepository.findByEmail(email);
@@ -126,6 +126,14 @@ export class AuthService {
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) throw new Error('Invalid email or password');
+
+    // Replace existing deviceId / pushToken with new deviceId provided at login
+    const incomingDeviceId = deviceId || pushToken;
+    if (incomingDeviceId && incomingDeviceId !== user.deviceId) {
+      (user as any).deviceId = incomingDeviceId;
+      (user as any).pushToken = incomingDeviceId;
+      await (user as any).save();
+    }
 
     const token = generateToken({ id: user.id, role: user.role });
     const { passwordHash, otpCode, ...safeUser } = user.toJSON() as any;
@@ -219,10 +227,11 @@ export class AuthService {
     return { available: true };
   }
 
-  public async updatePushToken(userId: string, pushToken: string) {
+  public async updatePushToken(userId: string, token: string) {
     const user = await this.userRepository.findById(userId);
     if (!user) throw new Error('User not found');
-    (user as any).pushToken = pushToken;
+    (user as any).pushToken = token;
+    (user as any).deviceId = token;
     await user.save();
     return { success: true };
   }

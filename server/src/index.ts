@@ -88,6 +88,6 @@ export const startServer = async () => {
   });
 };
 
-if (process.env.NODE_ENV !== 'test' && import.meta.url === `file://${process.argv[1]}`) {
+if (process.env.NODE_ENV !== 'test') {
   startServer();
 }

@@ -18,6 +18,7 @@ export interface UserAttributes {
   profilePhoto?: string;
   permissionGroupId?: string;
   pushToken?: string;
+  deviceId?: string;
   isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -41,6 +42,8 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public declare resetTokenExpiry?: Date;
   public declare profilePhoto?: string;
   public declare permissionGroupId?: string;
+  public declare pushToken?: string;
+  public declare deviceId?: string;
   public declare isActive?: boolean;
   public declare readonly createdAt: Date;
   public declare readonly updatedAt: Date;
@@ -113,6 +116,10 @@ User.init(
       allowNull: true,
     },
     pushToken: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    deviceId: {
       type: DataTypes.STRING,
       allowNull: true,
     },
