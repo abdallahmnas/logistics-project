@@ -13,6 +13,7 @@ import {
   adminCreatePackage,
   addPackagesToBatch,
   updateConsolidation,
+  updateBatchStatus,
 } from '../controllers/shipment.controller';
 
 const router = Router();
@@ -49,6 +50,11 @@ router.patch(
   '/batches/:id/packages',
   authorize('super_admin', 'admin', 'warehouse_cn', 'warehouse_ng'),
   addPackagesToBatch
+);
+router.patch(
+  '/batches/:id/status',
+  authorize('super_admin', 'admin', 'warehouse_cn', 'warehouse_ng'),
+  updateBatchStatus
 );
 router.patch(
   '/packages/:id/status',

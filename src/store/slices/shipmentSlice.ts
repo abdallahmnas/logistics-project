@@ -51,6 +51,14 @@ export const updateConsolidation = createAsyncThunk(
   }
 );
 
+export const updateBatchStatus = createAsyncThunk(
+  'shipments/updateBatchStatus',
+  async ({ id, status }: { id: string; status: string }) => {
+    const res = await apiClient.patch(`/shipments/batches/${id}/status`, { status });
+    return res.data.data;
+  }
+);
+
 export interface ScanPackagePayload {
   packageId: string;
   weightKg: number;

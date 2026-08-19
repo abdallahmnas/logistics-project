@@ -94,6 +94,18 @@ export const addPackagesToBatch = async (req: Request, res: Response): Promise<v
   }
 };
 
+export const updateBatchStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const adminUser = (req as any).user;
+    const batch = await ShipmentService.updateBatchStatus(id, status, adminUser);
+    res.status(200).json({ success: true, data: batch });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 export const scanPackageController = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;

@@ -355,7 +355,15 @@ export class ShipmentService {
     }
 
     const consolidationIds = payload.consolidationIds || payload.packageIds || [];
-    const packageIds = payload.packageIds || [];
+    
+    // Fetch attached consolidations to calculate exact metrics & attached packages
+    const consolidations = await Consolidation.findAll({ where: { id: consolidationIds } });
+    const totalWeightKg = consolidations.reduce((sum, c) => sum + (c.totalWeightKg || 0), 0);
+    const totalCbm = consolidations.reduce((sum, c) => sum + (c.totalCbm || 0), 0);
+    
+    const allPackageIds = Array.from(
+      new Set(consolidations.flatMap((c) => c.packageIds || []))
+    );
 
     const batch = await Batch.create({
       masterTrackingId,
@@ -365,28 +373,30 @@ export class ShipmentService {
       shippingType: payload.shippingType,
       status: 'shipping_exported',
       consolidationIds,
-      packageIds,
+      packageIds: allPackageIds,
       consolidationCount: consolidationIds.length,
-      packageCount: packageIds.length,
-      totalWeightKg: 0,
-      totalCbm: 0,
+      packageCount: allPackageIds.length,
+      totalWeightKg,
+      totalCbm,
       departureDate: new Date(),
     });
 
-    // Update status of batched consolidations to batched
-    const targetIds = consolidationIds.length > 0 ? consolidationIds : packageIds;
-    if (targetIds && targetIds.length > 0) {
-      await Consolidation.update({ status: 'batched' }, { where: { id: targetIds } });
+    // Update status of batched consolidations & underlying packages
+    if (consolidationIds.length > 0) {
+      await Consolidation.update({ status: 'batched' }, { where: { id: consolidationIds } });
+
+      if (allPackageIds.length > 0) {
+        await Package.update({ status: 'shipping_exported', shippedDate: new Date() }, { where: { id: allPackageIds } });
+      }
 
       // Notify customers of batched consolidations
-      const consolidations = await Consolidation.findAll({ where: { id: targetIds } });
       for (const c of consolidations) {
         NotificationService.sendOrderStatusNotification({
           userIdOrCustomerId: c.customerId,
           orderType: 'Shipment',
           orderId: c.consolidationId,
-          newStatus: 'batched',
-          statusDescription: `Shipment assigned to Master Batch ${batch.masterTrackingId} via ${batch.carrierName} (${batch.flightVoyageNo}).`,
+          newStatus: 'shipping_exported',
+          statusDescription: `Master Batch ${batch.masterTrackingId} (${batch.carrierName} ${batch.flightVoyageNo}) has departed China warehouse and is in transit to Nigeria.`,
         });
       }
     }
@@ -397,7 +407,7 @@ export class ShipmentService {
       userRole: 'warehouse_cn',
       module: 'warehouse',
       action: 'CREATE_MASTER_BATCH',
-      description: `Created Master ${typeTag} Batch ${masterTrackingId} with Carrier ${payload.carrierName}`,
+      description: `Created Master ${typeTag} Batch ${masterTrackingId} with Carrier ${payload.carrierName} (${totalWeightKg}kg / ${totalCbm}cbm)`,
       entityId: batch.id,
     });
 
@@ -412,14 +422,72 @@ export class ShipmentService {
     const batch = await Batch.findByPk(batchId);
     if (!batch) throw new Error('Batch not found');
 
-    const current = (batch as any).packageIds || [];
-    const merged = [...new Set([...current, ...packageIds])];
-    (batch as any).packageIds = merged;
-    (batch as any).packageCount = merged.length;
+    const currentConsolidationIds = (batch as any).consolidationIds || [];
+    const mergedConsolidations = [...new Set([...currentConsolidationIds, ...packageIds])];
+    
+    const consolidations = await Consolidation.findAll({ where: { id: mergedConsolidations } });
+    const totalWeightKg = consolidations.reduce((sum, c) => sum + (c.totalWeightKg || 0), 0);
+    const totalCbm = consolidations.reduce((sum, c) => sum + (c.totalCbm || 0), 0);
+    const allPackageIds = Array.from(
+      new Set(consolidations.flatMap((c) => c.packageIds || []))
+    );
+
+    (batch as any).consolidationIds = mergedConsolidations;
+    (batch as any).consolidationCount = mergedConsolidations.length;
+    (batch as any).packageIds = allPackageIds;
+    (batch as any).packageCount = allPackageIds.length;
+    (batch as any).totalWeightKg = totalWeightKg;
+    (batch as any).totalCbm = totalCbm;
     await batch.save();
 
-    // Mark packages as consolidating/batched
-    await Package.update({ status: 'consolidating' }, { where: { id: packageIds } });
+    // Mark consolidations as batched and packages as shipping_exported
+    await Consolidation.update({ status: 'batched' }, { where: { id: packageIds } });
+    if (allPackageIds.length > 0) {
+      await Package.update({ status: 'shipping_exported' }, { where: { id: allPackageIds } });
+    }
+
+    return batch;
+  }
+
+  public static async updateBatchStatus(batchId: string, status: string, adminUser?: any) {
+    const batch = await Batch.findByPk(batchId);
+    if (!batch) throw new Error('Batch not found');
+
+    batch.status = status as any;
+    if (status === 'arrived_ng') batch.arrivedDate = new Date();
+    await batch.save();
+
+    const consolidationIds = batch.consolidationIds || [];
+    const packageIds = batch.packageIds || [];
+
+    if (status === 'arrived_ng') {
+      if (consolidationIds.length > 0) {
+        await Consolidation.update({ status: 'arrived_destination' }, { where: { id: consolidationIds } });
+      }
+      if (packageIds.length > 0) {
+        await Package.update({ status: 'arrived_destination', arrivedDate: new Date() }, { where: { id: packageIds } });
+      }
+    } else if (status === 'delivered') {
+      if (consolidationIds.length > 0) {
+        await Consolidation.update({ status: 'delivered' }, { where: { id: consolidationIds } });
+      }
+      if (packageIds.length > 0) {
+        await Package.update({ status: 'delivered', deliveredDate: new Date() }, { where: { id: packageIds } });
+      }
+    }
+
+    if (adminUser) {
+      ActivityLogService.logActivity({
+        userId: adminUser.id,
+        userName: adminUser.name,
+        userRole: adminUser.role,
+        module: 'warehouse',
+        action: 'UPDATE_BATCH_STATUS',
+        description: `Updated Master Batch ${batch.masterTrackingId} status to ${status}`,
+        entityId: batch.id,
+      });
+    }
+
     return batch;
   }
 
