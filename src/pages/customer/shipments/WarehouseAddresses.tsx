@@ -1,35 +1,60 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Button, message } from 'antd';
 import { CopyOutlined, EnvironmentOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { useAppSelector } from '../../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { fetchFacilities } from '../../../store/slices/facilitySlice';
 
 export const WarehouseAddresses: React.FC = () => {
+  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
+  const { facilities } = useAppSelector((state) => state.facility);
+
   const memberCode = user?.customerId || 'HZ-20260819-0001';
   const phone = user?.phone || '';
   const userName = user ? `${user.firstName}${user.lastName}`.replace(/\s+/g, '') : 'Customer';
 
-  const guangzhouAddress = {
-    hub: 'Guangzhou Hub',
-    type: 'AIR FREIGHT',
-    lines: [
-      `收货人名字：${memberCode}转${userName} ${phone}`,
-      `收货人号码：13246490077`,
-      `收货人地址：广东省广州市白云区均禾街道清湖村苏元庄街888号`,
-      `${memberCode}转${userName} ${phone}赛捷集运(AIR)`,
-    ],
-  };
+  useEffect(() => {
+    dispatch(fetchFacilities());
+  }, [dispatch]);
 
-  const shanghaiAddress = {
-    hub: 'Shanghai Hub',
-    type: 'SEA FREIGHT',
-    lines: [
-      `收货人名字：${memberCode}转${userName} ${phone}`,
-      `收货人号码：13246490077`,
-      `收货人地址：上海市浦东新区外高桥保税区富特北路211号302部位`,
-      `${memberCode}转${userName} ${phone}赛捷集运(SEA)`,
-    ],
-  };
+  const activeHubs = useMemo(() => {
+    const cnFacilities = facilities ? facilities.filter(f => f.country === 'CN' && f.status !== 'inactive') : [];
+    if (cnFacilities.length > 0) {
+      return cnFacilities.map((f) => ({
+        hub: f.name,
+        type: f.type === 'cross_dock' ? 'SEA FREIGHT' : 'AIR FREIGHT',
+        lines: [
+          `收货人名字：${memberCode}转${userName} ${phone}`,
+          `收货人号码：${f.contactPhone || '13246490077'}`,
+          `收货人地址：${f.address || '广东省广州市白云区均禾街道清湖村苏元庄街888号'}`,
+          `${memberCode}转${userName} ${phone}赛捷集运(${f.type === 'cross_dock' ? 'SEA' : 'AIR'})`,
+        ],
+      }));
+    }
+
+    return [
+      {
+        hub: 'Guangzhou Hub',
+        type: 'AIR FREIGHT',
+        lines: [
+          `收货人名字：${memberCode}转${userName} ${phone}`,
+          `收货人号码：13246490077`,
+          `收货人地址：广东省广州市白云区均禾街道清湖村苏元庄街888号`,
+          `${memberCode}转${userName} ${phone}赛捷集运(AIR)`,
+        ],
+      },
+      {
+        hub: 'Shanghai Hub',
+        type: 'SEA FREIGHT',
+        lines: [
+          `收货人名字：${memberCode}转${userName} ${phone}`,
+          `收货人号码：13246490077`,
+          `收货人地址：上海市浦东新区外高桥保税区富特北路211号302部位`,
+          `${memberCode}转${userName} ${phone}赛捷集运(SEA)`,
+        ],
+      },
+    ];
+  }, [facilities, memberCode, phone, userName]);
 
   const copyToClipboard = (lines: string[]) => {
     const text = lines.join('\n');
@@ -55,71 +80,40 @@ export const WarehouseAddresses: React.FC = () => {
             Use these addresses as your shipping destination when purchasing from suppliers. Always include your unique member code to ensure proper routing.
           </p>
 
-          {/* Guangzhou Hub */}
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm mb-6 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-brand-orange/10 text-brand-orange flex items-center justify-center">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 21H21M4 18H20V10L12 3L4 10V18Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M9 18V13H15V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+          {/* Active Warehouse Hubs */}
+          {activeHubs.map((hubItem, idx) => (
+            <div key={idx} className="bg-white rounded-xl border border-slate-100 shadow-sm mb-6 overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-brand-orange/10 text-brand-orange flex items-center justify-center">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 21H21M4 18H20V10L12 3L4 10V18Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M9 18V13H15V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-[#0A1128] text-lg m-0">{hubItem.hub}</h3>
+                    <span className="text-brand-orange font-bold text-xs tracking-wider uppercase">{hubItem.type}</span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-[#0A1128] text-lg m-0">{guangzhouAddress.hub}</h3>
-                  <span className="text-brand-orange font-bold text-xs tracking-wider uppercase">{guangzhouAddress.type}</span>
-                </div>
+                <Button
+                  type="primary"
+                  icon={<CopyOutlined />}
+                  className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-sm px-5"
+                  onClick={() => copyToClipboard(hubItem.lines)}
+                >
+                  Copy All Details
+                </Button>
               </div>
-              <Button
-                type="primary"
-                icon={<CopyOutlined />}
-                className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-sm px-5"
-                onClick={() => copyToClipboard(guangzhouAddress.lines)}
-              >
-                Copy All Details
-              </Button>
-            </div>
-            <div className="px-6 py-5">
-              <div className="bg-slate-50 rounded-lg p-5 border border-slate-200">
-                {guangzhouAddress.lines.map((line, i) => (
-                  <p key={i} className="text-sm text-slate-700 m-0 mb-1.5 last:mb-0 font-medium leading-relaxed">{line}</p>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Shanghai Hub */}
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 17L6 3H18L21 17H3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M1 17H23V21H1V17Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M12 3V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-bold text-[#0A1128] text-lg m-0">{shanghaiAddress.hub}</h3>
-                  <span className="text-slate-500 font-bold text-xs tracking-wider uppercase">{shanghaiAddress.type}</span>
+              <div className="px-6 py-5">
+                <div className="bg-slate-50 rounded-lg p-5 border border-slate-200">
+                  {hubItem.lines.map((line, i) => (
+                    <p key={i} className="text-sm text-slate-700 m-0 mb-1.5 last:mb-0 font-medium leading-relaxed">{line}</p>
+                  ))}
                 </div>
               </div>
-              <Button
-                icon={<CopyOutlined />}
-                className="bg-white hover:bg-slate-50 border-slate-200 text-[#0A1128] font-bold shadow-sm px-5"
-                onClick={() => copyToClipboard(shanghaiAddress.lines)}
-              >
-                Copy All Details
-              </Button>
             </div>
-            <div className="px-6 py-5">
-              <div className="bg-slate-50 rounded-lg p-5 border border-slate-200">
-                {shanghaiAddress.lines.map((line, i) => (
-                  <p key={i} className="text-sm text-slate-700 m-0 mb-1.5 last:mb-0 font-medium leading-relaxed">{line}</p>
-                ))}
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* Right Column — Sidebar */}
