@@ -10,6 +10,7 @@ export class ShipmentService {
     chineseTrackingNo: string;
     supplierName?: string;
     description: string;
+    originCountry?: string;
     estimatedItems?: number;
     notes?: string;
   }) {
@@ -26,6 +27,7 @@ export class ShipmentService {
       customerName: `${user.firstName} ${user.lastName}`,
       status: 'pre_alerted',
       description: payload.description,
+      originCountry: payload.originCountry || 'Guangzhou Hub, China',
       weightKg: 0,
       cbm: 0,
       paymentStatus: 'unpaid',
@@ -204,14 +206,30 @@ export class ShipmentService {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('User not found');
 
+    if (!payload.packageIds || payload.packageIds.length === 0) {
+      throw new Error('Please select at least one package to consolidate');
+    }
+
     const packages = await Package.findAll({ where: { id: payload.packageIds } });
-    if (packages.length !== payload.packageIds.length) throw new Error('One or more packages do not exist');
+    if (packages.length !== payload.packageIds.length) throw new Error('One or more selected packages do not exist');
     if (packages.some((pkg) => pkg.customerId !== user.customerId)) {
       throw new Error('You can only consolidate packages assigned to your account');
     }
-    if (packages.some((pkg) => !['received_cn', 'ready_to_pack'].includes(pkg.status))) {
-      throw new Error('Only received packages can be consolidated');
+    if (packages.some((pkg) => !['received_cn', 'ready_to_pack', 'received_at_warehouse', 'at_china_warehouse'].includes(pkg.status))) {
+      throw new Error('Only packages physically received at the warehouse (received_cn or ready_to_pack) can be consolidated');
     }
+
+    // Strict Warehouse Check: All packages must be stored at the SAME warehouse facility
+    const warehouseSet = new Set(
+      packages.map((pkg) => (pkg.originCountry || 'Guangzhou Hub').toLowerCase().trim())
+    );
+    if (warehouseSet.size > 1) {
+      throw new Error(
+        'Cannot consolidate packages located at different warehouses. All packages in a single consolidation box must be stored at the same warehouse facility.'
+      );
+    }
+
+    const originCountry = packages[0]?.originCountry || 'Guangzhou Hub';
 
     const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);
     const totalCbm = packages.reduce((acc, p) => acc + (p.cbm || 0), 0);
@@ -232,6 +250,7 @@ export class ShipmentService {
       totalWeightKg,
       totalCbm,
       shippingFee,
+      originCountry,
       status: 'ready_to_batch',
     });
 
@@ -264,6 +283,77 @@ export class ShipmentService {
     return Consolidation.findAll({ order: [['createdAt', 'DESC']] });
   }
 
+  public static async updateConsolidationPackages(
+    consolidationId: string,
+    payload: { packageIds: string[] },
+    adminUser?: { id: string; name: string; role: string }
+  ) {
+    const consolidation = await Consolidation.findByPk(consolidationId);
+    if (!consolidation) throw new Error('Consolidation request not found');
+
+    if (consolidation.status !== 'ready_to_batch') {
+      throw new Error('Cannot modify consolidation after it has been assigned to a batch or shipped');
+    }
+
+    const newPackageIds = payload.packageIds || [];
+    if (newPackageIds.length === 0) {
+      throw new Error('Consolidation must contain at least one package');
+    }
+
+    const currentPackageIds = consolidation.packageIds || [];
+
+    // Removed packages
+    const removedIds = currentPackageIds.filter(id => !newPackageIds.includes(id));
+    // Added packages
+    const addedIds = newPackageIds.filter(id => !currentPackageIds.includes(id));
+
+    // Update removed packages status back to received_cn
+    if (removedIds.length > 0) {
+      await Package.update({ status: 'received_cn' }, { where: { id: removedIds } });
+    }
+
+    // Update added packages status to consolidating
+    if (addedIds.length > 0) {
+      await Package.update({ status: 'consolidating' }, { where: { id: addedIds } });
+    }
+
+    // Recalculate metrics & verify single warehouse facility
+    const packages = await Package.findAll({ where: { id: newPackageIds } });
+    const warehouseSet = new Set(
+      packages.map((pkg) => (pkg.originCountry || 'Guangzhou Hub').toLowerCase().trim())
+    );
+    if (warehouseSet.size > 1) {
+      throw new Error(
+        'Cannot add package from a different warehouse into this consolidation box. All packages in a consolidation must be at the same warehouse facility.'
+      );
+    }
+
+    const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);
+    const totalCbm = packages.reduce((acc, p) => acc + (p.cbm || 0), 0);
+    const ratePerKg = consolidation.shippingMethod === 'air' ? 10 : 2;
+    const shippingFee = totalWeightKg * ratePerKg;
+
+    (consolidation as any).packageIds = newPackageIds;
+    (consolidation as any).totalWeightKg = totalWeightKg;
+    (consolidation as any).totalCbm = totalCbm;
+    (consolidation as any).shippingFee = shippingFee;
+    await consolidation.save();
+
+    if (adminUser) {
+      ActivityLogService.logActivity({
+        userId: adminUser.id,
+        userName: adminUser.name,
+        userRole: adminUser.role,
+        module: 'shipments',
+        action: 'UPDATE_CONSOLIDATION',
+        description: `Updated consolidation ${consolidation.consolidationId} (Added: ${addedIds.length}, Removed: ${removedIds.length})`,
+        entityId: consolidation.id,
+      });
+    }
+
+    return consolidation;
+  }
+
   // ─── Batches ──────────────────────────────────────────────────────────────
   public static async createBatch(payload: {
     masterTrackingId?: string;
@@ -287,7 +377,15 @@ export class ShipmentService {
     }
 
     const consolidationIds = payload.consolidationIds || payload.packageIds || [];
-    const packageIds = payload.packageIds || [];
+    
+    // Fetch attached consolidations to calculate exact metrics & attached packages
+    const consolidations = await Consolidation.findAll({ where: { id: consolidationIds } });
+    const totalWeightKg = consolidations.reduce((sum, c) => sum + (c.totalWeightKg || 0), 0);
+    const totalCbm = consolidations.reduce((sum, c) => sum + (c.totalCbm || 0), 0);
+    
+    const allPackageIds = Array.from(
+      new Set(consolidations.flatMap((c) => c.packageIds || []))
+    );
 
     const batch = await Batch.create({
       masterTrackingId,
@@ -297,28 +395,30 @@ export class ShipmentService {
       shippingType: payload.shippingType,
       status: 'shipping_exported',
       consolidationIds,
-      packageIds,
+      packageIds: allPackageIds,
       consolidationCount: consolidationIds.length,
-      packageCount: packageIds.length,
-      totalWeightKg: 0,
-      totalCbm: 0,
+      packageCount: allPackageIds.length,
+      totalWeightKg,
+      totalCbm,
       departureDate: new Date(),
     });
 
-    // Update status of batched consolidations to batched
-    const targetIds = consolidationIds.length > 0 ? consolidationIds : packageIds;
-    if (targetIds && targetIds.length > 0) {
-      await Consolidation.update({ status: 'batched' }, { where: { id: targetIds } });
+    // Update status of batched consolidations & underlying packages
+    if (consolidationIds.length > 0) {
+      await Consolidation.update({ status: 'batched' }, { where: { id: consolidationIds } });
+
+      if (allPackageIds.length > 0) {
+        await Package.update({ status: 'shipping_exported', shippedDate: new Date() }, { where: { id: allPackageIds } });
+      }
 
       // Notify customers of batched consolidations
-      const consolidations = await Consolidation.findAll({ where: { id: targetIds } });
       for (const c of consolidations) {
         NotificationService.sendOrderStatusNotification({
           userIdOrCustomerId: c.customerId,
           orderType: 'Shipment',
           orderId: c.consolidationId,
-          newStatus: 'batched',
-          statusDescription: `Shipment assigned to Master Batch ${batch.masterTrackingId} via ${batch.carrierName} (${batch.flightVoyageNo}).`,
+          newStatus: 'shipping_exported',
+          statusDescription: `Master Batch ${batch.masterTrackingId} (${batch.carrierName} ${batch.flightVoyageNo}) has departed China warehouse and is in transit to Nigeria.`,
         });
       }
     }
@@ -329,7 +429,7 @@ export class ShipmentService {
       userRole: 'warehouse_cn',
       module: 'warehouse',
       action: 'CREATE_MASTER_BATCH',
-      description: `Created Master ${typeTag} Batch ${masterTrackingId} with Carrier ${payload.carrierName}`,
+      description: `Created Master ${typeTag} Batch ${masterTrackingId} with Carrier ${payload.carrierName} (${totalWeightKg}kg / ${totalCbm}cbm)`,
       entityId: batch.id,
     });
 
@@ -344,14 +444,72 @@ export class ShipmentService {
     const batch = await Batch.findByPk(batchId);
     if (!batch) throw new Error('Batch not found');
 
-    const current = (batch as any).packageIds || [];
-    const merged = [...new Set([...current, ...packageIds])];
-    (batch as any).packageIds = merged;
-    (batch as any).packageCount = merged.length;
+    const currentConsolidationIds = (batch as any).consolidationIds || [];
+    const mergedConsolidations = [...new Set([...currentConsolidationIds, ...packageIds])];
+    
+    const consolidations = await Consolidation.findAll({ where: { id: mergedConsolidations } });
+    const totalWeightKg = consolidations.reduce((sum, c) => sum + (c.totalWeightKg || 0), 0);
+    const totalCbm = consolidations.reduce((sum, c) => sum + (c.totalCbm || 0), 0);
+    const allPackageIds = Array.from(
+      new Set(consolidations.flatMap((c) => c.packageIds || []))
+    );
+
+    (batch as any).consolidationIds = mergedConsolidations;
+    (batch as any).consolidationCount = mergedConsolidations.length;
+    (batch as any).packageIds = allPackageIds;
+    (batch as any).packageCount = allPackageIds.length;
+    (batch as any).totalWeightKg = totalWeightKg;
+    (batch as any).totalCbm = totalCbm;
     await batch.save();
 
-    // Mark packages as consolidating/batched
-    await Package.update({ status: 'consolidating' }, { where: { id: packageIds } });
+    // Mark consolidations as batched and packages as shipping_exported
+    await Consolidation.update({ status: 'batched' }, { where: { id: packageIds } });
+    if (allPackageIds.length > 0) {
+      await Package.update({ status: 'shipping_exported' }, { where: { id: allPackageIds } });
+    }
+
+    return batch;
+  }
+
+  public static async updateBatchStatus(batchId: string, status: string, adminUser?: any) {
+    const batch = await Batch.findByPk(batchId);
+    if (!batch) throw new Error('Batch not found');
+
+    batch.status = status as any;
+    if (status === 'arrived_ng') batch.arrivedDate = new Date();
+    await batch.save();
+
+    const consolidationIds = batch.consolidationIds || [];
+    const packageIds = batch.packageIds || [];
+
+    if (status === 'arrived_ng') {
+      if (consolidationIds.length > 0) {
+        await Consolidation.update({ status: 'arrived_destination' }, { where: { id: consolidationIds } });
+      }
+      if (packageIds.length > 0) {
+        await Package.update({ status: 'arrived_destination', arrivedDate: new Date() }, { where: { id: packageIds } });
+      }
+    } else if (status === 'delivered') {
+      if (consolidationIds.length > 0) {
+        await Consolidation.update({ status: 'delivered' }, { where: { id: consolidationIds } });
+      }
+      if (packageIds.length > 0) {
+        await Package.update({ status: 'delivered', deliveredDate: new Date() }, { where: { id: packageIds } });
+      }
+    }
+
+    if (adminUser) {
+      ActivityLogService.logActivity({
+        userId: adminUser.id,
+        userName: adminUser.name,
+        userRole: adminUser.role,
+        module: 'warehouse',
+        action: 'UPDATE_BATCH_STATUS',
+        description: `Updated Master Batch ${batch.masterTrackingId} status to ${status}`,
+        entityId: batch.id,
+      });
+    }
+
     return batch;
   }
 

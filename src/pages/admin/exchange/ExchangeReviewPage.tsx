@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Upload, Progress, Tag } from "antd";
+import { Button, Upload, Progress, Tag, Image } from "antd";
 import {
   UserOutlined,
   WalletOutlined,
@@ -36,14 +36,21 @@ export const ExchangeReviewPage: React.FC = () => {
       createdAt: new Date().toISOString(),
     } as ExchangeRequest);
 
+  const isNgnToRmb = (request as any).direction !== 'rmb_to_ngn';
+
   return (
     <div className="animate-fade-in-up max-w-[1200px] mx-auto pb-20 mt-4 px-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-800 m-0 tracking-tight">
-            Exchange Review
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-extrabold text-slate-800 m-0 tracking-tight">
+              Exchange Review
+            </h1>
+            <Tag color="blue" className="font-bold uppercase m-0 text-xs">
+              {isNgnToRmb ? '🇳🇬 NGN ➔ 🇨🇳 RMB' : '🇨🇳 RMB ➔ 🇳🇬 NGN'}
+            </Tag>
+          </div>
           <div className="flex items-center gap-2 mt-2 text-slate-500 text-sm">
             <span className="font-bold">Request ID:</span>{" "}
             <span className="font-mono">{request.id}</span>
@@ -101,15 +108,10 @@ export const ExchangeReviewPage: React.FC = () => {
 
             <div className="relative z-10">
               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
-                DESTINATION WALLET ID
+                DESTINATION ACCOUNT / WALLET ID
               </div>
               <div className="bg-[#F8FAFC] border border-slate-200 rounded-lg p-3 flex justify-between items-center text-sm font-mono text-slate-600">
-                {request.rmbDestAccount}
-                <Button
-                  type="text"
-                  icon={<i className="anticon">⧉</i>}
-                  className="text-slate-400 hover:text-brand-navy p-0"
-                />
+                {request.rmbDestAccount || request.rmbDestName}
               </div>
             </div>
           </div>
@@ -119,16 +121,16 @@ export const ExchangeReviewPage: React.FC = () => {
             <div className="flex items-center gap-2 mb-6">
               <WalletOutlined className="text-slate-400 text-lg" />
               <h2 className="text-lg font-bold text-[#0A1128] m-0">
-                Exchange Details
+                Exchange Details ({isNgnToRmb ? 'Naira to Yen' : 'Yen to Naira'})
               </h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-[#F8FAFC] rounded-lg p-4 border border-slate-100">
                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  AMOUNT TO RECEIVE (CNY)
+                  RMB AMOUNT (CNY)
                 </div>
-                <div className="text-2xl font-bold text-slate-800">
+                <div className="text-2xl font-bold text-emerald-600">
                   ¥
                   {request.amountRmb.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
@@ -138,9 +140,9 @@ export const ExchangeReviewPage: React.FC = () => {
               </div>
               <div className="bg-[#F8FAFC] rounded-lg p-4 border border-slate-100">
                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  PAID AMOUNT (NGN)
+                  NAIRA AMOUNT (NGN)
                 </div>
-                <div className="text-xl font-bold text-slate-700">
+                <div className="text-xl font-bold text-slate-800">
                   ₦{request.amountNaira.toLocaleString()}
                 </div>
               </div>
@@ -155,30 +157,48 @@ export const ExchangeReviewPage: React.FC = () => {
             </div>
           </div>
 
-          {/* User Provided QR / Invoice */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-            <div className="flex items-center gap-2 mb-6">
+          {/* User Provided QR / Barcode & Payment Proof */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 space-y-6">
+            <div className="flex items-center gap-2 mb-2">
               <QrcodeOutlined className="text-slate-400 text-lg" />
               <h2 className="text-lg font-bold text-[#0A1128] m-0">
-                User Provided QR / Invoice
+                Receiving Barcode / Payment Documentation
               </h2>
             </div>
 
-            <div className="relative rounded-xl overflow-hidden bg-slate-900 group">
-              <img
-                src="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=2000&auto=format&fit=crop"
-                alt="Receipt Scan"
-                className="w-full h-80 object-cover opacity-80 group-hover:opacity-60 transition-opacity duration-300"
-              />
-
-              <div className="absolute bottom-4 left-4">
-                <Button className="bg-white/90 border-none shadow-sm font-medium">
-                  <SearchOutlined /> Click to enlarge
-                </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Receiving Barcode / QR Code Image */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  Receiving Payment Barcode / QR
+                </span>
+                <Image
+                  src={
+                    (request as any).receivingBarcodeUrl ||
+                    request.rmbDestQrCode ||
+                    "https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=600"
+                  }
+                  alt="Receiving Barcode QR"
+                  className="w-full h-48 object-cover rounded-lg border border-slate-200"
+                  fallback="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=600"
+                />
               </div>
 
-              <div className="absolute bottom-4 right-4 bg-[#0A1128] text-white px-3 py-1.5 rounded text-xs font-mono font-bold tracking-wider shadow-lg flex items-center gap-2">
-                <CheckCircleOutlined className="text-green-400" /> VERIFIED_SCAN
+              {/* Bank Transfer Receipt */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  Proof of Payment Receipt
+                </span>
+                <Image
+                  src={
+                    request.nairaReceiptUrl ||
+                    request.rmbReceiptUrl ||
+                    "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=600"
+                  }
+                  alt="Proof of Payment Receipt"
+                  className="w-full h-48 object-cover rounded-lg border border-slate-200"
+                  fallback="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=600"
+                />
               </div>
             </div>
           </div>

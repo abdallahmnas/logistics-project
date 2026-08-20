@@ -13,12 +13,15 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { fetchPackages, fetchConsolidations, submitConsolidation } from "../../../store/slices/shipmentSlice";
+import { fetchFacilities } from "../../../store/slices/facilitySlice";
 
 export const NewConsolidationPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { packages, consolidations } = useAppSelector((state) => state.shipments);
+  const { facilities } = useAppSelector((state) => state.facilities || { facilities: [] });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [activeWarehouse, setActiveWarehouse] = useState<string>("all");
   const [freight, setFreight] = useState<"air" | "sea">("air");
   const [paymentMethod, setPaymentMethod] = useState<
     "pay_now" | "pay_on_delivery"
@@ -28,25 +31,82 @@ export const NewConsolidationPage: React.FC = () => {
   useEffect(() => {
     dispatch(fetchPackages());
     dispatch(fetchConsolidations());
+    dispatch(fetchFacilities());
   }, [dispatch]);
 
-  // Dynamic warehouse items mapped directly from real user packages
-  const warehouseItems = useMemo(() => {
+  const warehouseTabs = useMemo(() => {
+    const tabs = [{ key: "all", label: "All Consolidable Warehouses" }];
+    if (facilities && facilities.length > 0) {
+      facilities
+        .filter((f) => f.status !== "inactive")
+        .forEach((f) => {
+          tabs.push({
+            key: f.name.toLowerCase().split(" ")[0],
+            label: `${f.name} (${f.country})`,
+          });
+        });
+    } else {
+      tabs.push(
+        { key: "guangzhou", label: "Guangzhou Hub (China)" },
+        { key: "yiwu", label: "Yiwu Hub (China)" },
+        { key: "uk", label: "London Hub (UK)" },
+        { key: "us", label: "New York Hub (US)" },
+      );
+    }
+    return tabs;
+  }, [facilities]);
+
+  // ONLY packages physically RECEIVED at the warehouse (received_cn, ready_to_pack, etc.) can be consolidated.
+  // PRE-ALERTED packages are excluded until scanned into the warehouse!
+  const consolidablePackages = useMemo(() => {
     if (!packages || packages.length === 0) return [];
-    return packages.map((p) => ({
+    return packages.filter((p) =>
+      ["received_cn", "ready_to_pack", "received_at_warehouse", "at_china_warehouse"].includes(p.status)
+    );
+  }, [packages]);
+
+  // Dynamic warehouse items mapped directly from consolidable user packages
+  const warehouseItems = useMemo(() => {
+    let list = consolidablePackages;
+    if (activeWarehouse !== "all") {
+      list = list.filter((p) => {
+        const wh = (p.originCountry || "Guangzhou Hub").toLowerCase();
+        return wh.includes(activeWarehouse.toLowerCase());
+      });
+    }
+
+    return list.map((p) => ({
       id: p.id,
-      name: p.description || 'Inbound Goods',
+      name: p.description || "Inbound Goods",
       trackingId: p.trackingId,
+      chineseTrackingNo: p.chineseTrackingNo,
       weight: p.weightKg || 0,
       volume: p.cbm || 0,
       status: p.status,
-      image: p.photos && p.photos.length > 0 ? p.photos[0] : 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=300',
+      warehouse: p.originCountry || "Guangzhou Hub, China",
+      image:
+        p.photos && p.photos.length > 0
+          ? p.photos[0]
+          : "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=300",
     }));
-  }, [packages]);
+  }, [consolidablePackages, activeWarehouse]);
 
   const toggleItem = (id: string) => {
+    const targetItem = warehouseItems.find((i) => i.id === id);
+    if (!targetItem) return;
+
+    if (selectedIds.length > 0) {
+      const firstSelectedItem = warehouseItems.find((i) => i.id === selectedIds[0]);
+      if (firstSelectedItem && firstSelectedItem.warehouse !== targetItem.warehouse) {
+        message.warning(
+          `Cannot consolidate packages from different warehouses (${firstSelectedItem.warehouse} vs ${targetItem.warehouse}). Please select packages from the same warehouse.`
+        );
+        return;
+      }
+    }
+
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
@@ -54,7 +114,14 @@ export const NewConsolidationPage: React.FC = () => {
     if (selectedIds.length === warehouseItems.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(warehouseItems.map((i) => i.id));
+      const firstWh = warehouseItems[0]?.warehouse;
+      const sameWarehouseItems = warehouseItems.filter((i) => i.warehouse === firstWh);
+      if (sameWarehouseItems.length < warehouseItems.length) {
+        message.info(
+          `Selected all packages stored at ${firstWh}. Switch warehouse tabs to select packages from other facilities.`
+        );
+      }
+      setSelectedIds(sameWarehouseItems.map((i) => i.id));
     }
   };
 
@@ -77,8 +144,9 @@ export const NewConsolidationPage: React.FC = () => {
       message.success('Consolidation request submitted successfully!');
       setPayModalOpen(false);
       navigate('/customer/shipments/consolidation');
-    } catch {
-      message.error('Failed to submit consolidation request.');
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to submit consolidation request.';
+      message.error(msg);
     }
   };
 
@@ -102,13 +170,32 @@ export const NewConsolidationPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex justify-end mb-6">
+      {/* Warehouse Selector Filter Tabs */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+          {warehouseTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => {
+                setActiveWarehouse(tab.key);
+                setSelectedIds([]);
+              }}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeWarehouse === tab.key
+                  ? "bg-[#0A1128] text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 border border-slate-200 shadow-sm">
           <EnvironmentOutlined className="text-brand-orange" />
           <span className="text-xs text-slate-600">
-            Current Location:{" "}
-            <strong className="text-[#0A1128]">Guangzhou,</strong>{" "}
-            <span className="text-brand-orange font-bold">China</span>
+            Selected Facility:{" "}
+            <strong className="text-[#0A1128] uppercase">{activeWarehouse === 'all' ? 'All Hubs' : `${activeWarehouse} Hub`}</strong>
           </span>
         </div>
       </div>
@@ -129,16 +216,16 @@ export const NewConsolidationPage: React.FC = () => {
               onChange={selectAll}
             />
             <span className="text-sm font-bold text-slate-600">
-              Select All ({warehouseItems.length} items)
+              Select All ({warehouseItems.length} consolidable items)
             </span>
           </div>
 
           {warehouseItems.length === 0 ? (
             <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-8 text-center space-y-3">
               <InboxOutlined className="text-4xl text-slate-300" />
-              <h3 className="font-bold text-[#0A1128] text-base m-0">No Warehouse Packages Stored</h3>
-              <p className="text-slate-500 text-xs max-w-sm mx-auto m-0">
-                You do not have any packages currently stored at our China Hub ready for consolidation. Pre-alert your packages or submit inbound shipments to get started.
+              <h3 className="font-bold text-[#0A1128] text-base m-0">No Consolidable Packages Available</h3>
+              <p className="text-slate-500 text-xs max-w-md mx-auto m-0 leading-relaxed">
+                Only packages physically scanned and received at our receiving warehouses (Status: <strong className="text-slate-700">Received CN / Ready to Pack</strong>) can be consolidated into a master shipping box. Pre-alerted items will appear here once checked into inventory.
               </p>
             </div>
           ) : (

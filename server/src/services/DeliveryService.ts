@@ -1,4 +1,4 @@
-import { LocalDelivery, User } from '../models';
+import { LocalDelivery, User, Wallet } from '../models';
 import { ActivityLogService } from './ActivityLogService';
 import { NotificationService } from './NotificationService';
 
@@ -26,6 +26,24 @@ export class DeliveryService {
     const distanceFee = distanceKm * r.perKm;
     const totalFee = baseFare + distanceFee;
 
+    let paymentStatus: 'unpaid' | 'paid' = 'unpaid';
+
+    if (payload.paymentMethod === 'wallet') {
+      const wallet = await Wallet.findOne({ where: { userId: user.id } });
+      const currentBalance = wallet ? wallet.balance : 0;
+
+      if (currentBalance < totalFee) {
+        throw new Error(`Insufficient wallet balance. Total fee is ₦${totalFee.toLocaleString()}, but your balance is ₦${currentBalance.toLocaleString()}. Please top up your wallet.`);
+      }
+
+      if (wallet) {
+        wallet.balance = wallet.balance - totalFee;
+        wallet.availableBalance = wallet.balance - (wallet.escrowHeld || 0);
+        await wallet.save();
+      }
+      paymentStatus = 'paid';
+    }
+
     const delivery = await LocalDelivery.create({
       customerId: user.customerId,
       customerName: `${user.firstName} ${user.lastName}`,
@@ -45,7 +63,7 @@ export class DeliveryService {
       distanceFee,
       totalFee,
       paymentMethod: payload.paymentMethod,
-      paymentStatus: payload.paymentMethod === 'wallet' ? 'paid' : 'unpaid',
+      paymentStatus,
       requestedAt: new Date(),
     });
 

@@ -5,6 +5,7 @@ export interface ExchangeRequestAttributes {
   id: string;
   customerId: string;
   customerName: string;
+  direction?: 'ngn_to_rmb' | 'rmb_to_ngn';
   amountNaira: number;
   amountRmb: number;
   exchangeRate: number;
@@ -19,6 +20,7 @@ export interface ExchangeRequestAttributes {
   rmbDestAccount: string;
   rmbDestName: string;
   rmbDestQrCode?: string;
+  receivingBarcodeUrl?: string;
   rmbReceiptUrl?: string;
   requestedAt: Date;
   nairaConfirmedAt?: Date;
@@ -35,6 +37,7 @@ export class ExchangeRequest extends Model<ExchangeRequestAttributes, ExchangeRe
   public declare id: string;
   public declare customerId: string;
   public declare customerName: string;
+  public declare direction?: 'ngn_to_rmb' | 'rmb_to_ngn';
   public declare amountNaira: number;
   public declare amountRmb: number;
   public declare exchangeRate: number;
@@ -49,6 +52,7 @@ export class ExchangeRequest extends Model<ExchangeRequestAttributes, ExchangeRe
   public declare rmbDestAccount: string;
   public declare rmbDestName: string;
   public declare rmbDestQrCode?: string;
+  public declare receivingBarcodeUrl?: string;
   public declare rmbReceiptUrl?: string;
   public declare requestedAt: Date;
   public declare nairaConfirmedAt?: Date;
@@ -73,6 +77,11 @@ ExchangeRequest.init(
     customerName: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    direction: {
+      type: DataTypes.ENUM('ngn_to_rmb', 'rmb_to_ngn'),
+      allowNull: true,
+      defaultValue: 'ngn_to_rmb',
     },
     amountNaira: {
       type: DataTypes.FLOAT,
@@ -118,6 +127,7 @@ ExchangeRequest.init(
     rmbDestAccount: { type: DataTypes.STRING, allowNull: false },
     rmbDestName: { type: DataTypes.STRING, allowNull: false },
     rmbDestQrCode: { type: DataTypes.STRING, allowNull: true },
+    receivingBarcodeUrl: { type: DataTypes.STRING, allowNull: true },
     rmbReceiptUrl: { type: DataTypes.STRING, allowNull: true },
     requestedAt: {
       type: DataTypes.DATE,

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Table, Input, Select, Button, Drawer, Form, InputNumber, message, Descriptions, Divider } from 'antd';
-import { SearchOutlined, DollarOutlined } from '@ant-design/icons';
+import { Card, Table, Input, Select, Button, Drawer, Form, InputNumber, message, Descriptions, Divider, Image, Tag } from 'antd';
+import { SearchOutlined, DollarOutlined, EyeOutlined, LinkOutlined, TagOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchProcurements, quoteProcurement } from '../../../store/slices/procurementSlice';
 import { StatusBadge } from '../../../components/common/StatusBadge';
@@ -25,6 +25,7 @@ export const ProcurementReview: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [activeRequest, setActiveRequest] = useState<ProcurementRequest | null>(null);
+  const [viewDetailsModal, setViewDetailsModal] = useState<ProcurementRequest | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const productCostRmb = Form.useWatch('productCostRmb', form);
@@ -39,7 +40,8 @@ export const ProcurementReview: React.FC = () => {
       const matchesSearch =
         r.customerName.toLowerCase().includes(searchText.toLowerCase()) ||
         r.id.toLowerCase().includes(searchText.toLowerCase()) ||
-        r.productUrl.toLowerCase().includes(searchText.toLowerCase());
+        r.productUrl.toLowerCase().includes(searchText.toLowerCase()) ||
+        r.specifications?.toLowerCase().includes(searchText.toLowerCase());
       const matchesStatus = filterStatus === 'all' || r.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
@@ -81,59 +83,92 @@ export const ProcurementReview: React.FC = () => {
 
   const columns = [
     {
-      title: 'Request',
+      title: 'Request ID',
       key: 'request',
       render: (record: ProcurementRequest) => (
         <div>
-          <div className="font-bold text-brand-navy">{record.id}</div>
-          <div className="text-xs text-slate-500">{record.customerName}</div>
+          <div className="font-bold text-brand-navy font-mono text-xs">{record.id}</div>
+          <div className="text-xs font-medium text-slate-700">{record.customerName}</div>
         </div>
       ),
     },
     {
-      title: 'Product',
+      title: 'Item Photo & Info',
       key: 'product',
-      render: (record: ProcurementRequest) => (
-        <div className="max-w-xs">
-          <div className="text-sm">{truncateText(record.specifications, 60)}</div>
-          <a href={record.productUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-blue">
-            View Link
-          </a>
-        </div>
-      ),
+      render: (record: ProcurementRequest) => {
+        const photos = record.productPhotos || [];
+        const firstPhoto = photos[0] || 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300';
+        return (
+          <div className="flex items-center gap-3 max-w-sm">
+            <Image
+              src={firstPhoto}
+              alt="Product"
+              className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
+              fallback="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300"
+            />
+            <div className="space-y-1 overflow-hidden">
+              <div className="text-xs font-bold text-slate-800 truncate" title={record.specifications}>
+                {record.specifications || 'Buy-For-Me Item'}
+              </div>
+              <a
+                href={record.productUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] text-brand-blue font-medium flex items-center gap-1 hover:underline"
+              >
+                <LinkOutlined /> View Supplier Link
+              </a>
+            </div>
+          </div>
+        );
+      },
     },
-    { title: 'Qty', dataIndex: 'quantity', key: 'quantity' },
+    {
+      title: 'Qty',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      render: (q: number) => <Tag color="blue" className="font-bold">{q} pcs</Tag>,
+    },
     {
       title: 'Quote (RMB)',
       key: 'quote',
       render: (record: ProcurementRequest) =>
-        record.totalCostRmb ? <PriceTag amount={record.totalCostRmb} currency="CNY" size="sm" /> : <span className="text-slate-400 italic">Pending</span>,
+        record.totalCostRmb ? <PriceTag amount={record.totalCostRmb} currency="CNY" size="sm" /> : <span className="text-slate-400 italic text-xs">Pending</span>,
     },
     {
       title: 'Quote (NGN)',
       key: 'quoteNaira',
       render: (record: ProcurementRequest) =>
-        record.totalCostNaira ? <PriceTag amount={record.totalCostNaira} size="sm" /> : <span className="text-slate-400 italic">—</span>,
+        record.totalCostNaira ? <PriceTag amount={record.totalCostNaira} size="sm" /> : <span className="text-slate-400 italic text-xs">—</span>,
     },
     { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => <StatusBadge module="procurement" status={s} /> },
     { title: 'Submitted', dataIndex: 'submittedAt', key: 'submittedAt', render: (d: string) => formatDate(d) },
     {
-      title: 'Action',
+      title: 'Actions',
       key: 'action',
-      render: (record: ProcurementRequest) =>
-        record.status === 'submitted' || record.status === 'under_review' ? (
+      render: (record: ProcurementRequest) => (
+        <div className="flex items-center gap-2">
           <Button
-            type="primary"
             size="small"
-            icon={<DollarOutlined />}
-            className="bg-brand-gold text-brand-navy font-bold border-none hover:bg-yellow-500"
-            onClick={() => openQuote(record)}
+            icon={<EyeOutlined />}
+            className="text-slate-600 font-medium"
+            onClick={() => setViewDetailsModal(record)}
           >
-            Quote
+            Details
           </Button>
-        ) : (
-          <span className="text-slate-400 text-xs">—</span>
-        ),
+          {(record.status === 'submitted' || record.status === 'under_review') && (
+            <Button
+              type="primary"
+              size="small"
+              icon={<DollarOutlined />}
+              className="bg-brand-gold text-brand-navy font-bold border-none hover:bg-yellow-500"
+              onClick={() => openQuote(record)}
+            >
+              Quote
+            </Button>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -171,24 +206,45 @@ export const ProcurementReview: React.FC = () => {
         <Table columns={columns} dataSource={filtered} rowKey="id" loading={loading} scroll={{ x: 1000 }} pagination={{ pageSize: 10 }} className="custom-admin-table" />
       </Card>
 
+      {/* Quote Modal Drawer */}
       <Drawer
         title={activeRequest ? `Quote Request — ${activeRequest.id}` : 'Quote Request'}
         open={!!activeRequest}
         onClose={() => setActiveRequest(null)}
         size="large"
-        destroyOnHidden
+        destroyOnClose
       >
         {activeRequest && (
           <>
+            {activeRequest.productPhotos && activeRequest.productPhotos.length > 0 && (
+              <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Product Photo</span>
+                <Image.PreviewGroup>
+                  <div className="flex flex-wrap gap-2">
+                    {activeRequest.productPhotos.map((url, idx) => (
+                      <Image
+                        key={idx}
+                        src={url}
+                        alt={`Product Photo ${idx + 1}`}
+                        className="w-24 h-24 rounded-lg object-cover border border-slate-200"
+                        fallback="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300"
+                      />
+                    ))}
+                  </div>
+                </Image.PreviewGroup>
+              </div>
+            )}
+
             <Descriptions column={1} size="small" bordered className="mb-6">
               <Descriptions.Item label="Customer">{activeRequest.customerName}</Descriptions.Item>
-              <Descriptions.Item label="Quantity">{activeRequest.quantity}</Descriptions.Item>
+              <Descriptions.Item label="Quantity">{activeRequest.quantity} pcs</Descriptions.Item>
               <Descriptions.Item label="Specifications">{activeRequest.specifications}</Descriptions.Item>
               {activeRequest.sizes && <Descriptions.Item label="Sizes">{activeRequest.sizes}</Descriptions.Item>}
               {activeRequest.colors && <Descriptions.Item label="Colors">{activeRequest.colors}</Descriptions.Item>}
+              {activeRequest.notes && <Descriptions.Item label="Customer Notes">{activeRequest.notes}</Descriptions.Item>}
               <Descriptions.Item label="Product Link">
-                <a href={activeRequest.productUrl} target="_blank" rel="noreferrer" className="text-brand-blue">
-                  {truncateText(activeRequest.productUrl, 40)}
+                <a href={activeRequest.productUrl} target="_blank" rel="noreferrer" className="text-brand-blue flex items-center gap-1">
+                  <LinkOutlined /> {truncateText(activeRequest.productUrl, 45)}
                 </a>
               </Descriptions.Item>
             </Descriptions>
@@ -231,6 +287,80 @@ export const ProcurementReview: React.FC = () => {
               </Form.Item>
             </Form>
           </>
+        )}
+      </Drawer>
+
+      {/* View Full Details Drawer */}
+      <Drawer
+        title={viewDetailsModal ? `Procurement Info — ${viewDetailsModal.id}` : 'Procurement Info'}
+        open={!!viewDetailsModal}
+        onClose={() => setViewDetailsModal(null)}
+        size="large"
+        destroyOnClose
+      >
+        {viewDetailsModal && (
+          <div className="space-y-6">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center">
+              <div>
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-1">Status</span>
+                <StatusBadge module="procurement" status={viewDetailsModal.status} />
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-1">Submitted</span>
+                <span className="text-xs font-bold text-slate-700">{formatDate(viewDetailsModal.submittedAt)}</span>
+              </div>
+            </div>
+
+            {viewDetailsModal.productPhotos && viewDetailsModal.productPhotos.length > 0 && (
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">PRODUCT PHOTOS</h4>
+                <Image.PreviewGroup>
+                  <div className="flex flex-wrap gap-3">
+                    {viewDetailsModal.productPhotos.map((url, idx) => (
+                      <Image
+                        key={idx}
+                        src={url}
+                        alt={`Photo ${idx + 1}`}
+                        className="w-28 h-28 rounded-xl object-cover border border-slate-200 shadow-sm"
+                        fallback="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300"
+                      />
+                    ))}
+                  </div>
+                </Image.PreviewGroup>
+              </div>
+            )}
+
+            <div>
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">ITEM SPECIFICATIONS</h4>
+              <Descriptions column={1} bordered size="small" className="bg-white rounded-lg">
+                <Descriptions.Item label="Customer">{viewDetailsModal.customerName}</Descriptions.Item>
+                <Descriptions.Item label="Quantity">{viewDetailsModal.quantity} pcs</Descriptions.Item>
+                <Descriptions.Item label="Specifications">{viewDetailsModal.specifications}</Descriptions.Item>
+                {viewDetailsModal.sizes && <Descriptions.Item label="Sizes">{viewDetailsModal.sizes}</Descriptions.Item>}
+                {viewDetailsModal.colors && <Descriptions.Item label="Colors">{viewDetailsModal.colors}</Descriptions.Item>}
+                {viewDetailsModal.notes && <Descriptions.Item label="Customer Notes">{viewDetailsModal.notes}</Descriptions.Item>}
+                <Descriptions.Item label="Supplier Link">
+                  <a href={viewDetailsModal.productUrl} target="_blank" rel="noreferrer" className="text-brand-blue flex items-center gap-1 font-medium">
+                    <LinkOutlined /> {viewDetailsModal.productUrl}
+                  </a>
+                </Descriptions.Item>
+              </Descriptions>
+            </div>
+
+            {viewDetailsModal.supplierName && (
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">SUPPLIER & QUOTE DETAILS</h4>
+                <Descriptions column={1} bordered size="small" className="bg-white rounded-lg">
+                  <Descriptions.Item label="Supplier Name">{viewDetailsModal.supplierName}</Descriptions.Item>
+                  {viewDetailsModal.productCostRmb && <Descriptions.Item label="Product Cost (RMB)">¥{viewDetailsModal.productCostRmb.toFixed(2)}</Descriptions.Item>}
+                  {viewDetailsModal.serviceFeeRmb && <Descriptions.Item label="Service Fee (RMB)">¥{viewDetailsModal.serviceFeeRmb.toFixed(2)}</Descriptions.Item>}
+                  {viewDetailsModal.totalCostRmb && <Descriptions.Item label="Total Cost (RMB)">¥{viewDetailsModal.totalCostRmb.toFixed(2)}</Descriptions.Item>}
+                  {viewDetailsModal.totalCostNaira && <Descriptions.Item label="Total Cost (NGN)">₦{viewDetailsModal.totalCostNaira.toLocaleString()}</Descriptions.Item>}
+                  {viewDetailsModal.chineseTrackingNo && <Descriptions.Item label="Chinese Tracking No">{viewDetailsModal.chineseTrackingNo}</Descriptions.Item>}
+                </Descriptions>
+              </div>
+            )}
+          </div>
         )}
       </Drawer>
     </div>

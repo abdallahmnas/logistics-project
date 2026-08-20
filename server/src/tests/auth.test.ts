@@ -10,7 +10,11 @@ describe('Auth & RBAC API', () => {
 
   beforeAll(async () => {
     // Clear tests tables
-    await User.destroy({ where: { email: 'testcustomer@example.com' } });
+    const existing = await User.findOne({ where: { email: 'testcustomer@example.com' } });
+    if (existing) {
+      await Wallet.destroy({ where: { userId: existing.id } });
+      await User.destroy({ where: { id: existing.id } });
+    }
   });
 
   afterAll(async () => {

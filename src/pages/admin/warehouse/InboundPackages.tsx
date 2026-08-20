@@ -149,22 +149,62 @@ export const InboundPackages: React.FC = () => {
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* Dedicated Status Filter Tabs */}
+      <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+        <button
+          type="button"
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            filterStatus === 'all' ? 'bg-white text-brand-navy shadow-sm' : 'text-slate-500 hover:text-slate-800'
+          }`}
+          onClick={() => setFilterStatus('all')}
+        >
+          All Packages ({allPackages.length})
+        </button>
+        <button
+          type="button"
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            filterStatus === 'pre_alerted' ? 'bg-white text-brand-navy shadow-sm' : 'text-slate-500 hover:text-slate-800'
+          }`}
+          onClick={() => setFilterStatus('pre_alerted')}
+        >
+          📦 Pre-Alerted ({allPackages.filter((p) => p.status === 'pre_alerted').length})
+        </button>
+        <button
+          type="button"
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            filterStatus === 'received_cn' ? 'bg-white text-brand-navy shadow-sm' : 'text-slate-500 hover:text-slate-800'
+          }`}
+          onClick={() => setFilterStatus('received_cn')}
+        >
+          ✅ Received ({allPackages.filter((p) => p.status === 'received_cn').length})
+        </button>
+        <button
+          type="button"
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            filterStatus === 'held_customs' ? 'bg-white text-brand-navy shadow-sm' : 'text-slate-500 hover:text-slate-800'
+          }`}
+          onClick={() => setFilterStatus('held_customs')}
+        >
+          ⚠️ Holds / Overdue ({allPackages.filter((p) => p.status === 'held_customs').length})
+        </button>
+      </div>
+
+      {/* Search & Secondary Filters */}
       <div className="bg-[#F2F1EF] p-3 rounded-lg flex flex-col md:flex-row gap-3 mb-4">
         <Input
-          placeholder="Search tracking ID or customer..."
+          placeholder="Search tracking ID, customer or Chinese tracking #..."
           prefix={<SearchOutlined className="text-slate-400" />}
           className="flex-1 !h-10 !bg-white !border-slate-200"
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />
-        <Select defaultValue="all" className="md:w-48 !h-10" onChange={setFilterStatus}>
+        <Select value={filterStatus} className="md:w-44 !h-10" onChange={setFilterStatus}>
           <Option value="all">All Statuses</Option>
-          <Option value="pre_alerted">Expected</Option>
-          <Option value="received_cn">Received</Option>
+          <Option value="pre_alerted">Pre-Alerted</Option>
+          <Option value="received_cn">Received CN</Option>
           <Option value="held_customs">Overdue / Hold</Option>
         </Select>
-        <Select defaultValue="all" className="md:w-32 !h-10" onChange={setFilterMethod}>
+        <Select value={filterMethod} className="md:w-32 !h-10" onChange={setFilterMethod}>
           <Option value="all">All Methods</Option>
           <Option value="air">Air</Option>
           <Option value="sea">Sea</Option>

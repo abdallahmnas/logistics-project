@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Card, Button, Table, Tag, Input, Select, Drawer, Descriptions, Divider, Image } from 'antd';
 import { SearchOutlined, EyeOutlined, BoxPlotOutlined, RocketOutlined, DollarOutlined, EnvironmentOutlined, UserOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchConsolidations, fetchPackages } from '../../../store/slices/shipmentSlice';
+import { fetchConsolidations, fetchPackages, updateConsolidation } from '../../../store/slices/shipmentSlice';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { formatWeight, formatCbm, formatRmb, formatDate } from '../../../utils/formatters';
 import { useNavigate } from 'react-router-dom';
@@ -18,11 +18,80 @@ export const ConsolidationManagement: React.FC = () => {
   const [search, setSearch] = useState('');
   const [methodFilter, setMethodFilter] = useState<string>('all');
   const [selectedConsolidation, setSelectedConsolidation] = useState<Consolidation | null>(null);
+  const [selectedAddPkgId, setSelectedAddPkgId] = useState<string>('');
+  const [updatingBox, setUpdatingBox] = useState(false);
 
   useEffect(() => {
     dispatch(fetchConsolidations());
     dispatch(fetchPackages());
   }, [dispatch]);
+
+  const handleRemovePackageFromBox = async (pkgId: string) => {
+    if (!selectedConsolidation) return;
+    const currentIds = selectedConsolidation.packageIds || [];
+    const updatedPackageIds = currentIds.filter((id) => id !== pkgId && id !== packages.find(p => p.trackingId === id)?.id);
+
+    if (updatedPackageIds.length === 0) {
+      message.error('Consolidation box must contain at least 1 package.');
+      return;
+    }
+
+    try {
+      setUpdatingBox(true);
+      const updated = await dispatch(
+        updateConsolidation({ id: selectedConsolidation.id, packageIds: updatedPackageIds })
+      ).unwrap();
+      setSelectedConsolidation(updated);
+      dispatch(fetchPackages());
+      message.success('Package removed from consolidation box.');
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to remove package';
+      message.error(msg);
+    } finally {
+      setUpdatingBox(false);
+    }
+  };
+
+  const handleAddPackageToBox = async () => {
+    if (!selectedConsolidation || !selectedAddPkgId) return;
+    const currentIds = selectedConsolidation.packageIds || [];
+    if (currentIds.includes(selectedAddPkgId)) return;
+
+    try {
+      setUpdatingBox(true);
+      const updated = await dispatch(
+        updateConsolidation({ id: selectedConsolidation.id, packageIds: [...currentIds, selectedAddPkgId] })
+      ).unwrap();
+      setSelectedConsolidation(updated);
+      dispatch(fetchPackages());
+      setSelectedAddPkgId('');
+      message.success('Package added to consolidation box.');
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to add package';
+      message.error(msg);
+    } finally {
+      setUpdatingBox(false);
+    }
+  };
+
+  const availableCustomerPackages = useMemo(() => {
+    if (!selectedConsolidation) return [];
+    const boxWarehouse = (selectedConsolidation.originCountry || 'Guangzhou Hub').toLowerCase().trim();
+
+    return packages.filter((p) => {
+      const isCustomer =
+        p.customerId === selectedConsolidation.customerId || p.customerName === selectedConsolidation.customerName;
+      const isStatusValid = ['received_cn', 'ready_to_pack', 'received_at_warehouse'].includes(p.status);
+      const isNotAlreadyAttached =
+        !selectedConsolidation.packageIds.includes(p.id) && !selectedConsolidation.packageIds.includes(p.trackingId);
+
+      // Strict Warehouse Match: Package MUST be stored at the SAME warehouse facility
+      const pkgWarehouse = (p.originCountry || 'Guangzhou Hub').toLowerCase().trim();
+      const isSameWarehouse = pkgWarehouse.includes(boxWarehouse) || boxWarehouse.includes(pkgWarehouse);
+
+      return isCustomer && isStatusValid && isNotAlreadyAttached && isSameWarehouse;
+    });
+  }, [packages, selectedConsolidation]);
 
   const filteredConsolidations = useMemo(() => {
     return consolidations.filter((c) => {
@@ -242,13 +311,21 @@ export const ConsolidationManagement: React.FC = () => {
 
             {/* Attached Parcels Breakdown */}
             <div>
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
-                ATTACHED PARCELS ({selectedConsolidation.packageIds.length})
-              </h4>
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest m-0">
+                  ATTACHED PARCELS ({selectedConsolidation.packageIds.length})
+                </h4>
+                {selectedConsolidation.status === 'ready_to_batch' && (
+                  <Tag color="orange" className="font-bold text-[10px] uppercase border-none m-0">
+                    EDITABLE BEFORE BATCHING
+                  </Tag>
+                )}
+              </div>
+
               <div className="space-y-3">
                 {attachedPackages.length > 0 ? (
                   attachedPackages.map((pkg) => (
-                    <div key={pkg.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-start">
+                    <div key={pkg.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-start">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-brand-navy text-xs">{pkg.trackingId}</span>
@@ -259,9 +336,24 @@ export const ConsolidationManagement: React.FC = () => {
                           Weight: {pkg.weightKg}kg | CBM: {pkg.cbm?.toFixed(3) || '0.000'}m³
                         </div>
                       </div>
-                      {pkg.photos && pkg.photos.length > 0 && (
-                        <Image src={pkg.photos[0]} alt="Condition" className="w-12 h-12 rounded object-cover border border-slate-200" />
-                      )}
+
+                      <div className="flex items-center gap-2">
+                        {pkg.photos && pkg.photos.length > 0 && (
+                          <Image src={pkg.photos[0]} alt="Condition" className="w-12 h-12 rounded object-cover border border-slate-200" />
+                        )}
+                        {selectedConsolidation.status === 'ready_to_batch' && (
+                          <Button
+                            danger
+                            size="small"
+                            type="text"
+                            loading={updatingBox}
+                            className="font-bold text-xs"
+                            onClick={() => handleRemovePackageFromBox(pkg.id)}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -269,11 +361,57 @@ export const ConsolidationManagement: React.FC = () => {
                     <p className="text-xs font-bold text-slate-400 m-0">Package IDs in this request:</p>
                     <div className="flex flex-wrap gap-1.5 justify-center mt-2">
                       {selectedConsolidation.packageIds.map((pid) => (
-                        <Tag key={pid} color="blue" className="m-0 font-mono text-xs">
-                          {pid}
-                        </Tag>
+                        <div key={pid} className="flex items-center gap-1 bg-white border border-slate-200 px-2 py-1 rounded text-xs font-mono">
+                          <span>{pid}</span>
+                          {selectedConsolidation.status === 'ready_to_batch' && (
+                            <button
+                              onClick={() => handleRemovePackageFromBox(pid)}
+                              className="text-red-500 hover:text-red-700 ml-1 text-xs font-bold"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Add Available Package Section */}
+                {selectedConsolidation.status === 'ready_to_batch' && (
+                  <div className="mt-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <h5 className="text-xs font-bold text-[#0A1128] m-0 mb-2">
+                      Add Another Received Package for {selectedConsolidation.customerName}:
+                    </h5>
+                    {availableCustomerPackages.length > 0 ? (
+                      <div className="flex gap-2">
+                        <Select
+                          size="large"
+                          className="flex-1"
+                          placeholder="Select package stored at warehouse..."
+                          value={selectedAddPkgId || undefined}
+                          onChange={setSelectedAddPkgId}
+                          options={availableCustomerPackages.map((p) => ({
+                            label: `${p.trackingId} - ${p.description || 'Goods'} (${p.weightKg || 0}kg)`,
+                            value: p.id,
+                          }))}
+                        />
+                        <Button
+                          type="primary"
+                          size="large"
+                          disabled={!selectedAddPkgId}
+                          loading={updatingBox}
+                          onClick={handleAddPackageToBox}
+                          className="bg-brand-orange hover:bg-[#E86E21] font-bold"
+                        >
+                          + Add to Box
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 m-0 italic">
+                        No additional unassigned warehouse packages found for this customer.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

@@ -4,7 +4,7 @@ import { ArrowLeftOutlined, PlusOutlined, DatabaseOutlined, SaveOutlined } from 
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchAllBatches } from '../../../store/slices/adminSlice';
-import { addPackagesToBatch, fetchConsolidations } from '../../../store/slices/shipmentSlice';
+import { addPackagesToBatch, fetchConsolidations, updateBatchStatus } from '../../../store/slices/shipmentSlice';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { formatWeight, formatCbm, formatDate } from '../../../utils/formatters';
 
@@ -177,12 +177,48 @@ export const ViewBatchPage: React.FC = () => {
           </Card>
         </div>
 
-        {/* Right Column: Package List */}
-        <div className="md:col-span-2">
-          <Card bordered={false} className="shadow-sm rounded-xl h-full">
+        {/* Right Column: Package List & Batch Controls */}
+        <div className="md:col-span-2 space-y-6">
+          {/* Status Update Toolbar */}
+          <Card bordered={false} className="shadow-sm rounded-xl">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                  Master Batch Lifecycle Status
+                </span>
+                <div className="flex items-center gap-2">
+                  <StatusBadge module="shipment" status={batch.status} />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Select
+                  size="large"
+                  value={batch.status}
+                  className="w-full sm:w-64"
+                  onChange={async (newStatus) => {
+                    try {
+                      await dispatch(updateBatchStatus({ id: batch.id, status: newStatus })).unwrap();
+                      dispatch(fetchAllBatches());
+                      dispatch(fetchConsolidations());
+                      message.success(`Batch status updated to ${newStatus}`);
+                    } catch (err: any) {
+                      message.error(err?.message || 'Failed to update batch status');
+                    }
+                  }}
+                >
+                  <Option value="shipping_exported">✈️ Shipped / Exported (In Transit)</Option>
+                  <Option value="arrived_ng">🇳🇬 Arrived in Nigeria (Lagos Hub)</Option>
+                  <Option value="delivered">✅ Delivered / Completed</Option>
+                </Select>
+              </div>
+            </div>
+          </Card>
+
+          <Card bordered={false} className="shadow-sm rounded-xl">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-bold text-slate-800 m-0">Consolidated Shipments</h2>
-              <StatusBadge module="shipment" status={batch.status} />
+              <Tag color="blue" className="font-bold uppercase m-0">{batchConsolidations.length} Consolidations Attached</Tag>
             </div>
             
             <Table 
