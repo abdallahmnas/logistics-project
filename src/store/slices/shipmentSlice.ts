@@ -43,6 +43,22 @@ export const submitConsolidation = createAsyncThunk(
   }
 );
 
+export const updateConsolidation = createAsyncThunk(
+  'shipments/updateConsolidation',
+  async ({ id, packageIds }: { id: string; packageIds: string[] }) => {
+    const res = await apiClient.put(`/shipments/consolidations/${id}`, { packageIds });
+    return res.data.data;
+  }
+);
+
+export const updateBatchStatus = createAsyncThunk(
+  'shipments/updateBatchStatus',
+  async ({ id, status }: { id: string; status: string }) => {
+    const res = await apiClient.patch(`/shipments/batches/${id}/status`, { status });
+    return res.data.data;
+  }
+);
+
 export interface ScanPackagePayload {
   packageId: string;
   weightKg: number;
@@ -182,6 +198,12 @@ const shipmentSlice = createSlice({
       })
       .addCase(fetchConsolidations.fulfilled, (state, action) => {
         state.consolidations = action.payload;
+      })
+      .addCase(updateConsolidation.fulfilled, (state, action) => {
+        const idx = state.consolidations.findIndex((c) => c.id === action.payload.id);
+        if (idx !== -1) {
+          state.consolidations[idx] = action.payload;
+        }
       })
       .addCase(scanPackage.fulfilled, (state, action) => {
         const idx = state.packages.findIndex((p) => p.id === action.payload.packageId);

@@ -54,6 +54,17 @@ export const getConsolidations = async (req: Request, res: Response): Promise<vo
   }
 };
 
+export const updateConsolidation = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const adminUser = (req as any).user;
+    const consolidation = await ShipmentService.updateConsolidationPackages(id, req.body, adminUser);
+    res.status(200).json({ success: true, data: consolidation });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 export const createBatch = async (req: Request, res: Response): Promise<void> => {
   try {
     const batch = await ShipmentService.createBatch(req.body);
@@ -77,6 +88,18 @@ export const addPackagesToBatch = async (req: Request, res: Response): Promise<v
     const { id } = req.params;
     const { packageIds } = req.body;
     const batch = await ShipmentService.addPackagesToBatch(id, packageIds);
+    res.status(200).json({ success: true, data: batch });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const updateBatchStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const adminUser = (req as any).user;
+    const batch = await ShipmentService.updateBatchStatus(id, status, adminUser);
     res.status(200).json({ success: true, data: batch });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

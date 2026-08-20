@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Card, Form, Input, InputNumber, Button, message } from "antd";
+import React, { useEffect, useMemo, useState } from "react";
+import { Card, Form, Input, InputNumber, Select, Button, message } from "antd";
 import type { UploadFile } from "antd";
 import {
   ArrowLeftOutlined,
@@ -7,10 +7,12 @@ import {
   BarcodeOutlined,
   FileTextOutlined,
   PictureOutlined,
+  EnvironmentOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { useAppDispatch } from "../../../store/hooks";
+import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { createPreAlert } from "../../../store/slices/shipmentSlice";
+import { fetchFacilities } from "../../../store/slices/facilitySlice";
 import { preAlertSchema, validateForm } from "../../../utils/validators";
 import type { PreAlertPayload } from "../../../types/shipment.types";
 import { ImageDropzone } from "../../../components/common/ImageDropzone";
@@ -37,8 +39,28 @@ export const PreAlertForm: React.FC = () => {
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { facilities } = useAppSelector((state) => state.facilities || { facilities: [] });
   const [submitting, setSubmitting] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
+
+  useEffect(() => {
+    dispatch(fetchFacilities());
+  }, [dispatch]);
+
+  const warehouseOptions = useMemo(() => {
+    if (!facilities || facilities.length === 0) {
+      return [
+        { label: "🇨🇳 Guangzhou Main Hub (China)", value: "Guangzhou Hub, China" },
+        { label: "🇨🇳 Yiwu Commodity Hub (China)", value: "Yiwu Hub, China" },
+        { label: "🇬🇧 London Cargo Hub (UK)", value: "London Hub, UK" },
+        { label: "🇺🇸 New York Cargo Hub (US)", value: "New York Hub, US" },
+      ];
+    }
+    return facilities.filter(f => f.status !== 'inactive').map((f) => ({
+      label: `${f.country === 'CN' ? '🇨🇳' : f.country === 'UK' ? '🇬🇧' : f.country === 'US' ? '🇺🇸' : '📍'} ${f.name} (${f.location})`,
+      value: `${f.name}, ${f.location}`,
+    }));
+  }, [facilities]);
 
   const onFinish = async (values: PreAlertPayload) => {
     const errors = await validateForm(
@@ -62,6 +84,7 @@ export const PreAlertForm: React.FC = () => {
           chineseTrackingNo: values.chineseTrackingNo,
           supplierName: values.supplierName,
           description: values.description,
+          originCountry: values.originCountry,
           estimatedItems: values.estimatedItems,
           notes: values.notes,
           photos: fileList.map((f) => f.name),
@@ -91,8 +114,7 @@ export const PreAlertForm: React.FC = () => {
           Pre-Alert a Package
         </h1>
         <p className="text-slate-500 mt-1 mb-0 text-sm text-center">
-          Let us know a package is coming so we can watch for it at our
-          Guangzhou warehouse.
+          Let us know a package is coming so we can watch for it at our warehouse facility.
         </p>
       </div>
 
@@ -106,7 +128,29 @@ export const PreAlertForm: React.FC = () => {
             layout="vertical"
             onFinish={onFinish}
             requiredMark={false}
+            initialValues={{
+              originCountry: 'Guangzhou Hub, China',
+            }}
           >
+            <SectionHeading
+              icon={<EnvironmentOutlined />}
+              title="Receiving Warehouse Facility"
+              subtitle="Select where your supplier is dropping off your package"
+            />
+            <Form.Item
+              name="originCountry"
+              label="Receiving Warehouse"
+              rules={[{ required: true, message: "Please select a warehouse facility" }]}
+            >
+              <Select
+                size="large"
+                placeholder="Select receiving warehouse..."
+                options={warehouseOptions}
+              />
+            </Form.Item>
+
+            <div className="border-t border-slate-100 my-6" />
+
             <SectionHeading
               icon={<BarcodeOutlined />}
               title="Tracking details"
@@ -114,7 +158,7 @@ export const PreAlertForm: React.FC = () => {
             />
             <Form.Item
               name="chineseTrackingNo"
-              label="Chinese Domestic Tracking Number"
+              label="Domestic / Foreign Tracking Number"
               rules={[
                 { required: true, message: "Please enter the tracking number" },
               ]}

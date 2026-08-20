@@ -12,6 +12,8 @@ import {
   scanPackageController,
   adminCreatePackage,
   addPackagesToBatch,
+  updateConsolidation,
+  updateBatchStatus,
 } from '../controllers/shipment.controller';
 
 const router = Router();
@@ -26,6 +28,11 @@ router.post('/pre-alert', createPreAlert);
 router.get('/packages', getPackages);
 router.post('/consolidate', consolidatePackages);
 router.get('/consolidations', getConsolidations);
+router.put(
+  '/consolidations/:id',
+  authorize('super_admin', 'admin', 'warehouse_cn', 'warehouse_ng'),
+  updateConsolidation
+);
 
 // Admin/warehouse routes
 router.post(
@@ -43,6 +50,11 @@ router.patch(
   '/batches/:id/packages',
   authorize('super_admin', 'admin', 'warehouse_cn', 'warehouse_ng'),
   addPackagesToBatch
+);
+router.patch(
+  '/batches/:id/status',
+  authorize('super_admin', 'admin', 'warehouse_cn', 'warehouse_ng'),
+  updateBatchStatus
 );
 router.patch(
   '/packages/:id/status',

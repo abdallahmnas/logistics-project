@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Card, Form, Input, Button, Switch, Tag, message } from 'antd';
-import { SaveOutlined, UserOutlined, MailOutlined, PhoneOutlined, LockOutlined, KeyOutlined, CopyOutlined } from '@ant-design/icons';
+import { SaveOutlined, UserOutlined, MailOutlined, PhoneOutlined, LockOutlined, KeyOutlined, CopyOutlined, SafetyCertificateOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import apiClient from '../../../api/axios';
-import { fetchMe } from '../../../store/slices/authSlice';
+import { fetchCurrentUser } from '../../../store/slices/authSlice';
 
 interface ProfileFormValues {
   firstName: string;
@@ -25,9 +25,15 @@ export const ProfilePage: React.FC = () => {
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [newPasswordVal, setNewPasswordVal] = useState('');
+  const [confirmPasswordVal, setConfirmPasswordVal] = useState('');
   const [emailNotif, setEmailNotif] = useState(true);
   const [smsNotif, setSmsNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(true);
+
+  const hasMinLength = newPasswordVal.length >= 6;
+  const hasLetterAndNumber = /[a-zA-Z]/.test(newPasswordVal) && /[0-9]/.test(newPasswordVal);
+  const passwordsMatch = newPasswordVal.length > 0 && newPasswordVal === confirmPasswordVal;
 
   const handleUpdateProfile = async (values: ProfileFormValues) => {
     try {
@@ -38,7 +44,7 @@ export const ProfilePage: React.FC = () => {
         phone: values.phone,
       });
       message.success('Personal information updated successfully!');
-      dispatch(fetchMe());
+      dispatch(fetchCurrentUser());
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to update profile';
       message.error(msg);
@@ -61,6 +67,8 @@ export const ProfilePage: React.FC = () => {
       });
       message.success('Password updated successfully!');
       passwordForm.resetFields();
+      setNewPasswordVal('');
+      setConfirmPasswordVal('');
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to update password. Please check your current password.';
       message.error(msg);
@@ -154,12 +162,17 @@ export const ProfilePage: React.FC = () => {
             </Form>
           </Card>
 
-          {/* Change Password Card */}
-          <Card bordered={false} className="shadow-sm border border-slate-100 rounded-2xl">
-            <h3 className="text-lg font-bold text-[#0A1128] mb-1 flex items-center gap-2">
-              <KeyOutlined className="text-brand-orange" /> Security & Change Password
-            </h3>
-            <p className="text-xs text-slate-400 mb-6">Ensure your account uses a strong, unique password.</p>
+          {/* Security & Change Password Card */}
+          <Card bordered={false} className="shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-3.5 mb-6 p-4 rounded-xl bg-slate-50 border border-slate-100">
+              <div className="w-10 h-10 rounded-xl bg-[#0A1128] text-brand-orange flex items-center justify-center shrink-0 shadow-sm">
+                <SafetyCertificateOutlined className="text-xl" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#0A1128] m-0">Security & Password Management</h3>
+                <p className="text-xs text-slate-500 m-0">Update your password regularly to protect your shipments and RMB wallet.</p>
+              </div>
+            </div>
 
             <Form
               form={passwordForm}
@@ -169,42 +182,70 @@ export const ProfilePage: React.FC = () => {
             >
               <Form.Item 
                 name="currentPassword" 
-                label={<span className="font-bold text-slate-700">Current Password</span>} 
+                label={<span className="font-bold text-slate-700">Current Password <span className="text-red-500">*</span></span>} 
                 rules={[{ required: true, message: 'Please enter your current password' }]}
               >
-                <Input.Password prefix={<LockOutlined className="text-slate-400" />} size="large" placeholder="••••••••" className="bg-slate-50 border-slate-200" />
+                <Input.Password prefix={<LockOutlined className="text-slate-400 mr-1" />} size="large" placeholder="Enter current password" className="bg-slate-50 border-slate-200 py-2.5" />
               </Form.Item>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Form.Item 
                   name="newPassword" 
-                  label={<span className="font-bold text-slate-700">New Password</span>} 
+                  label={<span className="font-bold text-slate-700">New Password <span className="text-red-500">*</span></span>} 
                   rules={[
                     { required: true, message: 'Please enter a new password' },
                     { min: 6, message: 'Password must be at least 6 characters' }
                   ]}
                 >
-                  <Input.Password prefix={<LockOutlined className="text-slate-400" />} size="large" placeholder="••••••••" className="bg-slate-50 border-slate-200" />
+                  <Input.Password 
+                    prefix={<KeyOutlined className="text-slate-400 mr-1" />} 
+                    size="large" 
+                    placeholder="Minimum 6 characters" 
+                    className="bg-slate-50 border-slate-200 py-2.5" 
+                    onChange={(e) => setNewPasswordVal(e.target.value)}
+                  />
                 </Form.Item>
 
                 <Form.Item 
                   name="confirmPassword" 
-                  label={<span className="font-bold text-slate-700">Confirm New Password</span>} 
+                  label={<span className="font-bold text-slate-700">Confirm New Password <span className="text-red-500">*</span></span>} 
                   rules={[{ required: true, message: 'Please confirm your new password' }]}
                 >
-                  <Input.Password prefix={<LockOutlined className="text-slate-400" />} size="large" placeholder="••••••••" className="bg-slate-50 border-slate-200" />
+                  <Input.Password 
+                    prefix={<CheckCircleOutlined className="text-slate-400 mr-1" />} 
+                    size="large" 
+                    placeholder="Re-enter new password" 
+                    className="bg-slate-50 border-slate-200 py-2.5" 
+                    onChange={(e) => setConfirmPasswordVal(e.target.value)}
+                  />
                 </Form.Item>
               </div>
 
-              <Form.Item className="mb-0 mt-6">
+              {/* Password Requirement Indicators */}
+              {newPasswordVal && (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 mb-6 text-xs space-y-2 animate-fade-in-up">
+                  <div className="font-bold text-slate-700">Password Checklist:</div>
+                  <div className={`flex items-center gap-2 ${hasMinLength ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                    <span>{hasMinLength ? '✓' : '○'}</span> At least 6 characters long
+                  </div>
+                  <div className={`flex items-center gap-2 ${hasLetterAndNumber ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                    <span>{hasLetterAndNumber ? '✓' : '○'}</span> Contains both letters and numbers
+                  </div>
+                  <div className={`flex items-center gap-2 ${passwordsMatch ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                    <span>{passwordsMatch ? '✓' : '○'}</span> Passwords match
+                  </div>
+                </div>
+              )}
+
+              <Form.Item className="mb-0 mt-2">
                 <Button 
                   type="primary" 
                   htmlType="submit" 
                   icon={<KeyOutlined />} 
                   loading={updatingPassword}
-                  className="bg-[#0A1128] hover:bg-[#1a2542] border-none font-bold px-6 shadow-sm"
+                  className="bg-[#0A1128] hover:bg-[#1a2542] border-none font-extrabold px-8 shadow-md h-12 text-sm"
                 >
-                  Update Password
+                  Update Password ➔
                 </Button>
               </Form.Item>
             </Form>
