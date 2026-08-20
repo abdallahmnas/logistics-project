@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, InputNumber, Upload, Table, Tag, Form, message } from 'antd';
-import { SwapOutlined, CloudUploadOutlined, BankOutlined, QuestionCircleOutlined, DownloadOutlined, SyncOutlined } from '@ant-design/icons';
+import { Card, Button, Input, InputNumber, Upload, Table, Tag, Form, message, Image } from 'antd';
+import { SwapOutlined, CloudUploadOutlined, BankOutlined, QuestionCircleOutlined, DownloadOutlined, SyncOutlined, DeleteOutlined, QrcodeOutlined, BarcodeOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchExchanges, fetchActiveRate, submitExchangeRequest } from '../../../store/slices/exchangeSlice';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +17,8 @@ export const ExchangeList: React.FC = () => {
   const [rmbDestType, setRmbDestType] = useState<RmbDestinationType>('wechat_pay');
   const [sendAmount, setSendAmount] = useState<number>(500000);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [fileName, setFileName] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -29,6 +31,38 @@ export const ExchangeList: React.FC = () => {
   const processingFee = sendAmount ? sendAmount * 0.015 : 0;
   const totalToPay = sendAmount + processingFee;
   const recentExchanges = exchanges.slice(0, 3);
+
+  const handleFileChange = (fileList: any[]) => {
+    if (!fileList || fileList.length === 0) {
+      setPreviewUrl('');
+      setFileName('');
+      setQrCodeUrl('');
+      return;
+    }
+    const fileItem = fileList[0];
+    const file = fileItem.originFileObj || fileItem;
+
+    if (file && file instanceof File) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setPreviewUrl(result);
+        setQrCodeUrl(result);
+        setFileName(file.name);
+      };
+      reader.readAsDataURL(file);
+    } else if (fileItem.url || fileItem.thumbUrl) {
+      setPreviewUrl(fileItem.url || fileItem.thumbUrl);
+      setQrCodeUrl(fileItem.url || fileItem.thumbUrl);
+      setFileName(fileItem.name || 'uploaded_image.png');
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setPreviewUrl('');
+    setFileName('');
+    setQrCodeUrl('');
+  };
 
   const handleSubmit = async (values: any) => {
     try {
@@ -43,13 +77,14 @@ export const ExchangeList: React.FC = () => {
         })
       ).unwrap();
 
-      message.success('Currency Exchange request submitted successfully!');
+      message.success('Currency exchange request created successfully!');
       form.resetFields();
-      setSendAmount(500000);
+      setPreviewUrl('');
+      setFileName('');
+      setQrCodeUrl('');
       dispatch(fetchExchanges());
     } catch (err: any) {
-      const msg = err?.message || 'Failed to submit exchange request. Please check inputs and try again.';
-      message.error(msg);
+      message.error(err?.message || 'Failed to submit exchange request');
     } finally {
       setSubmitting(false);
     }
@@ -240,25 +275,61 @@ export const ExchangeList: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mb-6">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">UPLOAD RECEIVING QR CODE (OPTIONAL)</label>
+              <div className="mb-6 space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    UPLOAD RECEIVING QR CODE OR BARCODE (OPTIONAL)
+                  </label>
+                  <span className="text-[10px] text-brand-orange font-bold uppercase tracking-wider bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
+                    QR & Barcode Supported
+                  </span>
+                </div>
+
                 <Dragger
                   className="bg-white border-dashed border-slate-300 rounded-xl"
                   beforeUpload={() => false}
-                  onChange={({ fileList: newFileList }) => {
-                    newFileList.forEach((f) => { f.status = 'done'; });
-                    if (newFileList.length > 0) {
-                      setQrCodeUrl(newFileList[0].name || 'qrcode.png');
-                    }
-                  }}
+                  onChange={({ fileList: newFileList }) => handleFileChange(newFileList)}
+                  showUploadList={false}
+                  accept="image/*"
                   customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
                 >
-                  <p className="ant-upload-drag-icon">
-                    <CloudUploadOutlined className="text-slate-400 text-3xl" />
+                  <p className="ant-upload-drag-icon flex justify-center gap-3">
+                    <QrcodeOutlined className="text-slate-400 text-3xl" />
+                    <BarcodeOutlined className="text-brand-orange text-3xl" />
                   </p>
-                  <p className="ant-upload-text font-bold text-slate-700 text-sm">Click or drag QR code image</p>
-                  <p className="ant-upload-hint text-xs text-slate-400">PNG, JPG up to 5MB</p>
+                  <p className="ant-upload-text font-bold text-slate-700 text-sm">Click or drag QR Code or Barcode image</p>
+                  <p className="ant-upload-hint text-xs text-slate-400">PNG, JPG, WEBP up to 5MB</p>
                 </Dragger>
+
+                {previewUrl && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm animate-fade-in-up">
+                    <div className="flex items-center gap-3">
+                      <Image
+                        src={previewUrl}
+                        alt="QR or Barcode Preview"
+                        className="w-20 h-20 rounded-lg object-contain border border-slate-200 bg-white"
+                        fallback="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=600"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block truncate max-w-[200px] sm:max-w-[300px]">
+                          {fileName || 'receiving_code.png'}
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block mt-1">
+                          ✓ Image Preview Ready (Click photo to enlarge)
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={handleRemoveImage}
+                      className="font-bold text-xs hover:bg-red-50"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <Button 
