@@ -13,11 +13,13 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { fetchPackages, fetchConsolidations, submitConsolidation } from "../../../store/slices/shipmentSlice";
+import { fetchFacilities } from "../../../store/slices/facilitySlice";
 
 export const NewConsolidationPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { packages, consolidations } = useAppSelector((state) => state.shipments);
+  const { facilities } = useAppSelector((state) => state.facilities || { facilities: [] });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeWarehouse, setActiveWarehouse] = useState<string>("all");
   const [freight, setFreight] = useState<"air" | "sea">("air");
@@ -29,7 +31,30 @@ export const NewConsolidationPage: React.FC = () => {
   useEffect(() => {
     dispatch(fetchPackages());
     dispatch(fetchConsolidations());
+    dispatch(fetchFacilities());
   }, [dispatch]);
+
+  const warehouseTabs = useMemo(() => {
+    const tabs = [{ key: "all", label: "All Consolidable Warehouses" }];
+    if (facilities && facilities.length > 0) {
+      facilities
+        .filter((f) => f.status !== "inactive")
+        .forEach((f) => {
+          tabs.push({
+            key: f.name.toLowerCase().split(" ")[0],
+            label: `${f.name} (${f.country})`,
+          });
+        });
+    } else {
+      tabs.push(
+        { key: "guangzhou", label: "Guangzhou Hub (China)" },
+        { key: "yiwu", label: "Yiwu Hub (China)" },
+        { key: "uk", label: "London Hub (UK)" },
+        { key: "us", label: "New York Hub (US)" },
+      );
+    }
+    return tabs;
+  }, [facilities]);
 
   // ONLY packages physically RECEIVED at the warehouse (received_cn, ready_to_pack, etc.) can be consolidated.
   // PRE-ALERTED packages are excluded until scanned into the warehouse!
@@ -89,7 +114,14 @@ export const NewConsolidationPage: React.FC = () => {
     if (selectedIds.length === warehouseItems.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(warehouseItems.map((i) => i.id));
+      const firstWh = warehouseItems[0]?.warehouse;
+      const sameWarehouseItems = warehouseItems.filter((i) => i.warehouse === firstWh);
+      if (sameWarehouseItems.length < warehouseItems.length) {
+        message.info(
+          `Selected all packages stored at ${firstWh}. Switch warehouse tabs to select packages from other facilities.`
+        );
+      }
+      setSelectedIds(sameWarehouseItems.map((i) => i.id));
     }
   };
 
@@ -141,13 +173,7 @@ export const NewConsolidationPage: React.FC = () => {
       {/* Warehouse Selector Filter Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
-          {[
-            { key: "all", label: "All Consolidable Warehouses" },
-            { key: "guangzhou", label: "Guangzhou Hub (China)" },
-            { key: "yiwu", label: "Yiwu Hub (China)" },
-            { key: "uk", label: "London Hub (UK)" },
-            { key: "us", label: "New York Hub (US)" },
-          ].map((tab) => (
+          {warehouseTabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => {

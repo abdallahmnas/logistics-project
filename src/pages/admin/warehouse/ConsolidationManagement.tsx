@@ -76,13 +76,21 @@ export const ConsolidationManagement: React.FC = () => {
 
   const availableCustomerPackages = useMemo(() => {
     if (!selectedConsolidation) return [];
-    return packages.filter(
-      (p) =>
-        (p.customerId === selectedConsolidation.customerId || p.customerName === selectedConsolidation.customerName) &&
-        ['received_cn', 'ready_to_pack', 'received_at_warehouse'].includes(p.status) &&
-        !selectedConsolidation.packageIds.includes(p.id) &&
-        !selectedConsolidation.packageIds.includes(p.trackingId)
-    );
+    const boxWarehouse = (selectedConsolidation.originCountry || 'Guangzhou Hub').toLowerCase().trim();
+
+    return packages.filter((p) => {
+      const isCustomer =
+        p.customerId === selectedConsolidation.customerId || p.customerName === selectedConsolidation.customerName;
+      const isStatusValid = ['received_cn', 'ready_to_pack', 'received_at_warehouse'].includes(p.status);
+      const isNotAlreadyAttached =
+        !selectedConsolidation.packageIds.includes(p.id) && !selectedConsolidation.packageIds.includes(p.trackingId);
+
+      // Strict Warehouse Match: Package MUST be stored at the SAME warehouse facility
+      const pkgWarehouse = (p.originCountry || 'Guangzhou Hub').toLowerCase().trim();
+      const isSameWarehouse = pkgWarehouse.includes(boxWarehouse) || boxWarehouse.includes(pkgWarehouse);
+
+      return isCustomer && isStatusValid && isNotAlreadyAttached && isSameWarehouse;
+    });
   }, [packages, selectedConsolidation]);
 
   const filteredConsolidations = useMemo(() => {

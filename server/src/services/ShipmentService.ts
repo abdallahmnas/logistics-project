@@ -219,6 +219,18 @@ export class ShipmentService {
       throw new Error('Only packages physically received at the warehouse (received_cn or ready_to_pack) can be consolidated');
     }
 
+    // Strict Warehouse Check: All packages must be stored at the SAME warehouse facility
+    const warehouseSet = new Set(
+      packages.map((pkg) => (pkg.originCountry || 'Guangzhou Hub').toLowerCase().trim())
+    );
+    if (warehouseSet.size > 1) {
+      throw new Error(
+        'Cannot consolidate packages located at different warehouses. All packages in a single consolidation box must be stored at the same warehouse facility.'
+      );
+    }
+
+    const originCountry = packages[0]?.originCountry || 'Guangzhou Hub';
+
     const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);
     const totalCbm = packages.reduce((acc, p) => acc + (p.cbm || 0), 0);
     const ratePerKg = payload.shippingMethod === 'air' ? 10 : 2;
@@ -238,6 +250,7 @@ export class ShipmentService {
       totalWeightKg,
       totalCbm,
       shippingFee,
+      originCountry,
       status: 'ready_to_batch',
     });
 
@@ -304,8 +317,17 @@ export class ShipmentService {
       await Package.update({ status: 'consolidating' }, { where: { id: addedIds } });
     }
 
-    // Recalculate metrics
+    // Recalculate metrics & verify single warehouse facility
     const packages = await Package.findAll({ where: { id: newPackageIds } });
+    const warehouseSet = new Set(
+      packages.map((pkg) => (pkg.originCountry || 'Guangzhou Hub').toLowerCase().trim())
+    );
+    if (warehouseSet.size > 1) {
+      throw new Error(
+        'Cannot add package from a different warehouse into this consolidation box. All packages in a consolidation must be at the same warehouse facility.'
+      );
+    }
+
     const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);
     const totalCbm = packages.reduce((acc, p) => acc + (p.cbm || 0), 0);
     const ratePerKg = consolidation.shippingMethod === 'air' ? 10 : 2;

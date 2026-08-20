@@ -13,6 +13,7 @@ export interface ConsolidationAttributes {
   totalWeightKg: number;
   totalCbm: number;
   shippingFee: number;
+  originCountry?: string;
   status: 'pending_packing' | 'ready_to_batch' | 'batched';
   createdAt?: Date;
   updatedAt?: Date;
@@ -32,6 +33,7 @@ export class Consolidation extends Model<ConsolidationAttributes, ConsolidationC
   public declare totalWeightKg: number;
   public declare totalCbm: number;
   public declare shippingFee: number;
+  public declare originCountry?: string;
   public declare status: 'pending_packing' | 'ready_to_batch' | 'batched';
   public declare readonly createdAt: Date;
   public declare readonly updatedAt: Date;
@@ -85,6 +87,10 @@ Consolidation.init(
     shippingFee: {
       type: DataTypes.FLOAT,
       defaultValue: 0,
+    },
+    originCountry: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     status: {
       type: DataTypes.STRING,
