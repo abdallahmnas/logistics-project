@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, InputNumber, Upload, Tag, Form, message } from 'antd';
+import { Card, Button, Input, InputNumber, Upload, Tag, Form, message, Image } from 'antd';
 import type { UploadFile } from 'antd';
 import { LinkOutlined, CloudUploadOutlined, SafetyCertificateOutlined, InboxOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
@@ -177,34 +177,54 @@ export const BuyForMeList: React.FC = () => {
 
       {/* Recent Requests */}
       <div className="flex justify-between items-end mb-6">
-        <h2 className="text-2xl font-bold text-[#0A1128] m-0">Recent Requests</h2>
-        <Button type="link" className="text-[#0A1128] font-bold p-0 hover:text-brand-orange text-sm flex items-center gap-1">
-          View All ↗
-        </Button>
+        <h2 className="text-2xl font-bold text-[#0A1128] m-0">My Procurement Requests</h2>
+        <span className="text-xs text-slate-500 font-medium">Total ({requests.length})</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {requests.slice(0, 3).map(req => (
-          <Card key={req.id} variant="borderless" className="shadow-sm border border-slate-100 rounded-xl hover:shadow-md transition-shadow">
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-xs font-medium text-slate-400">{req.id}</span>
-              <Tag color={req.status === 'quoted' ? 'orange' : 'default'} className="m-0 font-bold uppercase tracking-wide border-none shadow-sm">
-                {req.status === 'quoted' ? 'ACTION: PAY' : req.status === 'submitted' ? 'PENDING QUOTE' : 'PURCHASED'}
-              </Tag>
-            </div>
-            <h3 className="text-base font-bold text-[#0A1128] mb-4 truncate">{req.specifications || 'Industrial Item'}</h3>
-            <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  {req.status === 'quoted' ? 'Quoted Price' : 'Requested'}
-                </span>
-                <span className="text-sm font-bold text-slate-700">
-                  {req.status === 'quoted' ? `¥${req.totalCostRmb}` : new Date(req.submittedAt).toLocaleDateString()}
-                </span>
+        {requests.map((req) => {
+          const photos = req.productPhotos || [];
+          const firstPhoto = photos[0] || 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300';
+          return (
+            <Card key={req.id} variant="borderless" className="shadow-sm border border-slate-100 rounded-xl hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-xs font-mono font-bold text-brand-navy">{req.id}</span>
+                <Tag color={req.status === 'quoted' ? 'orange' : req.status === 'submitted' ? 'blue' : 'green'} className="m-0 font-bold uppercase tracking-wide border-none shadow-sm text-[10px]">
+                  {req.status === 'quoted' ? 'ACTION: PAY' : req.status === 'submitted' ? 'PENDING QUOTE' : req.status.replace(/_/g, ' ')}
+                </Tag>
               </div>
-            </div>
-          </Card>
-        ))}
+
+              <div className="flex gap-3 mb-3">
+                <Image
+                  src={firstPhoto}
+                  alt="Product"
+                  className="w-16 h-16 rounded-lg object-cover border border-slate-200 shrink-0"
+                  fallback="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300"
+                />
+                <div className="space-y-1 flex-1 overflow-hidden">
+                  <h3 className="text-sm font-bold text-[#0A1128] m-0 truncate" title={req.specifications}>
+                    {req.specifications || 'Buy-For-Me Item'}
+                  </h3>
+                  <div className="text-xs text-slate-500 font-medium">Qty: {req.quantity} pcs</div>
+                  <a href={req.productUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-blue font-medium flex items-center gap-1 hover:underline">
+                    <LinkOutlined /> View Item Link
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-xs">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                    {req.status === 'quoted' || req.totalCostRmb ? 'Quoted Total' : 'Submitted'}
+                  </span>
+                  <span className="font-bold text-slate-800">
+                    {req.totalCostRmb ? `¥${req.totalCostRmb.toFixed(2)} (₦${req.totalCostNaira?.toLocaleString() || 0})` : new Date(req.submittedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

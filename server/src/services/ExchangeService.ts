@@ -19,26 +19,46 @@ export class ExchangeService {
   }
 
   public static async createExchange(userId: string, payload: {
-    amountNaira: number;
+    direction?: 'ngn_to_rmb' | 'rmb_to_ngn';
+    amountNaira?: number;
+    amountRmb?: number;
     rmbDestType: 'alipay' | 'wechat_pay' | 'chinese_bank';
     rmbDestAccount: string;
     rmbDestName: string;
     rmbDestQrCode?: string;
+    receivingBarcodeUrl?: string;
   }) {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('User not found');
 
     const activeRate = await this.getActiveRate();
     const platformRate = activeRate.platformRate;
-    const amountRmb = Number((payload.amountNaira / platformRate).toFixed(2));
+    const direction = payload.direction || 'ngn_to_rmb';
+
+    let amountNaira = payload.amountNaira || 0;
+    let amountRmb = payload.amountRmb || 0;
+
+    if (direction === 'ngn_to_rmb') {
+      if (!amountNaira || amountNaira <= 0) {
+        throw new Error('Please enter a valid Naira amount to exchange');
+      }
+      amountRmb = Number((amountNaira / platformRate).toFixed(2));
+    } else {
+      if (!amountRmb || amountRmb <= 0) {
+        throw new Error('Please enter a valid RMB/Yen amount to exchange');
+      }
+      amountNaira = Number((amountRmb * platformRate).toFixed(2));
+    }
+
     const platformFee = 5000;
-    const totalNaira = payload.amountNaira + platformFee;
+    const totalNaira = amountNaira + platformFee;
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const exchange = await ExchangeRequest.create({
       customerId: user.customerId,
       customerName: `${user.firstName} ${user.lastName}`,
-      amountNaira: payload.amountNaira,
+      direction,
+      amountNaira,
       amountRmb,
       exchangeRate: platformRate,
       platformFee,
@@ -50,7 +70,8 @@ export class ExchangeService {
       rmbDestType: payload.rmbDestType,
       rmbDestAccount: payload.rmbDestAccount,
       rmbDestName: payload.rmbDestName,
-      rmbDestQrCode: payload.rmbDestQrCode,
+      rmbDestQrCode: payload.rmbDestQrCode || payload.receivingBarcodeUrl,
+      receivingBarcodeUrl: payload.receivingBarcodeUrl || payload.rmbDestQrCode,
       requestedAt: new Date(),
       expiresAt,
     });

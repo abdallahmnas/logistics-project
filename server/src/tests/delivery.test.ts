@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../index';
-import { sequelize, User } from '../models';
+import { sequelize, User, Wallet } from '../models';
 import { generateToken } from '../config/jwt';
 
 describe('Local Delivery API', () => {
@@ -21,6 +21,15 @@ describe('Local Delivery API', () => {
       phone: '+2348055556666',
       role: 'customer',
       isVerified: true,
+    });
+
+    await Wallet.destroy({ where: { userId: customerUser.id } });
+    await Wallet.create({
+      userId: customerUser.id,
+      balance: 50000,
+      availableBalance: 50000,
+      escrowHeld: 0,
+      currency: 'NGN',
     });
 
     customerToken = generateToken({ id: customerUser.id, role: customerUser.role });
@@ -44,6 +53,7 @@ describe('Local Delivery API', () => {
         paymentMethod: 'wallet',
       });
 
+    if (res.status !== 201) console.log('DEBUG DELIVERY RES BODY:', res.body);
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
     expect(res.body.data.pickupAddress).toContain('Balogun');

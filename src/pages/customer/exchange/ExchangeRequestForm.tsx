@@ -21,7 +21,9 @@ export const ExchangeRequestForm: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { activeRate } = useAppSelector((state) => state.exchange);
+  const [direction, setDirection] = useState<'ngn_to_rmb' | 'rmb_to_ngn'>('ngn_to_rmb');
   const [amountNaira, setAmountNaira] = useState<number>(0);
+  const [amountRmb, setAmountRmb] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
   const [qrFileList, setQrFileList] = useState<UploadFile[]>([]);
   const platform: RmbDestinationType | undefined = Form.useWatch('rmbDestType', form);
@@ -37,28 +39,33 @@ export const ExchangeRequestForm: React.FC = () => {
     return Number((naira / activeRate.platformRate).toFixed(2));
   };
 
-  const supportsQr = platform === 'alipay' || platform === 'wechat_pay';
+  const calculateNaira = (rmb: number) => {
+    if (!activeRate || !rmb) return 0;
+    return Number((rmb * activeRate.platformRate).toFixed(2));
+  };
 
-  const onFinish = async (values: ExchangeRequestPayload) => {
-    const errors = await validateForm(exchangeRequestSchema, values as unknown as Record<string, unknown>);
-    if (Object.keys(errors).length > 0) {
-      form.setFields(Object.keys(errors).map((key) => ({ name: key, errors: [errors[key]] })));
-      return;
-    }
+  const supportsQr = platform === 'alipay' || platform === 'wechat_pay' || direction === 'rmb_to_ngn';
 
+  const onFinish = async (values: any) => {
     setSubmitting(true);
     try {
+      const barcodeUrl = qrFileList[0]?.url || qrFileList[0]?.name;
       await dispatch(
         submitExchangeRequest({
-          amountNaira: values.amountNaira,
-          rmbDestType: values.rmbDestType,
+          direction,
+          amountNaira: direction === 'ngn_to_rmb' ? amountNaira : calculateNaira(amountRmb),
+          amountRmb: direction === 'rmb_to_ngn' ? amountRmb : calculateRmb(amountNaira),
+          rmbDestType: values.rmbDestType || 'alipay',
           rmbDestAccount: values.rmbDestAccount,
           rmbDestName: values.rmbDestName,
-          rmbDestQrCode: qrFileList[0]?.name,
-        })
+          rmbDestQrCode: barcodeUrl,
+          receivingBarcodeUrl: barcodeUrl,
+        } as any)
       ).unwrap();
-      message.success('Exchange request created. Fund the escrow account to proceed.');
+      message.success('Currency exchange request created successfully.');
       navigate('/customer/exchange');
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to submit exchange request.');
     } finally {
       setSubmitting(false);
     }
@@ -75,10 +82,32 @@ export const ExchangeRequestForm: React.FC = () => {
         >
           Back to Exchange History
         </Button>
-        <h1 className="text-2xl font-bold text-slate-800 m-0 text-center">New P2P Exchange</h1>
-        <p className="text-slate-500 mt-1 mb-0 text-sm text-center">
-          Exchange Naira for RMB with full escrow protection
+        <h1 className="text-2xl font-bold text-slate-800 m-0 text-center">P2P Currency Exchange</h1>
+        <p className="text-slate-500 mt-1 mb-4 text-sm text-center">
+          Exchange Naira (NGN) $\leftrightarrow$ Chinese Yuan/Yen (RMB) with escrow protection
         </p>
+
+        {/* Direction Switcher Tabs */}
+        <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
+          <button
+            type="button"
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+              direction === 'ngn_to_rmb' ? 'bg-white text-brand-navy shadow-sm' : 'text-slate-500 hover:text-slate-800'
+            }`}
+            onClick={() => setDirection('ngn_to_rmb')}
+          >
+            🇳🇬 NGN ➔ 🇨🇳 RMB (Naira to Yen)
+          </button>
+          <button
+            type="button"
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+              direction === 'rmb_to_ngn' ? 'bg-white text-brand-navy shadow-sm' : 'text-slate-500 hover:text-slate-800'
+            }`}
+            onClick={() => setDirection('rmb_to_ngn')}
+          >
+            🇨🇳 RMB ➔ 🇳🇬 NGN (Yen to Naira)
+          </button>
+        </div>
       </div>
 
       <div className="flex justify-center">
@@ -90,24 +119,42 @@ export const ExchangeRequestForm: React.FC = () => {
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">You send</span>
                   <Tag className="rounded-full border-none bg-slate-100 text-slate-600 font-semibold px-2.5">
-                    🇳🇬 NGN
+                    {direction === 'ngn_to_rmb' ? '🇳🇬 NGN (Naira)' : '🇨🇳 RMB (Yen/Yuan)'}
                   </Tag>
                 </div>
-                <Form.Item
-                  name="amountNaira"
-                  className="mb-0"
-                  rules={[{ required: true, message: 'Please enter an amount' }]}
-                >
-                  <InputNumber<number>
-                    variant="borderless"
-                    className="w-full !text-3xl !font-bold !p-0"
-                    controls={false}
-                    min={1000}
-                    formatter={(value) => `₦ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                    parser={(value) => Number(value?.replace(/[₦,\s]/g, '') || 0)}
-                    onChange={(val) => setAmountNaira(Number(val))}
-                  />
-                </Form.Item>
+                {direction === 'ngn_to_rmb' ? (
+                  <Form.Item
+                    name="amountNaira"
+                    className="mb-0"
+                    rules={[{ required: true, message: 'Please enter a Naira amount' }]}
+                  >
+                    <InputNumber<number>
+                      variant="borderless"
+                      className="w-full !text-3xl !font-bold !p-0"
+                      controls={false}
+                      min={1000}
+                      formatter={(value) => `₦ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                      parser={(value) => Number(value?.replace(/[₦,\s]/g, '') || 0)}
+                      onChange={(val) => setAmountNaira(Number(val))}
+                    />
+                  </Form.Item>
+                ) : (
+                  <Form.Item
+                    name="amountRmb"
+                    className="mb-0"
+                    rules={[{ required: true, message: 'Please enter an RMB amount' }]}
+                  >
+                    <InputNumber<number>
+                      variant="borderless"
+                      className="w-full !text-3xl !font-bold !p-0 text-emerald-600"
+                      controls={false}
+                      min={10}
+                      formatter={(value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                      parser={(value) => Number(value?.replace(/[¥,\s]/g, '') || 0)}
+                      onChange={(val) => setAmountRmb(Number(val))}
+                    />
+                  </Form.Item>
+                )}
               </div>
 
               <div className="flex justify-center -my-4 relative z-10">
@@ -122,10 +169,14 @@ export const ExchangeRequestForm: React.FC = () => {
                     You receive (estimated)
                   </span>
                   <Tag className="rounded-full border-none bg-white text-slate-600 font-semibold px-2.5 border border-slate-200">
-                    🇨🇳 CNY
+                    {direction === 'ngn_to_rmb' ? '🇨🇳 RMB (Yen/Yuan)' : '🇳🇬 NGN (Naira)'}
                   </Tag>
                 </div>
-                <div className="text-3xl font-bold text-emerald-600">{formatRmb(calculateRmb(amountNaira))}</div>
+                <div className="text-3xl font-bold text-emerald-600">
+                  {direction === 'ngn_to_rmb'
+                    ? formatRmb(calculateRmb(amountNaira))
+                    : `₦${calculateNaira(amountRmb).toLocaleString()}`}
+                </div>
               </div>
             </div>
 

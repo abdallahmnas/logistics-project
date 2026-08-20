@@ -245,9 +245,15 @@ export const LocalDeliveryForm: React.FC = () => {
                   <span>Distance Fare (15 km)</span>
                   <span className="font-mono font-bold">₦{distanceFee.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between items-center text-slate-600">
-                  <span>Payment Method</span>
-                  <span className="font-bold text-slate-800">Escrow Wallet</span>
+                
+                <div className="pt-3 border-t border-slate-100">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Payment Method</span>
+                  <Form.Item name="paymentMethod" initialValue="wallet" className="mb-0">
+                    <Select size="middle" className="w-full">
+                      <Select.Option value="wallet">💳 Wallet Balance Deduction</Select.Option>
+                      <Select.Option value="cash_on_delivery">💵 Pay on Delivery (Cash / POS)</Select.Option>
+                    </Select>
+                  </Form.Item>
                 </div>
               </div>
 
