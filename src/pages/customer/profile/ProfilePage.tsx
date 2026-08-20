@@ -3,7 +3,7 @@ import { Card, Form, Input, Button, Switch, Tag, message } from 'antd';
 import { SaveOutlined, UserOutlined, MailOutlined, PhoneOutlined, LockOutlined, KeyOutlined, CopyOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import apiClient from '../../../api/axios';
-import { fetchMe } from '../../../store/slices/authSlice';
+import { fetchCurrentUser } from '../../../store/slices/authSlice';
 
 interface ProfileFormValues {
   firstName: string;
@@ -38,7 +38,7 @@ export const ProfilePage: React.FC = () => {
         phone: values.phone,
       });
       message.success('Personal information updated successfully!');
-      dispatch(fetchMe());
+      dispatch(fetchCurrentUser());
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to update profile';
       message.error(msg);
