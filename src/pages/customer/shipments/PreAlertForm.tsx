@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, Form, Input, InputNumber, Select, Button, message } from "antd";
 import type { UploadFile } from "antd";
 import {
@@ -10,8 +10,9 @@ import {
   EnvironmentOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { useAppDispatch } from "../../../store/hooks";
+import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { createPreAlert } from "../../../store/slices/shipmentSlice";
+import { fetchFacilities } from "../../../store/slices/facilitySlice";
 import { preAlertSchema, validateForm } from "../../../utils/validators";
 import type { PreAlertPayload } from "../../../types/shipment.types";
 import { ImageDropzone } from "../../../components/common/ImageDropzone";
@@ -38,8 +39,28 @@ export const PreAlertForm: React.FC = () => {
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { facilities } = useAppSelector((state) => state.facilities || { facilities: [] });
   const [submitting, setSubmitting] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
+
+  useEffect(() => {
+    dispatch(fetchFacilities());
+  }, [dispatch]);
+
+  const warehouseOptions = useMemo(() => {
+    if (!facilities || facilities.length === 0) {
+      return [
+        { label: "🇨🇳 Guangzhou Main Hub (China)", value: "Guangzhou Hub, China" },
+        { label: "🇨🇳 Yiwu Commodity Hub (China)", value: "Yiwu Hub, China" },
+        { label: "🇬🇧 London Cargo Hub (UK)", value: "London Hub, UK" },
+        { label: "🇺🇸 New York Cargo Hub (US)", value: "New York Hub, US" },
+      ];
+    }
+    return facilities.filter(f => f.status !== 'inactive').map((f) => ({
+      label: `${f.country === 'CN' ? '🇨🇳' : f.country === 'UK' ? '🇬🇧' : f.country === 'US' ? '🇺🇸' : '📍'} ${f.name} (${f.location})`,
+      value: `${f.name}, ${f.location}`,
+    }));
+  }, [facilities]);
 
   const onFinish = async (values: PreAlertPayload) => {
     const errors = await validateForm(
@@ -123,12 +144,8 @@ export const PreAlertForm: React.FC = () => {
             >
               <Select
                 size="large"
-                options={[
-                  { label: "🇨🇳 Guangzhou Main Hub (China)", value: "Guangzhou Hub, China" },
-                  { label: "🇨🇳 Yiwu Commodity Hub (China)", value: "Yiwu Hub, China" },
-                  { label: "🇬🇧 London Cargo Hub (UK)", value: "London Hub, UK" },
-                  { label: "🇺🇸 New York Cargo Hub (US)", value: "New York Hub, US" },
-                ]}
+                placeholder="Select receiving warehouse..."
+                options={warehouseOptions}
               />
             </Form.Item>
 
