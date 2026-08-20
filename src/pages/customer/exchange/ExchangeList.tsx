@@ -16,9 +16,17 @@ export const ExchangeList: React.FC = () => {
 
   const [rmbDestType, setRmbDestType] = useState<RmbDestinationType>('wechat_pay');
   const [sendAmount, setSendAmount] = useState<number>(500000);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
-  const [previewUrl, setPreviewUrl] = useState<string>('');
-  const [fileName, setFileName] = useState<string>('');
+  
+  // Account Information: Customer Receiving Barcode / QR Code
+  const [barcodeUrl, setBarcodeUrl] = useState<string>('');
+  const [barcodePreviewUrl, setBarcodePreviewUrl] = useState<string>('');
+  const [barcodeFileName, setBarcodeFileName] = useState<string>('');
+
+  // Payment Proof: Bank Transfer Screenshot Image
+  const [proofUrl, setProofUrl] = useState<string>('');
+  const [proofPreviewUrl, setProofPreviewUrl] = useState<string>('');
+  const [proofFileName, setProofFileName] = useState<string>('');
+
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -32,11 +40,12 @@ export const ExchangeList: React.FC = () => {
   const totalToPay = sendAmount + processingFee;
   const recentExchanges = exchanges.slice(0, 3);
 
-  const handleFileChange = (fileList: any[]) => {
+  // Handle Receiving Barcode upload
+  const handleBarcodeFileChange = (fileList: any[]) => {
     if (!fileList || fileList.length === 0) {
-      setPreviewUrl('');
-      setFileName('');
-      setQrCodeUrl('');
+      setBarcodePreviewUrl('');
+      setBarcodeFileName('');
+      setBarcodeUrl('');
       return;
     }
     const fileItem = fileList[0];
@@ -46,22 +55,43 @@ export const ExchangeList: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
-        setPreviewUrl(result);
-        setQrCodeUrl(result);
-        setFileName(file.name);
+        setBarcodePreviewUrl(result);
+        setBarcodeUrl(result);
+        setBarcodeFileName(file.name);
       };
       reader.readAsDataURL(file);
     } else if (fileItem.url || fileItem.thumbUrl) {
-      setPreviewUrl(fileItem.url || fileItem.thumbUrl);
-      setQrCodeUrl(fileItem.url || fileItem.thumbUrl);
-      setFileName(fileItem.name || 'uploaded_image.png');
+      setBarcodePreviewUrl(fileItem.url || fileItem.thumbUrl);
+      setBarcodeUrl(fileItem.url || fileItem.thumbUrl);
+      setBarcodeFileName(fileItem.name || 'barcode.png');
     }
   };
 
-  const handleRemoveImage = () => {
-    setPreviewUrl('');
-    setFileName('');
-    setQrCodeUrl('');
+  // Handle Payment Proof screenshot upload
+  const handleProofFileChange = (fileList: any[]) => {
+    if (!fileList || fileList.length === 0) {
+      setProofPreviewUrl('');
+      setProofFileName('');
+      setProofUrl('');
+      return;
+    }
+    const fileItem = fileList[0];
+    const file = fileItem.originFileObj || fileItem;
+
+    if (file && file instanceof File) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setProofPreviewUrl(result);
+        setProofUrl(result);
+        setProofFileName(file.name);
+      };
+      reader.readAsDataURL(file);
+    } else if (fileItem.url || fileItem.thumbUrl) {
+      setProofPreviewUrl(fileItem.url || fileItem.thumbUrl);
+      setProofUrl(fileItem.url || fileItem.thumbUrl);
+      setProofFileName(fileItem.name || 'payment_proof.png');
+    }
   };
 
   const handleSubmit = async (values: any) => {
@@ -73,15 +103,20 @@ export const ExchangeList: React.FC = () => {
           rmbDestType: rmbDestType,
           rmbDestAccount: values.rmbDestAccount,
           rmbDestName: values.rmbDestName || 'Customer Account',
-          rmbDestQrCode: qrCodeUrl || undefined,
-        })
+          rmbDestQrCode: barcodeUrl || undefined,
+          receivingBarcodeUrl: barcodeUrl || undefined,
+          nairaReceiptUrl: proofUrl || undefined,
+        } as any)
       ).unwrap();
 
       message.success('Currency exchange request created successfully!');
       form.resetFields();
-      setPreviewUrl('');
-      setFileName('');
-      setQrCodeUrl('');
+      setBarcodePreviewUrl('');
+      setBarcodeFileName('');
+      setBarcodeUrl('');
+      setProofPreviewUrl('');
+      setProofFileName('');
+      setProofUrl('');
       dispatch(fetchExchanges());
     } catch (err: any) {
       message.error(err?.message || 'Failed to submit exchange request');
@@ -192,34 +227,102 @@ export const ExchangeList: React.FC = () => {
             <p className="text-sm text-slate-500 mb-6">Submit a request to fund your RMB wallet from NGN.</p>
 
             <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">RECEIVING WALLET</label>
-                  <div className="flex bg-slate-100 p-1 rounded-lg">
-                    <Button 
-                      type={rmbDestType === 'wechat_pay' ? 'primary' : 'text'} 
-                      onClick={() => setRmbDestType('wechat_pay')}
-                      className={`flex-1 font-bold ${rmbDestType === 'wechat_pay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
-                    >
-                      WeChat
-                    </Button>
-                    <Button 
-                      type={rmbDestType === 'alipay' ? 'primary' : 'text'} 
-                      onClick={() => setRmbDestType('alipay')}
-                      className={`flex-1 font-bold ${rmbDestType === 'alipay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
-                    >
-                      Alipay
-                    </Button>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                  <span className="text-xs font-extrabold text-[#0A1128] uppercase tracking-wider flex items-center gap-1.5">
+                    <BarcodeOutlined className="text-brand-orange text-base" /> RECEIVING WALLET ACCOUNT INFORMATION
+                  </span>
+                  <Tag color="orange" className="font-bold border-none text-[10px] uppercase">
+                    Stored Barcode Account
+                  </Tag>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">RECEIVING PLATFORM</label>
+                    <div className="flex bg-white p-1 rounded-lg border border-slate-200">
+                      <Button 
+                        type={rmbDestType === 'wechat_pay' ? 'primary' : 'text'} 
+                        onClick={() => setRmbDestType('wechat_pay')}
+                        className={`flex-1 font-bold ${rmbDestType === 'wechat_pay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
+                      >
+                        WeChat
+                      </Button>
+                      <Button 
+                        type={rmbDestType === 'alipay' ? 'primary' : 'text'} 
+                        onClick={() => setRmbDestType('alipay')}
+                        className={`flex-1 font-bold ${rmbDestType === 'alipay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
+                      >
+                        Alipay
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Form.Item name="rmbDestAccount" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">WALLET ID / PHONE NUMBER</span>} rules={[{ required: true, message: 'Please enter WeChat/Alipay ID' }]}>
+                      <Input size="large" placeholder="Enter WeChat/Alipay ID" className="bg-white border-slate-200" />
+                    </Form.Item>
                   </div>
                 </div>
+
+                <Form.Item name="rmbDestName" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">ACCOUNT HOLDER NAME</span>} rules={[{ required: true, message: 'Please enter account name' }]}>
+                  <Input size="large" placeholder="e.g. Li Wei / Account Holder" className="bg-white border-slate-200" />
+                </Form.Item>
+
+                {/* Barcode & QR Code Upload in Account Info */}
                 <div>
-                  <Form.Item name="rmbDestAccount" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">WALLET ID / PHONE</span>} rules={[{ required: true, message: 'Please enter WeChat/Alipay ID' }]}>
-                    <Input size="large" placeholder="Enter WeChat/Alipay ID" className="bg-slate-50 border-slate-200" />
-                  </Form.Item>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex justify-between items-center">
+                    <span>RECEIVING BARCODE / QR CODE IMAGE (OPTIONAL)</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Add or edit barcode to be funded</span>
+                  </label>
+                  
+                  <Dragger
+                    className="bg-white border-dashed border-slate-300 rounded-xl py-2"
+                    beforeUpload={() => false}
+                    onChange={({ fileList: newFileList }) => handleBarcodeFileChange(newFileList)}
+                    showUploadList={false}
+                    accept="image/*"
+                    customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
+                  >
+                    <p className="ant-upload-drag-icon flex justify-center gap-2 mb-1">
+                      <BarcodeOutlined className="text-brand-orange text-2xl" />
+                      <QrcodeOutlined className="text-slate-400 text-2xl" />
+                    </p>
+                    <p className="ant-upload-text font-bold text-slate-700 text-xs m-0">Click or drag receiving Barcode/QR image to save with account</p>
+                  </Dragger>
+
+                  {barcodePreviewUrl && (
+                    <div className="mt-3 bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm animate-fade-in-up">
+                      <div className="flex items-center gap-3">
+                        <Image
+                          src={barcodePreviewUrl}
+                          alt="Receiving Barcode Preview"
+                          className="w-16 h-16 rounded-lg object-contain border border-slate-200 bg-slate-50"
+                          fallback="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=600"
+                        />
+                        <div>
+                          <span className="text-xs font-bold text-slate-800 block truncate max-w-[200px]">
+                            {barcodeFileName || 'receiving_barcode.png'}
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
+                            ✓ Receiving Barcode Attached
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => { setBarcodePreviewUrl(''); setBarcodeUrl(''); setBarcodeFileName(''); }}
+                        className="font-bold text-xs"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Full Width Expanded Inputs */}
+              {/* Amount Exchange Inputs */}
               <div className="space-y-4 mb-6">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">YOU SEND (NGN)</label>
@@ -275,47 +378,47 @@ export const ExchangeList: React.FC = () => {
                 </div>
               </div>
 
+              {/* Upload Proof of Payment Section */}
               <div className="mb-6 space-y-3">
                 <div className="flex justify-between items-center">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    UPLOAD RECEIVING QR CODE OR BARCODE (OPTIONAL)
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <CloudUploadOutlined className="text-brand-orange" /> UPLOAD PROOF OF PAYMENT (BANK TRANSFER SCREENSHOT)
                   </label>
-                  <span className="text-[10px] text-brand-orange font-bold uppercase tracking-wider bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
-                    QR & Barcode Supported
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    Payment Receipt Proof
                   </span>
                 </div>
 
                 <Dragger
                   className="bg-white border-dashed border-slate-300 rounded-xl"
                   beforeUpload={() => false}
-                  onChange={({ fileList: newFileList }) => handleFileChange(newFileList)}
+                  onChange={({ fileList: newFileList }) => handleProofFileChange(newFileList)}
                   showUploadList={false}
                   accept="image/*"
                   customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
                 >
-                  <p className="ant-upload-drag-icon flex justify-center gap-3">
-                    <QrcodeOutlined className="text-slate-400 text-3xl" />
-                    <BarcodeOutlined className="text-brand-orange text-3xl" />
+                  <p className="ant-upload-drag-icon flex justify-center mb-1">
+                    <CloudUploadOutlined className="text-slate-400 text-3xl" />
                   </p>
-                  <p className="ant-upload-text font-bold text-slate-700 text-sm">Click or drag QR Code or Barcode image</p>
-                  <p className="ant-upload-hint text-xs text-slate-400">PNG, JPG, WEBP up to 5MB</p>
+                  <p className="ant-upload-text font-bold text-slate-700 text-sm">Click or drag screenshot proof of payment here</p>
+                  <p className="ant-upload-hint text-xs text-slate-400">PNG, JPG, WEBP up to 5MB (Receipt screenshot)</p>
                 </Dragger>
 
-                {previewUrl && (
+                {proofPreviewUrl && (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm animate-fade-in-up">
                     <div className="flex items-center gap-3">
                       <Image
-                        src={previewUrl}
-                        alt="QR or Barcode Preview"
-                        className="w-20 h-20 rounded-lg object-contain border border-slate-200 bg-white"
-                        fallback="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=600"
+                        src={proofPreviewUrl}
+                        alt="Payment Proof Screenshot Preview"
+                        className="w-20 h-20 rounded-lg object-cover border border-slate-200 bg-white"
+                        fallback="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=600"
                       />
                       <div>
                         <span className="text-xs font-bold text-slate-800 block truncate max-w-[200px] sm:max-w-[300px]">
-                          {fileName || 'receiving_code.png'}
+                          {proofFileName || 'payment_proof_screenshot.png'}
                         </span>
                         <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block mt-1">
-                          ✓ Image Preview Ready (Click photo to enlarge)
+                          ✓ Payment Screenshot Preview Ready (Click photo to enlarge)
                         </span>
                       </div>
                     </div>
@@ -323,7 +426,7 @@ export const ExchangeList: React.FC = () => {
                       type="text"
                       danger
                       icon={<DeleteOutlined />}
-                      onClick={handleRemoveImage}
+                      onClick={() => { setProofPreviewUrl(''); setProofUrl(''); setProofFileName(''); }}
                       className="font-bold text-xs hover:bg-red-50"
                     >
                       Remove
