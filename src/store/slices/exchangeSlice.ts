@@ -64,17 +64,25 @@ export const submitExchangeRequest = createAsyncThunk(
 
 export const verifyExchangePayment = createAsyncThunk(
   'exchange/verifyPayment',
-  async (exchangeId: string) => {
-    const res = await apiClient.patch(`/exchanges/${exchangeId}/verify-naira`);
-    return res.data.data;
+  async (exchangeId: string, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.patch(`/exchanges/${exchangeId}/verify-naira`);
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
   }
 );
 
 export const releaseRmb = createAsyncThunk(
   'exchange/releaseRmb',
-  async (exchangeId: string) => {
-    const res = await apiClient.patch(`/exchanges/${exchangeId}/release-rmb`);
-    return res.data.data;
+  async (exchangeId: string, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.patch(`/exchanges/${exchangeId}/release-rmb`);
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
   }
 );
 

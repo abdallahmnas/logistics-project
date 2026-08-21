@@ -216,7 +216,9 @@ export class ExchangeService {
   public static async verifyNairaPayment(exchangeId: string, adminId: string) {
     const exchange = await ExchangeRequest.findByPk(exchangeId);
     if (!exchange) throw new Error('Exchange request not found');
-    if (exchange.status !== 'pending') throw new Error(`Cannot verify — current status is ${exchange.status}`);
+    if (!['pending', 'receipt_uploaded', 'awaiting_payment'].includes(exchange.status)) {
+      throw new Error(`Cannot verify — current status is ${exchange.status}`);
+    }
 
     (exchange as any).status = 'naira_confirmed';
     (exchange as any).nairaConfirmedAt = new Date();
