@@ -222,33 +222,6 @@ export const ExchangeList: React.FC = () => {
   const totalToPay = sendAmount + processingFee;
   const recentExchanges = exchanges.slice(0, 3);
 
-  // Handle Receiving Barcode upload
-  const handleBarcodeFileChange = (fileList: any[]) => {
-    if (!fileList || fileList.length === 0) {
-      setBarcodePreviewUrl('');
-      setBarcodeFileName('');
-      setBarcodeUrl('');
-      return;
-    }
-    const fileItem = fileList[0];
-    const file = fileItem.originFileObj || fileItem;
-
-    if (file && file instanceof File) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setBarcodePreviewUrl(result);
-        setBarcodeUrl(result);
-        setBarcodeFileName(file.name);
-      };
-      reader.readAsDataURL(file);
-    } else if (fileItem.url || fileItem.thumbUrl) {
-      setBarcodePreviewUrl(fileItem.url || fileItem.thumbUrl);
-      setBarcodeUrl(fileItem.url || fileItem.thumbUrl);
-      setBarcodeFileName(fileItem.name || 'barcode.png');
-    }
-  };
-
   // Handle Payment Proof screenshot upload
   const handleProofFileChange = (fileList: any[]) => {
     if (!fileList || fileList.length === 0) {
