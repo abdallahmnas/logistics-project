@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, InputNumber, Upload, Table, Tag, Form, message, Image, Select, Modal, Alert } from 'antd';
-import { SwapOutlined, CloudUploadOutlined, BankOutlined, DownloadOutlined, DeleteOutlined, QrcodeOutlined, BarcodeOutlined, PlusOutlined } from '@ant-design/icons';
+import { SwapOutlined, CloudUploadOutlined, BankOutlined, DownloadOutlined, DeleteOutlined, QrcodeOutlined, BarcodeOutlined, PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchExchanges, fetchActiveRate, submitExchangeRequest, fetchSavedAccounts, createSavedAccount } from '../../../store/slices/exchangeSlice';
 import { useNavigate } from 'react-router-dom';
