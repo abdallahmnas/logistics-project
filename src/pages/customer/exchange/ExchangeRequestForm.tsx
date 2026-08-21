@@ -134,19 +134,29 @@ export const ExchangeRequestForm: React.FC = () => {
   const supportsQr = platform === 'alipay' || platform === 'wechat_pay' || direction === 'rmb_to_ngn';
 
   const onFinish = async (values: any) => {
-    setSubmitting(true);
     try {
-      const barcodeUrl = qrFileList[0]?.url || qrFileList[0]?.name;
+      const selectedAcc = savedAccounts.find((a) => a.id === selectedSavedAccountId);
+      const destType = selectedAcc ? selectedAcc.platform : (values?.rmbDestType || 'alipay');
+      const destAccount = selectedAcc ? selectedAcc.accountNumber : values?.rmbDestAccount;
+      const destName = selectedAcc ? selectedAcc.accountName : (values?.rmbDestName || 'Customer Account');
+      const barcode = (selectedAcc && selectedAcc.barcodeUrl) ? selectedAcc.barcodeUrl : (qrFileList[0]?.url || qrFileList[0]?.name || undefined);
+
+      if (!destAccount) {
+        message.error('Please select or save a receiving wallet account first');
+        return;
+      }
+
+      setSubmitting(true);
       await dispatch(
         submitExchangeRequest({
           direction,
           amountNaira: direction === 'ngn_to_rmb' ? amountNaira : calculateNaira(amountRmb),
           amountRmb: direction === 'rmb_to_ngn' ? amountRmb : calculateRmb(amountNaira),
-          rmbDestType: values.rmbDestType || 'alipay',
-          rmbDestAccount: values.rmbDestAccount,
-          rmbDestName: values.rmbDestName,
-          rmbDestQrCode: barcodeUrl,
-          receivingBarcodeUrl: barcodeUrl,
+          rmbDestType: destType,
+          rmbDestAccount: destAccount,
+          rmbDestName: destName,
+          rmbDestQrCode: barcode,
+          receivingBarcodeUrl: barcode,
           saveAccount: false,
         } as any)
       ).unwrap();

@@ -185,15 +185,31 @@ export const ExchangeList: React.FC = () => {
 
   const handleSubmit = async (values: any) => {
     try {
+      const selectedAcc = savedAccounts.find((a) => a.id === selectedSavedAccountId);
+      const destType = selectedAcc ? selectedAcc.platform : (rmbDestType || 'wechat_pay');
+      const destAccount = selectedAcc ? selectedAcc.accountNumber : (values?.rmbDestAccount || form.getFieldValue('rmbDestAccount'));
+      const destName = selectedAcc ? selectedAcc.accountName : (values?.rmbDestName || form.getFieldValue('rmbDestName') || 'Customer Account');
+      const barcode = (selectedAcc && selectedAcc.barcodeUrl) ? selectedAcc.barcodeUrl : (barcodeUrl || undefined);
+
+      if (!destAccount) {
+        message.error('Please select or save a receiving wallet account first');
+        return;
+      }
+
+      if (!sendAmount || sendAmount <= 0) {
+        message.error('Please enter a valid amount to exchange');
+        return;
+      }
+
       setSubmitting(true);
       await dispatch(
         submitExchangeRequest({
-          amountNaira: Number(sendAmount) || 500000,
-          rmbDestType: rmbDestType,
-          rmbDestAccount: values.rmbDestAccount,
-          rmbDestName: values.rmbDestName || 'Customer Account',
-          rmbDestQrCode: barcodeUrl || undefined,
-          receivingBarcodeUrl: barcodeUrl || undefined,
+          amountNaira: Number(sendAmount),
+          rmbDestType: destType,
+          rmbDestAccount: destAccount,
+          rmbDestName: destName,
+          rmbDestQrCode: barcode,
+          receivingBarcodeUrl: barcode,
           nairaReceiptUrl: proofUrl || undefined,
           saveAccount: false,
         } as any)
@@ -202,7 +218,6 @@ export const ExchangeList: React.FC = () => {
       message.success('Currency exchange request created successfully!');
       form.resetFields();
       setBarcodePreviewUrl('');
-      setBarcodeFileName('');
       setBarcodeUrl('');
       setProofPreviewUrl('');
       setProofFileName('');
