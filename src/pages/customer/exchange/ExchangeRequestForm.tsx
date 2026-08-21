@@ -147,7 +147,7 @@ export const ExchangeRequestForm: React.FC = () => {
           rmbDestName: values.rmbDestName,
           rmbDestQrCode: barcodeUrl,
           receivingBarcodeUrl: barcodeUrl,
-          saveAccount: accountMode === 'new' ? saveAccountChecked : false,
+          saveAccount: false,
         } as any)
       ).unwrap();
       message.success('Currency exchange request created successfully.');

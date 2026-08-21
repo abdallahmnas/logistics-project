@@ -195,7 +195,7 @@ export const ExchangeList: React.FC = () => {
           rmbDestQrCode: barcodeUrl || undefined,
           receivingBarcodeUrl: barcodeUrl || undefined,
           nairaReceiptUrl: proofUrl || undefined,
-          saveAccount: accountMode === 'new' ? saveAccountChecked : false,
+          saveAccount: false,
         } as any)
       ).unwrap();
 
