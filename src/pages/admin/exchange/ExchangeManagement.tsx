@@ -93,6 +93,23 @@ export const ExchangeManagement: React.FC = () => {
       key: 'status',
       render: (status: string) => <StatusBadge module="exchange" status={status} />,
     },
+    {
+      title: 'ACTION',
+      key: 'action',
+      render: (record: ExchangeRequest) => (
+        <Button
+          type="primary"
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/admin/exchange/${record.id}`);
+          }}
+          className="bg-brand-navy hover:bg-slate-800 border-none font-bold text-xs rounded-lg"
+        >
+          Review ➔
+        </Button>
+      ),
+    },
   ];
 
   return (
