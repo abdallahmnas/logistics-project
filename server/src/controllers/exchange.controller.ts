@@ -73,3 +73,45 @@ export const uploadReceipt = async (req: Request, res: Response): Promise<void> 
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
+export const getSavedAccounts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const list = await ExchangeService.getSavedAccounts(userId);
+    res.status(200).json({ success: true, data: list });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createSavedAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const account = await ExchangeService.createSavedAccount(userId, req.body);
+    res.status(201).json({ success: true, data: account });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteSavedAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+    const result = await ExchangeService.deleteSavedAccount(userId, id);
+    res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const setDefaultAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+    const account = await ExchangeService.setDefaultAccount(userId, id);
+    res.status(200).json({ success: true, data: account });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};

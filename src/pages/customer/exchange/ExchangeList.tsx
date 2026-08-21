@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, InputNumber, Upload, Table, Tag, Form, message, Image } from 'antd';
-import { SwapOutlined, CloudUploadOutlined, BankOutlined, QuestionCircleOutlined, DownloadOutlined, SyncOutlined, DeleteOutlined, QrcodeOutlined, BarcodeOutlined } from '@ant-design/icons';
+import { Card, Button, Input, InputNumber, Upload, Table, Tag, Form, message, Image, Select, Checkbox } from 'antd';
+import { SwapOutlined, CloudUploadOutlined, BankOutlined, QuestionCircleOutlined, DownloadOutlined, SyncOutlined, DeleteOutlined, QrcodeOutlined, BarcodeOutlined, CheckOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchExchanges, fetchActiveRate, submitExchangeRequest } from '../../../store/slices/exchangeSlice';
+import { fetchExchanges, fetchActiveRate, submitExchangeRequest, fetchSavedAccounts } from '../../../store/slices/exchangeSlice';
 import { useNavigate } from 'react-router-dom';
-import type { ExchangeRequest, RmbDestinationType } from '../../../types/exchange.types';
+import type { ExchangeRequest, RmbDestinationType, SavedAccount } from '../../../types/exchange.types';
 
 const { Dragger } = Upload;
+const { Option } = Select;
 
 export const ExchangeList: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [form] = Form.useForm();
-  const { exchanges, activeRate, loading } = useAppSelector((state) => state.exchange);
+  const { exchanges, activeRate, savedAccounts, loading } = useAppSelector((state) => state.exchange);
 
   const [rmbDestType, setRmbDestType] = useState<RmbDestinationType>('wechat_pay');
   const [sendAmount, setSendAmount] = useState<number>(500000);
@@ -21,6 +22,10 @@ export const ExchangeList: React.FC = () => {
   const [barcodeUrl, setBarcodeUrl] = useState<string>('');
   const [barcodePreviewUrl, setBarcodePreviewUrl] = useState<string>('');
   const [barcodeFileName, setBarcodeFileName] = useState<string>('');
+
+  // Saved account selection & auto-save toggle
+  const [selectedSavedAccountId, setSelectedSavedAccountId] = useState<string>('');
+  const [saveAccountChecked, setSaveAccountChecked] = useState<boolean>(true);
 
   // Payment Proof: Bank Transfer Screenshot Image
   const [proofUrl, setProofUrl] = useState<string>('');
@@ -32,7 +37,27 @@ export const ExchangeList: React.FC = () => {
   useEffect(() => {
     dispatch(fetchExchanges());
     dispatch(fetchActiveRate());
+    dispatch(fetchSavedAccounts());
   }, [dispatch]);
+
+  const handleSelectSavedAccount = (accountId: string) => {
+    setSelectedSavedAccountId(accountId);
+    const acc = savedAccounts.find((a) => a.id === accountId);
+    if (!acc) return;
+
+    setRmbDestType(acc.platform);
+    form.setFieldsValue({
+      rmbDestAccount: acc.accountNumber,
+      rmbDestName: acc.accountName,
+    });
+
+    if (acc.barcodeUrl) {
+      setBarcodeUrl(acc.barcodeUrl);
+      setBarcodePreviewUrl(acc.barcodeUrl);
+      setBarcodeFileName(`${acc.platform}_saved_barcode.png`);
+    }
+    message.info(`Loaded saved receiving account: ${acc.label || acc.accountName}`);
+  };
 
   const platformRate = activeRate?.platformRate || 215.00;
   const receiveAmount = sendAmount ? Number((sendAmount / platformRate).toFixed(2)) : 0;
@@ -106,6 +131,7 @@ export const ExchangeList: React.FC = () => {
           rmbDestQrCode: barcodeUrl || undefined,
           receivingBarcodeUrl: barcodeUrl || undefined,
           nairaReceiptUrl: proofUrl || undefined,
+          saveAccount: saveAccountChecked,
         } as any)
       ).unwrap();
 
@@ -227,6 +253,49 @@ export const ExchangeList: React.FC = () => {
             <p className="text-sm text-slate-500 mb-6">Submit a request to fund your RMB wallet from NGN.</p>
 
             <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
+              {/* Saved Account Selector */}
+              {savedAccounts && savedAccounts.length > 0 && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50/50 border border-blue-200/80 rounded-xl p-4 mb-6 shadow-sm">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-xs font-black text-[#0A1128] uppercase tracking-wider flex items-center gap-1.5">
+                      <BankOutlined className="text-blue-600" /> SELECT FROM SAVED RECEIVING ACCOUNTS (1-CLICK FILL)
+                    </label>
+                    <Tag color="blue" className="font-bold border-none text-[10px] uppercase">
+                      {savedAccounts.length} Saved
+                    </Tag>
+                  </div>
+                  <Select
+                    size="large"
+                    placeholder="Choose a saved WeChat / Alipay / Bank Account..."
+                    className="w-full bg-white rounded-lg shadow-sm"
+                    onChange={handleSelectSavedAccount}
+                    value={selectedSavedAccountId || undefined}
+                    allowClear
+                    onClear={() => {
+                      setSelectedSavedAccountId('');
+                      form.resetFields(['rmbDestAccount', 'rmbDestName']);
+                      setBarcodePreviewUrl('');
+                      setBarcodeUrl('');
+                    }}
+                  >
+                    {savedAccounts.map((acc: SavedAccount) => (
+                      <Option key={acc.id} value={acc.id}>
+                        <div className="flex justify-between items-center py-0.5">
+                          <span className="font-bold text-slate-800 text-sm">
+                            {acc.platform === 'wechat_pay' ? '💚 WeChat' : acc.platform === 'alipay' ? '💙 Alipay' : '🏛️ Chinese Bank'} — {acc.accountName} ({acc.accountNumber})
+                          </span>
+                          {acc.barcodeUrl && (
+                            <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded ml-2">
+                              ✓ Barcode Saved
+                            </span>
+                          )}
+                        </div>
+                      </Option>
+                    ))}
+                  </Select>
+                </div>
+              )}
+
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 space-y-4">
                 <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                   <span className="text-xs font-extrabold text-[#0A1128] uppercase tracking-wider flex items-center gap-1.5">
@@ -319,6 +388,16 @@ export const ExchangeList: React.FC = () => {
                       </Button>
                     </div>
                   )}
+                </div>
+
+                <div className="pt-2 border-t border-slate-200">
+                  <Checkbox
+                    checked={saveAccountChecked}
+                    onChange={(e) => setSaveAccountChecked(e.target.checked)}
+                    className="text-xs font-bold text-slate-700"
+                  >
+                    Save this receiving account & barcode for future 1-click transactions
+                  </Checkbox>
                 </div>
               </div>
 

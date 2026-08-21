@@ -4,6 +4,7 @@ import apiClient from '../../api/axios';
 
 const initialState: ExchangeState = {
   exchanges: [],
+  savedAccounts: [],
   selectedExchange: null,
   activeRate: null,
   loading: false,
@@ -14,6 +15,27 @@ export const fetchExchanges = createAsyncThunk('exchange/fetchAll', async () => 
   const res = await apiClient.get('/exchanges');
   return res.data.data;
 });
+
+export const fetchSavedAccounts = createAsyncThunk('exchange/fetchSavedAccounts', async () => {
+  const res = await apiClient.get('/exchanges/saved-accounts');
+  return res.data.data;
+});
+
+export const createSavedAccount = createAsyncThunk(
+  'exchange/createSavedAccount',
+  async (payload: any) => {
+    const res = await apiClient.post('/exchanges/saved-accounts', payload);
+    return res.data.data;
+  }
+);
+
+export const deleteSavedAccount = createAsyncThunk(
+  'exchange/deleteSavedAccount',
+  async (accountId: string) => {
+    await apiClient.delete(`/exchanges/saved-accounts/${accountId}`);
+    return accountId;
+  }
+);
 
 export const fetchActiveRate = createAsyncThunk('exchange/fetchRate', async () => {
   const res = await apiClient.get('/exchanges/rate');
@@ -62,6 +84,15 @@ const exchangeSlice = createSlice({
       .addCase(fetchExchanges.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch';
+      })
+      .addCase(fetchSavedAccounts.fulfilled, (state, action) => {
+        state.savedAccounts = action.payload;
+      })
+      .addCase(createSavedAccount.fulfilled, (state, action) => {
+        state.savedAccounts.unshift(action.payload);
+      })
+      .addCase(deleteSavedAccount.fulfilled, (state, action) => {
+        state.savedAccounts = state.savedAccounts.filter((a: any) => a.id !== action.payload);
       })
       .addCase(fetchActiveRate.fulfilled, (state, action) => {
         state.activeRate = action.payload;

@@ -15,10 +15,14 @@ import { TicketMessage } from './TicketMessage';
 import { PermissionGroup } from './PermissionGroup';
 import { ActivityLog } from './ActivityLog';
 import { Facility } from './Facility';
+import { SavedAccount } from './SavedAccount';
 
 // Define Relationships
 User.hasOne(Wallet, { foreignKey: 'userId', as: 'wallet' });
 Wallet.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+User.hasMany(SavedAccount, { foreignKey: 'userId', as: 'savedAccounts' });
+SavedAccount.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 SupportTicket.hasMany(TicketMessage, { foreignKey: 'ticketId', as: 'messages' });
 TicketMessage.belongsTo(SupportTicket, { foreignKey: 'ticketId', as: 'ticket' });
@@ -43,4 +47,5 @@ export {
   PermissionGroup,
   ActivityLog,
   Facility,
+  SavedAccount,
 };

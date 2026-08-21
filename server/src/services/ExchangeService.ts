@@ -1,9 +1,62 @@
-import { ExchangeRate, ExchangeRequest, User } from '../models';
+import { ExchangeRate, ExchangeRequest, User, SavedAccount } from '../models';
 import { uploadToCloudinary } from '../config/cloudinary';
 import { ActivityLogService } from './ActivityLogService';
 import { NotificationService } from './NotificationService';
 
 export class ExchangeService {
+  public static async getSavedAccounts(userId: string) {
+    return SavedAccount.findAll({
+      where: { userId },
+      order: [['isDefault', 'DESC'], ['createdAt', 'DESC']],
+    });
+  }
+
+  public static async createSavedAccount(userId: string, payload: {
+    label?: string;
+    platform: 'wechat_pay' | 'alipay' | 'chinese_bank';
+    accountNumber: string;
+    accountName: string;
+    barcodeUrl?: string;
+    isDefault?: boolean;
+  }) {
+    if (payload.isDefault) {
+      await SavedAccount.update({ isDefault: false }, { where: { userId } });
+    }
+
+    const existingCount = await SavedAccount.count({ where: { userId } });
+    const isFirst = existingCount === 0;
+
+    const account = await SavedAccount.create({
+      userId,
+      label: payload.label || `${payload.platform === 'wechat_pay' ? 'WeChat' : payload.platform === 'alipay' ? 'Alipay' : 'Chinese Bank'} (${payload.accountName})`,
+      platform: payload.platform,
+      accountNumber: payload.accountNumber,
+      accountName: payload.accountName,
+      barcodeUrl: payload.barcodeUrl,
+      isDefault: payload.isDefault !== undefined ? payload.isDefault : isFirst,
+    });
+
+    return account;
+  }
+
+  public static async deleteSavedAccount(userId: string, accountId: string) {
+    const deleted = await SavedAccount.destroy({
+      where: { id: accountId, userId },
+    });
+    if (!deleted) throw new Error('Saved account not found');
+    return { success: true };
+  }
+
+  public static async setDefaultAccount(userId: string, accountId: string) {
+    await SavedAccount.update({ isDefault: false }, { where: { userId } });
+    const [updated] = await SavedAccount.update(
+      { isDefault: true },
+      { where: { id: accountId, userId } }
+    );
+    if (!updated) throw new Error('Saved account not found');
+    return SavedAccount.findByPk(accountId);
+  }
+
   public static async getActiveRate() {
     let rate = await ExchangeRate.findOne({ where: { isActive: true }, order: [['createdAt', 'DESC']] });
     if (!rate) {
@@ -27,6 +80,7 @@ export class ExchangeService {
     rmbDestName: string;
     rmbDestQrCode?: string;
     receivingBarcodeUrl?: string;
+    saveAccount?: boolean;
   }) {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('User not found');
@@ -75,6 +129,19 @@ export class ExchangeService {
       requestedAt: new Date(),
       expiresAt,
     });
+
+    if (payload.saveAccount) {
+      try {
+        await this.createSavedAccount(userId, {
+          platform: payload.rmbDestType,
+          accountNumber: payload.rmbDestAccount,
+          accountName: payload.rmbDestName,
+          barcodeUrl: payload.rmbDestQrCode || payload.receivingBarcodeUrl,
+        });
+      } catch (e) {
+        console.error('Failed to auto-save account:', e);
+      }
+    }
 
     ActivityLogService.logActivity({
       userId: user.id,
