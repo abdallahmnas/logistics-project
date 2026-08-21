@@ -49,6 +49,12 @@ export const ExchangeList: React.FC = () => {
     });
   }, [dispatch]);
 
+  useEffect(() => {
+    if (savedAccounts && savedAccounts.length > 0 && !selectedSavedAccountId) {
+      handleSelectSavedAccount(savedAccounts[0].id, savedAccounts);
+    }
+  }, [savedAccounts, selectedSavedAccountId]);
+
   const handleSelectSavedAccount = (accountId: string, listOverride?: SavedAccount[]) => {
     const list = listOverride || savedAccounts;
     setSelectedSavedAccountId(accountId);
@@ -108,7 +114,7 @@ export const ExchangeList: React.FC = () => {
           accountName: values.accountName,
           label: values.label || `${modalPlatform === 'wechat_pay' ? 'WeChat' : modalPlatform === 'alipay' ? 'Alipay' : 'Chinese Bank'} (${values.accountName})`,
           barcodeUrl: modalBarcodeUrl || undefined,
-          isDefault: true,
+          isDefault: savedAccounts.length === 0,
         })
       ).unwrap();
 
@@ -123,9 +129,12 @@ export const ExchangeList: React.FC = () => {
       const updatedList = await dispatch(fetchSavedAccounts()).unwrap();
       if (newAcc && newAcc.id) {
         handleSelectSavedAccount(newAcc.id, updatedList);
+      } else if (updatedList && updatedList.length > 0) {
+        handleSelectSavedAccount(updatedList[updatedList.length - 1].id, updatedList);
       }
     } catch (err: any) {
-      message.error(err?.message || 'Failed to save wallet account');
+      const errorMsg = typeof err === 'string' ? err : err?.message || 'Failed to save receiving account';
+      message.error(errorMsg);
     } finally {
       setModalSubmitting(false);
     }
@@ -185,7 +194,13 @@ export const ExchangeList: React.FC = () => {
 
   const handleSubmit = async (values: any) => {
     try {
-      const selectedAcc = savedAccounts.find((a) => a.id === selectedSavedAccountId);
+      if (!savedAccounts || savedAccounts.length === 0) {
+        message.error('Please save a receiving wallet account (WeChat / Alipay ID & Barcode) first before submitting.');
+        setIsAddWalletModalOpen(true);
+        return;
+      }
+
+      const selectedAcc = savedAccounts.find((a) => a.id === selectedSavedAccountId) || savedAccounts[0];
       const destType = selectedAcc ? selectedAcc.platform : (rmbDestType || 'wechat_pay');
       const destAccount = selectedAcc ? selectedAcc.accountNumber : (values?.rmbDestAccount || form.getFieldValue('rmbDestAccount'));
       const destName = selectedAcc ? selectedAcc.accountName : (values?.rmbDestName || form.getFieldValue('rmbDestName') || 'Customer Account');
@@ -193,6 +208,7 @@ export const ExchangeList: React.FC = () => {
 
       if (!destAccount) {
         message.error('Please select or save a receiving wallet account first');
+        setIsAddWalletModalOpen(true);
         return;
       }
 
@@ -230,7 +246,8 @@ export const ExchangeList: React.FC = () => {
       dispatch(fetchExchanges());
       dispatch(fetchSavedAccounts());
     } catch (err: any) {
-      message.error(err?.message || 'Failed to submit exchange request');
+      const errorMsg = typeof err === 'string' ? err : err?.message || 'Failed to submit exchange request';
+      message.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
