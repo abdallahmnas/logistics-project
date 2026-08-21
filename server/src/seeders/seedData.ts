@@ -32,6 +32,36 @@ export const seedUsers = [
     role: 'super_admin',
     isVerified: true,
   },
+  {
+    id: 'usr-drv-001',
+    customerId: 'DRV-001',
+    firstName: 'Chukwudi',
+    lastName: 'Emmanuel',
+    email: 'chukwudi.driver@logicore.com',
+    phone: '+2348055667788',
+    role: 'driver',
+    isVerified: true,
+  },
+  {
+    id: 'usr-drv-002',
+    customerId: 'DRV-002',
+    firstName: 'Babatunde',
+    lastName: 'Raji',
+    email: 'babatunde.driver@logicore.com',
+    phone: '+2348033221100',
+    role: 'driver',
+    isVerified: true,
+  },
+  {
+    id: 'usr-drv-003',
+    customerId: 'DRV-003',
+    firstName: 'Ibrahim',
+    lastName: 'Musa',
+    email: 'ibrahim.driver@logicore.com',
+    phone: '+2348123456789',
+    role: 'driver',
+    isVerified: true,
+  },
 ];
 
 export const seedWallet = {

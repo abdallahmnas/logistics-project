@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Table, Input, Select, Button, Modal, Form, message, Tag, Alert } from 'antd';
-import { SearchOutlined, CarOutlined } from '@ant-design/icons';
+import { SearchOutlined, CarOutlined, UserOutlined, PhoneOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchDeliveries, assignDriver } from '../../../store/slices/deliverySlice';
+import { fetchAllUsers } from '../../../store/slices/adminSlice';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { formatDateTime, formatDistance } from '../../../utils/formatters';
 import type { LocalDelivery } from '../../../types/delivery.types';
@@ -10,6 +11,7 @@ import type { LocalDelivery } from '../../../types/delivery.types';
 const { Option } = Select;
 
 interface AssignFormValues {
+  selectedDriverId?: string;
   driverName: string;
   driverPhone: string;
 }
@@ -18,6 +20,7 @@ export const DeliveryDispatch: React.FC = () => {
   const [form] = Form.useForm<AssignFormValues>();
   const dispatch = useAppDispatch();
   const { deliveries, loading } = useAppSelector((state) => state.delivery);
+  const { users } = useAppSelector((state) => state.admin);
   const [searchText, setSearchText] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [activeDelivery, setActiveDelivery] = useState<LocalDelivery | null>(null);
@@ -25,7 +28,26 @@ export const DeliveryDispatch: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchDeliveries());
+    dispatch(fetchAllUsers());
   }, [dispatch]);
+
+  const registeredDriversList = useMemo(() => {
+    const drivers = users.filter((u) => u.role === 'driver' || u.role === 'warehouse_ng' || u.role === 'admin');
+    if (drivers.length > 0) {
+      return drivers.map((u) => ({
+        id: u.id,
+        name: `${u.firstName} ${u.lastName}`,
+        phone: u.phone || '+2348055667788',
+        vehicle: u.role === 'driver' ? 'Registered Express Dispatcher' : 'Logistics Fleet Driver',
+      }));
+    }
+    return [
+      { id: 'drv-001', name: 'Chukwudi Emmanuel', phone: '+2348055667788', vehicle: 'Registered Express Motorbike' },
+      { id: 'drv-002', name: 'Babatunde Raji', phone: '+2348033221100', vehicle: 'Registered Freight Sedan/Truck' },
+      { id: 'drv-003', name: 'Ibrahim Musa', phone: '+2348123456789', vehicle: 'Registered Express Motorbike' },
+      { id: 'drv-004', name: 'Sunday Okon', phone: '+2347098765432', vehicle: 'Registered Heavy Dispatch Van' },
+    ];
+  }, [users]);
 
   const filtered = useMemo(() => {
     return deliveries.filter((d) => {
@@ -41,6 +63,15 @@ export const DeliveryDispatch: React.FC = () => {
   const openAssign = (record: LocalDelivery) => {
     setActiveDelivery(record);
     form.resetFields();
+    // Default select first driver if available
+    if (registeredDriversList.length > 0) {
+      const first = registeredDriversList[0];
+      form.setFieldsValue({
+        selectedDriverId: first.id,
+        driverName: first.name,
+        driverPhone: first.phone,
+      });
+    }
   };
 
   const onFinish = async (values: AssignFormValues) => {
@@ -54,10 +85,12 @@ export const DeliveryDispatch: React.FC = () => {
           driverPhone: values.driverPhone,
         })
       ).unwrap();
-      message.success(`Driver assigned. Verification PIN: ${result.verificationPin}`);
+      message.success(`Driver assigned successfully! Verification PIN: ${result.verificationPin}`);
       setActiveDelivery(null);
-    } catch {
-      message.error('Failed to assign driver.');
+      dispatch(fetchDeliveries());
+    } catch (err: any) {
+      const errorMsg = typeof err === 'string' ? err : err?.message || 'Failed to assign driver.';
+      message.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -79,9 +112,9 @@ export const DeliveryDispatch: React.FC = () => {
       key: 'route',
       render: (record: LocalDelivery) => (
         <div className="text-xs max-w-xs">
-          <div className="text-slate-700">{record.pickupCity}: {record.pickupAddress}</div>
-          <div className="text-slate-400 my-0.5">↓ {formatDistance(record.distanceKm)}</div>
-          <div className="text-slate-700">{record.dropoffCity}: {record.dropoffAddress}</div>
+          <div className="text-slate-700 font-medium">{record.pickupCity}: {record.pickupAddress}</div>
+          <div className="text-slate-400 my-0.5 font-bold">↓ {formatDistance(record.distanceKm)}</div>
+          <div className="text-slate-700 font-medium">{record.dropoffCity}: {record.dropoffAddress}</div>
         </div>
       ),
     },
@@ -89,7 +122,7 @@ export const DeliveryDispatch: React.FC = () => {
       title: 'Vehicle',
       dataIndex: 'vehicleType',
       key: 'vehicleType',
-      render: (v: string) => <Tag className="uppercase">{v.replace('_', ' ')}</Tag>,
+      render: (v: string) => <Tag className="uppercase font-bold">{v ? v.replace('_', ' ') : 'Sedan'}</Tag>,
     },
     { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => <StatusBadge module="delivery" status={s} /> },
     {
@@ -98,8 +131,8 @@ export const DeliveryDispatch: React.FC = () => {
       render: (record: LocalDelivery) =>
         record.driverName ? (
           <div className="text-xs">
-            <div className="font-medium text-slate-700">{record.driverName}</div>
-            <div className="text-slate-400">{record.driverPhone}</div>
+            <div className="font-bold text-slate-800">{record.driverName}</div>
+            <div className="text-slate-500 font-mono">{record.driverPhone}</div>
           </div>
         ) : (
           <span className="text-slate-400 italic text-xs">Unassigned</span>
@@ -115,7 +148,7 @@ export const DeliveryDispatch: React.FC = () => {
             type="primary"
             size="small"
             icon={<CarOutlined />}
-            className="bg-brand-gold text-brand-navy font-bold border-none hover:bg-yellow-500"
+            className="bg-brand-navy text-white font-bold border-none hover:bg-slate-800"
             onClick={() => openAssign(record)}
           >
             Assign Driver
@@ -130,7 +163,7 @@ export const DeliveryDispatch: React.FC = () => {
     <div className="space-y-6 animate-fade-in-up">
       <div>
         <h1 className="text-2xl font-bold text-slate-800 m-0">Local Delivery Dispatch</h1>
-        <p className="text-slate-500 mt-1 mb-0 text-sm">Assign drivers to confirmed local delivery requests</p>
+        <p className="text-slate-500 mt-1 mb-0 text-sm">Assign drivers to confirmed local doorstep delivery requests</p>
       </div>
 
       <Card bordered={false} className="shadow-sm rounded-2xl">
@@ -159,40 +192,77 @@ export const DeliveryDispatch: React.FC = () => {
       </Card>
 
       <Modal
-        title={activeDelivery ? `Assign Driver — ${activeDelivery.id}` : 'Assign Driver'}
+        title={activeDelivery ? `Assign Driver — Request ${activeDelivery.id}` : 'Assign Driver'}
         open={!!activeDelivery}
         onCancel={() => setActiveDelivery(null)}
         footer={null}
-        destroyOnHidden
+        destroyOnClose
       >
         <Alert
           type="info"
           showIcon
-          message="A 4-digit verification PIN will be generated automatically and shared with the customer."
+          message="Select a registered driver from the active fleet. A 4-digit verification PIN will be generated for delivery verification."
           className="mb-4 mt-2"
         />
         <Form form={form} layout="vertical" onFinish={onFinish} requiredMark={false}>
-          <Form.Item name="driverName" label="Driver Name" rules={[{ required: true, message: 'Please enter the driver name' }]}>
-            <Input size="large" placeholder="e.g. Chukwudi Emmanuel" />
-          </Form.Item>
           <Form.Item
-            name="driverPhone"
-            label="Driver Phone"
-            rules={[
-              { required: true, message: 'Please enter the driver phone' },
-              { pattern: /^(\+234|0)[789]\d{9}$/, message: 'Enter a valid Nigerian phone number' },
-            ]}
+            name="selectedDriverId"
+            label={<span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Registered Driver Fleet <span className="text-red-500">*</span></span>}
+            rules={[{ required: true, message: 'Please select a registered driver' }]}
           >
-            <Input size="large" placeholder="e.g. +2348055667788" />
+            <Select
+              size="large"
+              placeholder="Select registered driver from fleet..."
+              onChange={(val) => {
+                const driver = registeredDriversList.find((d) => d.id === val);
+                if (driver) {
+                  form.setFieldsValue({
+                    driverName: driver.name,
+                    driverPhone: driver.phone,
+                  });
+                }
+              }}
+            >
+              {registeredDriversList.map((d) => (
+                <Option key={d.id} value={d.id}>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="font-bold text-slate-800">{d.name}</span>
+                    <span className="text-xs text-slate-500 font-mono ms-2">{d.phone} • {d.vehicle}</span>
+                  </div>
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
-          <Form.Item className="mb-0 mt-4 text-right">
-            <Button onClick={() => setActiveDelivery(null)} className="mr-2">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Form.Item
+              name="driverName"
+              label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Driver Name</span>}
+              rules={[{ required: true, message: 'Please enter driver name' }]}
+            >
+              <Input size="large" prefix={<UserOutlined className="text-slate-400" />} placeholder="Driver name" className="bg-slate-50 border-slate-200 font-medium" />
+            </Form.Item>
+
+            <Form.Item
+              name="driverPhone"
+              label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Driver Phone</span>}
+              rules={[
+                { required: true, message: 'Please enter driver phone' },
+                { pattern: /^(\+234|0)[789]\d{9}$/, message: 'Enter a valid Nigerian phone number' },
+              ]}
+            >
+              <Input size="large" prefix={<PhoneOutlined className="text-slate-400" />} placeholder="Driver phone" className="bg-slate-50 border-slate-200 font-medium" />
+            </Form.Item>
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+            <Button onClick={() => setActiveDelivery(null)} size="large">
               Cancel
             </Button>
-            <Button type="primary" htmlType="submit" loading={submitting}>
-              Assign Driver
+            <Button type="primary" htmlType="submit" size="large" loading={submitting} className="bg-brand-navy font-bold px-6">
+              Assign Selected Driver
             </Button>
-          </Form.Item>
+          </div>
         </Form>
       </Modal>
     </div>
