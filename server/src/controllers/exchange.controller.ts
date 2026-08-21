@@ -62,6 +62,18 @@ export const releaseRmb = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
+export const rejectExchange = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const adminId = (req as any).user.id;
+    const { reason } = req.body;
+    const exchange = await ExchangeService.rejectExchange(id, adminId, reason);
+    res.status(200).json({ success: true, data: exchange });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 export const uploadReceipt = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;

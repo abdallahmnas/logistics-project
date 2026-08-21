@@ -78,6 +78,18 @@ export const releaseRmb = createAsyncThunk(
   }
 );
 
+export const rejectExchange = createAsyncThunk(
+  'exchange/rejectExchange',
+  async (payload: { exchangeId: string; reason?: string }, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.patch(`/exchanges/${payload.exchangeId}/reject`, { reason: payload.reason });
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
 const exchangeSlice = createSlice({
   name: 'exchange',
   initialState,

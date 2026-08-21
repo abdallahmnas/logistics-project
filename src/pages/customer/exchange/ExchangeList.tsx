@@ -338,13 +338,42 @@ export const ExchangeList: React.FC = () => {
       title: 'STATUS',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <Tag className="m-0 bg-slate-100 border-none font-bold text-slate-600 flex items-center gap-1 w-fit rounded-md px-2 py-0.5 text-[10px] uppercase">
-          <div className={`w-1.5 h-1.5 rounded-full ${status === 'pending' || status === 'awaiting_payment' ? 'bg-orange-500' : 'bg-slate-800'}`}></div>
-          {status === 'pending' || status === 'awaiting_payment' ? 'Processing' : 'Completed'}
-        </Tag>
-      ),
-    }
+      render: (status: string, record: any) => {
+        if (status === 'cancelled') {
+          return (
+            <div>
+              <Tag className="m-0 bg-red-50 text-red-600 border border-red-200 font-bold flex items-center gap-1 w-fit rounded-md px-2 py-0.5 text-[10px] uppercase">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> Rejected
+              </Tag>
+              {record.rejectionReason && (
+                <div className="text-[10px] text-red-500 mt-1 max-w-[200px] truncate font-medium" title={record.rejectionReason}>
+                  Reason: {record.rejectionReason}
+                </div>
+              )}
+            </div>
+          );
+        }
+        if (status === 'completed') {
+          return (
+            <Tag className="m-0 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold flex items-center gap-1 w-fit rounded-md px-2 py-0.5 text-[10px] uppercase">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Completed
+            </Tag>
+          );
+        }
+        if (status === 'naira_confirmed') {
+          return (
+            <Tag className="m-0 bg-blue-50 text-blue-700 border border-blue-200 font-bold flex items-center gap-1 w-fit rounded-md px-2 py-0.5 text-[10px] uppercase">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Naira Confirmed
+            </Tag>
+          );
+        }
+        return (
+          <Tag className="m-0 bg-amber-50 text-amber-700 border border-amber-200 font-bold flex items-center gap-1 w-fit rounded-md px-2 py-0.5 text-[10px] uppercase">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> Pending Verification
+          </Tag>
+        );
+      },
+    },
   ];
 
   return (

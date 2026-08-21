@@ -289,4 +289,37 @@ export class ExchangeService {
     await exchange.save();
     return exchange;
   }
+
+  public static async rejectExchange(exchangeId: string, adminId: string, reason?: string) {
+    const exchange = await ExchangeRequest.findByPk(exchangeId);
+    if (!exchange) throw new Error('Exchange request not found');
+    if (['completed', 'cancelled'].includes(exchange.status)) {
+      throw new Error(`Cannot reject — exchange request is already ${exchange.status}`);
+    }
+
+    const rejectionReason = reason || 'Payment proof verification failed or invalid receiving wallet details.';
+    (exchange as any).status = 'cancelled';
+    (exchange as any).rejectionReason = rejectionReason;
+    await exchange.save();
+
+    ActivityLogService.logActivity({
+      userId: adminId,
+      userName: 'Finance Staff',
+      userRole: 'finance',
+      module: 'exchange',
+      action: 'REJECT_EXCHANGE',
+      description: `Rejected exchange request ${exchange.id}. Reason: ${rejectionReason}`,
+      entityId: exchange.id,
+    });
+
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: exchange.customerId,
+      orderType: 'Exchange',
+      orderId: exchange.id,
+      newStatus: 'cancelled',
+      statusDescription: `Your currency exchange request was declined by finance staff. Reason: ${rejectionReason}`,
+    });
+
+    return exchange;
+  }
 }
