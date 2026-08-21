@@ -36,14 +36,20 @@ export const NewConsolidationPage: React.FC = () => {
 
   const warehouseTabs = useMemo(() => {
     const tabs = [{ key: "all", label: "All Consolidable Warehouses" }];
+    const seenKeys = new Set<string>(["all"]);
+
     if (facilities && facilities.length > 0) {
       facilities
         .filter((f) => f.status !== "inactive")
         .forEach((f) => {
-          tabs.push({
-            key: f.name.toLowerCase().split(" ")[0],
-            label: `${f.name} (${f.country})`,
-          });
+          const tabKey = f.code || f.name.toLowerCase().split(" ")[0];
+          if (!seenKeys.has(tabKey)) {
+            seenKeys.add(tabKey);
+            tabs.push({
+              key: tabKey,
+              label: `${f.name} (${f.country})`,
+            });
+          }
         });
     } else {
       tabs.push(

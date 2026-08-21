@@ -60,7 +60,25 @@ export class FacilityService {
       facilities = await Facility.findAll({ order: [['code', 'ASC']] });
     }
 
-    return facilities;
+    // Clean up any duplicate records in DB created by parallel initial seeds
+    const seenCodes = new Set<string>();
+    const uniqueFacilities: Facility[] = [];
+    const idsToDelete: string[] = [];
+
+    for (const f of facilities) {
+      if (!seenCodes.has(f.code)) {
+        seenCodes.add(f.code);
+        uniqueFacilities.push(f);
+      } else {
+        idsToDelete.push(f.id);
+      }
+    }
+
+    if (idsToDelete.length > 0) {
+      await Facility.destroy({ where: { id: idsToDelete } });
+    }
+
+    return uniqueFacilities;
   }
 
   public static async getFacilityById(id: string) {
