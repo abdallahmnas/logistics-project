@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, InputNumber, Upload, Table, Tag, Form, message, Image, Select, Checkbox, Radio, Alert } from 'antd';
-import { SwapOutlined, CloudUploadOutlined, BankOutlined, QuestionCircleOutlined, DownloadOutlined, SyncOutlined, DeleteOutlined, QrcodeOutlined, BarcodeOutlined, CheckOutlined, PlusOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { Card, Button, Input, InputNumber, Upload, Table, Tag, Form, message, Image, Select, Modal, Alert } from 'antd';
+import { SwapOutlined, CloudUploadOutlined, BankOutlined, DownloadOutlined, DeleteOutlined, QrcodeOutlined, BarcodeOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchExchanges, fetchActiveRate, submitExchangeRequest, fetchSavedAccounts } from '../../../store/slices/exchangeSlice';
+import { fetchExchanges, fetchActiveRate, submitExchangeRequest, fetchSavedAccounts, createSavedAccount } from '../../../store/slices/exchangeSlice';
 import { useNavigate } from 'react-router-dom';
 import type { ExchangeRequest, RmbDestinationType, SavedAccount } from '../../../types/exchange.types';
 
@@ -13,20 +13,24 @@ export const ExchangeList: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const [modalForm] = Form.useForm();
   const { exchanges, activeRate, savedAccounts, loading } = useAppSelector((state) => state.exchange);
 
   const [rmbDestType, setRmbDestType] = useState<RmbDestinationType>('wechat_pay');
   const [sendAmount, setSendAmount] = useState<number>(500000);
   
-  // Account Information: Customer Receiving Barcode / QR Code
+  // Selected Receiving Wallet details
+  const [selectedSavedAccountId, setSelectedSavedAccountId] = useState<string>('');
   const [barcodeUrl, setBarcodeUrl] = useState<string>('');
   const [barcodePreviewUrl, setBarcodePreviewUrl] = useState<string>('');
-  const [barcodeFileName, setBarcodeFileName] = useState<string>('');
 
-  // Saved account selection & mode toggle
-  const [accountMode, setAccountMode] = useState<'saved' | 'new'>('saved');
-  const [selectedSavedAccountId, setSelectedSavedAccountId] = useState<string>('');
-  const [saveAccountChecked, setSaveAccountChecked] = useState<boolean>(true);
+  // Add Wallet Modal state
+  const [isAddWalletModalOpen, setIsAddWalletModalOpen] = useState(false);
+  const [modalPlatform, setModalPlatform] = useState<RmbDestinationType>('wechat_pay');
+  const [modalBarcodeUrl, setModalBarcodeUrl] = useState<string>('');
+  const [modalBarcodePreviewUrl, setModalBarcodePreviewUrl] = useState<string>('');
+  const [modalBarcodeFileName, setModalBarcodeFileName] = useState<string>('');
+  const [modalSubmitting, setModalSubmitting] = useState(false);
 
   // Payment Proof: Bank Transfer Screenshot Image
   const [proofUrl, setProofUrl] = useState<string>('');
@@ -40,10 +44,7 @@ export const ExchangeList: React.FC = () => {
     dispatch(fetchActiveRate());
     dispatch(fetchSavedAccounts()).unwrap().then((accs) => {
       if (accs && accs.length > 0) {
-        setAccountMode('saved');
         handleSelectSavedAccount(accs[0].id, accs);
-      } else {
-        setAccountMode('new');
       }
     });
   }, [dispatch]);
@@ -63,11 +64,70 @@ export const ExchangeList: React.FC = () => {
     if (acc.barcodeUrl) {
       setBarcodeUrl(acc.barcodeUrl);
       setBarcodePreviewUrl(acc.barcodeUrl);
-      setBarcodeFileName(`${acc.platform}_saved_barcode.png`);
     } else {
       setBarcodeUrl('');
       setBarcodePreviewUrl('');
-      setBarcodeFileName('');
+    }
+  };
+
+  // Modal Barcode Upload Handler
+  const handleModalBarcodeFileChange = (fileList: any[]) => {
+    if (!fileList || fileList.length === 0) {
+      setModalBarcodePreviewUrl('');
+      setModalBarcodeFileName('');
+      setModalBarcodeUrl('');
+      return;
+    }
+    const fileItem = fileList[0];
+    const file = fileItem.originFileObj || fileItem;
+
+    if (file && file instanceof File) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setModalBarcodePreviewUrl(result);
+        setModalBarcodeUrl(result);
+        setModalBarcodeFileName(file.name);
+      };
+      reader.readAsDataURL(file);
+    } else if (fileItem.url || fileItem.thumbUrl) {
+      setModalBarcodePreviewUrl(fileItem.url || fileItem.thumbUrl);
+      setModalBarcodeUrl(fileItem.url || fileItem.thumbUrl);
+      setModalBarcodeFileName(fileItem.name || 'barcode.png');
+    }
+  };
+
+  // Submit Modal to Save New Wallet Account
+  const handleSaveNewWalletAccount = async (values: any) => {
+    try {
+      setModalSubmitting(true);
+      const newAcc = await dispatch(
+        createSavedAccount({
+          platform: modalPlatform,
+          accountNumber: values.accountNumber,
+          accountName: values.accountName,
+          label: values.label || `${modalPlatform === 'wechat_pay' ? 'WeChat' : modalPlatform === 'alipay' ? 'Alipay' : 'Chinese Bank'} (${values.accountName})`,
+          barcodeUrl: modalBarcodeUrl || undefined,
+          isDefault: true,
+        })
+      ).unwrap();
+
+      message.success('Receiving wallet account saved successfully!');
+      setIsAddWalletModalOpen(false);
+      modalForm.resetFields();
+      setModalBarcodePreviewUrl('');
+      setModalBarcodeUrl('');
+      setModalBarcodeFileName('');
+
+      // Refresh saved accounts and auto-select newly added wallet
+      const updatedList = await dispatch(fetchSavedAccounts()).unwrap();
+      if (newAcc && newAcc.id) {
+        handleSelectSavedAccount(newAcc.id, updatedList);
+      }
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to save wallet account');
+    } finally {
+      setModalSubmitting(false);
     }
   };
 
@@ -357,40 +417,28 @@ export const ExchangeList: React.FC = () => {
                     <BarcodeOutlined className="text-brand-orange text-base" /> RECEIVING WALLET ACCOUNT INFORMATION
                   </span>
 
-                  {savedAccounts && savedAccounts.length > 0 && (
-                    <Radio.Group
-                      value={accountMode}
-                      onChange={(e) => {
-                        setAccountMode(e.target.value);
-                        if (e.target.value === 'saved' && savedAccounts.length > 0) {
-                          handleSelectSavedAccount(savedAccounts[0].id);
-                        } else {
-                          setSelectedSavedAccountId('');
-                          form.resetFields(['rmbDestAccount', 'rmbDestName']);
-                          setBarcodePreviewUrl('');
-                          setBarcodeUrl('');
-                        }
-                      }}
-                      optionType="button"
-                      buttonStyle="solid"
-                      size="small"
-                      className="[&_.ant-radio-button-wrapper-checked]:!bg-[#0A1128]"
-                    >
-                      <Radio.Button value="saved">
-                        <BankOutlined /> Saved Wallets ({savedAccounts.length})
-                      </Radio.Button>
-                      <Radio.Button value="new">
-                        <PlusOutlined /> Enter New
-                      </Radio.Button>
-                    </Radio.Group>
-                  )}
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    size="small"
+                    onClick={() => {
+                      modalForm.resetFields();
+                      setModalBarcodePreviewUrl('');
+                      setModalBarcodeUrl('');
+                      setModalBarcodeFileName('');
+                      setIsAddWalletModalOpen(true);
+                    }}
+                    className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold text-xs shadow-sm"
+                  >
+                    Add New Saved Wallet
+                  </Button>
                 </div>
 
-                {/* MODE A: Customer Has Saved Accounts & is in 'saved' mode */}
-                {savedAccounts && savedAccounts.length > 0 && accountMode === 'saved' && (
+                {/* If Customer Has Saved Accounts */}
+                {savedAccounts && savedAccounts.length > 0 ? (
                   <div className="space-y-4 animate-fade-in-up">
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">
-                      SELECT SAVED RECEIVING WALLET DETAIL (1-CLICK FILL)
+                      SELECT SAVED RECEIVING WALLET ACCOUNT
                     </label>
                     <Select
                       size="large"
@@ -415,7 +463,7 @@ export const ExchangeList: React.FC = () => {
                       ))}
                     </Select>
 
-                    {/* Selected Account Summary Card - Super Clean & Uncluttered */}
+                    {/* Selected Account Summary Card - Clean & Uncluttered */}
                     {selectedSavedAccountId && (
                       <div className="bg-white border border-blue-200 rounded-xl p-4 shadow-sm space-y-3">
                         <div className="flex justify-between items-start">
@@ -456,136 +504,52 @@ export const ExchangeList: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Hidden inputs to pass validation to Ant Design form */}
+                    {/* Hidden inputs for Ant Design form validation */}
                     <div className="hidden">
-                      <Form.Item name="rmbDestAccount" rules={[{ required: true, message: 'Please select a receiving wallet' }]}>
+                      <Form.Item name="rmbDestAccount" rules={[{ required: true, message: 'Please select a saved receiving wallet' }]}>
                         <Input />
                       </Form.Item>
-                      <Form.Item name="rmbDestName" rules={[{ required: true, message: 'Please select a receiving wallet' }]}>
+                      <Form.Item name="rmbDestName" rules={[{ required: true, message: 'Please select a saved receiving wallet' }]}>
                         <Input />
                       </Form.Item>
                     </div>
                   </div>
-                )}
-
-                {/* MODE B: No Saved Accounts or Customer Chose 'Enter New' */}
-                {(savedAccounts.length === 0 || accountMode === 'new') && (
-                  <div className="space-y-4 animate-fade-in-up">
-                    {savedAccounts.length === 0 && (
-                      <Alert
-                        type="info"
-                        showIcon
-                        message={<span className="font-bold text-xs">No Saved Wallet Account Details Found</span>}
-                        description={<span className="text-xs">Please enter and save your receiving wallet account details below (WeChat / Alipay ID & Barcode) so you can receive your funded RMB.</span>}
-                        className="rounded-xl mb-4"
-                      />
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">RECEIVING PLATFORM</label>
-                        <div className="flex bg-white p-1 rounded-lg border border-slate-200">
-                          <Button 
-                            type={rmbDestType === 'wechat_pay' ? 'primary' : 'text'} 
-                            onClick={() => setRmbDestType('wechat_pay')}
-                            className={`flex-1 font-bold ${rmbDestType === 'wechat_pay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
-                          >
-                            WeChat
-                          </Button>
-                          <Button 
-                            type={rmbDestType === 'alipay' ? 'primary' : 'text'} 
-                            onClick={() => setRmbDestType('alipay')}
-                            className={`flex-1 font-bold ${rmbDestType === 'alipay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
-                          >
-                            Alipay
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <Form.Item name="rmbDestAccount" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">WALLET ID / PHONE NUMBER</span>} rules={[{ required: true, message: 'Please enter WeChat/Alipay ID' }]}>
-                          <Input size="large" placeholder="Enter WeChat/Alipay ID" className="bg-white border-slate-200" />
-                        </Form.Item>
-                      </div>
-                    </div>
-
-                    <Form.Item name="rmbDestName" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">ACCOUNT HOLDER NAME</span>} rules={[{ required: true, message: 'Please enter account name' }]}>
-                      <Input size="large" placeholder="e.g. Li Wei / Account Holder" className="bg-white border-slate-200" />
-                    </Form.Item>
-
-                    {/* Barcode & QR Code Upload */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex justify-between items-center">
-                        <span>RECEIVING BARCODE / QR CODE IMAGE (OPTIONAL)</span>
-                        <span className="text-[10px] text-slate-400 font-normal">Add barcode to be saved</span>
-                      </label>
-                      
-                      <Dragger
-                        className="bg-white border-dashed border-slate-300 rounded-xl py-2"
-                        beforeUpload={() => false}
-                        onChange={({ fileList: newFileList }) => handleBarcodeFileChange(newFileList)}
-                        showUploadList={false}
-                        accept="image/*"
-                        customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
-                      >
-                        <p className="ant-upload-drag-icon flex justify-center gap-2 mb-1">
-                          <BarcodeOutlined className="text-brand-orange text-2xl" />
-                          <QrcodeOutlined className="text-slate-400 text-2xl" />
-                        </p>
-                        <p className="ant-upload-text font-bold text-slate-700 text-xs m-0">Click or drag receiving Barcode/QR image to save with account</p>
-                      </Dragger>
-
-                      {barcodePreviewUrl && (
-                        <div className="mt-3 bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm animate-fade-in-up">
-                          <div className="flex items-center gap-3">
-                            <Image
-                              src={barcodePreviewUrl}
-                              alt="Receiving Barcode Preview"
-                              className="w-16 h-16 rounded-lg object-contain border border-slate-200 bg-slate-50"
-                              fallback="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=600"
-                            />
-                            <div>
-                              <span className="text-xs font-bold text-slate-800 block truncate max-w-[200px]">
-                                {barcodeFileName || 'receiving_barcode.png'}
-                              </span>
-                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
-                                ✓ Receiving Barcode Attached
-                              </span>
-                            </div>
-                          </div>
-                          <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() => { setBarcodePreviewUrl(''); setBarcodeUrl(''); setBarcodeFileName(''); }}
-                            className="font-bold text-xs"
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
-                      <Checkbox
-                        checked={saveAccountChecked}
-                        onChange={(e) => setSaveAccountChecked(e.target.checked)}
-                        className="text-xs font-bold text-slate-700"
-                      >
-                        Save this receiving account & barcode for future 1-click transactions
-                      </Checkbox>
-
-                      {savedAccounts.length > 0 && (
+                ) : (
+                  /* If Customer HAS NO Saved Accounts Yet */
+                  <div className="space-y-4 animate-fade-in-up py-2">
+                    <Alert
+                      type="warning"
+                      showIcon
+                      message={<span className="font-bold text-sm text-slate-800">No Saved Receiving Wallet Accounts Found</span>}
+                      description={<span className="text-xs text-slate-600">You must save at least one receiving wallet account (WeChat / Alipay ID & Barcode) to receive your funded RMB. Click below to add your wallet account.</span>}
+                      action={
                         <Button
-                          type="link"
+                          type="primary"
+                          icon={<PlusOutlined />}
+                          size="small"
                           onClick={() => {
-                            setAccountMode('saved');
-                            handleSelectSavedAccount(savedAccounts[0].id);
+                            modalForm.resetFields();
+                            setModalBarcodePreviewUrl('');
+                            setModalBarcodeUrl('');
+                            setModalBarcodeFileName('');
+                            setIsAddWalletModalOpen(true);
                           }}
-                          className="text-xs font-bold text-brand-navy p-0"
+                          className="bg-[#0A1128] hover:bg-[#1a2542] border-none font-bold text-xs shadow-sm mt-2 sm:mt-0"
                         >
-                          ← Select Saved Account
+                          + Add Receiving Wallet Account
                         </Button>
-                      )}
+                      }
+                      className="rounded-xl border-amber-200 bg-amber-50/60 p-4"
+                    />
+
+                    {/* Hidden dummy inputs so form doesn't submit without selecting an account */}
+                    <div className="hidden">
+                      <Form.Item name="rmbDestAccount" rules={[{ required: true, message: 'Please save and select a receiving wallet account first' }]}>
+                        <Input />
+                      </Form.Item>
+                      <Form.Item name="rmbDestName" rules={[{ required: true, message: 'Please save and select a receiving wallet account first' }]}>
+                        <Input />
+                      </Form.Item>
                     </div>
                   </div>
                 )}
@@ -764,8 +728,130 @@ export const ExchangeList: React.FC = () => {
           <Button type="link" className="text-brand-orange font-bold text-xs tracking-wider" onClick={() => navigate('/customer/exchange/history')}>
             VIEW ALL REQUESTS ➔
           </Button>
-        </div>
-      </Card>
+      {/* Add New Saved Wallet Account Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-[#0A1128]">
+            <BarcodeOutlined className="text-brand-orange text-lg" />
+            <span className="font-extrabold text-base">Add & Save Receiving Wallet Account</span>
+          </div>
+        }
+        open={isAddWalletModalOpen}
+        onCancel={() => setIsAddWalletModalOpen(false)}
+        footer={null}
+        destroyOnHidden
+        centered
+        className="rounded-2xl overflow-hidden"
+      >
+        <Form form={modalForm} layout="vertical" onFinish={handleSaveNewWalletAccount} requiredMark={false} className="py-2 space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">RECEIVING PLATFORM</label>
+            <div className="flex bg-slate-100 p-1 rounded-xl">
+              <Button 
+                type={modalPlatform === 'wechat_pay' ? 'primary' : 'text'} 
+                onClick={() => setModalPlatform('wechat_pay')}
+                className={`flex-1 font-bold ${modalPlatform === 'wechat_pay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
+              >
+                💚 WeChat
+              </Button>
+              <Button 
+                type={modalPlatform === 'alipay' ? 'primary' : 'text'} 
+                onClick={() => setModalPlatform('alipay')}
+                className={`flex-1 font-bold ${modalPlatform === 'alipay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
+              >
+                💙 Alipay
+              </Button>
+              <Button 
+                type={modalPlatform === 'chinese_bank' ? 'primary' : 'text'} 
+                onClick={() => setModalPlatform('chinese_bank')}
+                className={`flex-1 font-bold ${modalPlatform === 'chinese_bank' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
+              >
+                🏛️ Bank
+              </Button>
+            </div>
+          </div>
+
+          <Form.Item name="accountNumber" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">WALLET ID / PHONE / BANK ACC #</span>} rules={[{ required: true, message: 'Please enter account number or wallet ID' }]}>
+            <Input size="large" placeholder="Enter WeChat ID, Alipay Phone, or Bank Card #" className="bg-slate-50 border-slate-200" />
+          </Form.Item>
+
+          <Form.Item name="accountName" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">ACCOUNT HOLDER NAME</span>} rules={[{ required: true, message: 'Please enter account holder name' }]}>
+            <Input size="large" placeholder="e.g. Li Wei / Zhang San" className="bg-slate-50 border-slate-200" />
+          </Form.Item>
+
+          <Form.Item name="label" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">NICKNAME / LABEL (OPTIONAL)</span>}>
+            <Input size="large" placeholder="e.g. Primary WeChat, Supplier Alipay" className="bg-slate-50 border-slate-200" />
+          </Form.Item>
+
+          {/* Barcode & QR Code Upload */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+              RECEIVING BARCODE / QR CODE IMAGE (RECOMMENDED)
+            </label>
+            
+            <Dragger
+              className="bg-white border-dashed border-slate-300 rounded-xl py-3"
+              beforeUpload={() => false}
+              onChange={({ fileList: newFileList }) => handleModalBarcodeFileChange(newFileList)}
+              showUploadList={false}
+              accept="image/*"
+              customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
+            >
+              <p className="ant-upload-drag-icon flex justify-center gap-2 mb-1">
+                <BarcodeOutlined className="text-brand-orange text-3xl" />
+                <QrcodeOutlined className="text-slate-400 text-3xl" />
+              </p>
+              <p className="ant-upload-text font-bold text-slate-700 text-xs m-0">Click or drag receiving Barcode or QR Code image</p>
+              <p className="ant-upload-hint text-[10px] text-slate-400">PNG, JPG, WEBP up to 5MB</p>
+            </Dragger>
+
+            {modalBarcodePreviewUrl && (
+              <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm animate-fade-in-up">
+                <div className="flex items-center gap-3">
+                  <Image
+                    src={modalBarcodePreviewUrl}
+                    alt="Receiving Barcode Preview"
+                    className="w-16 h-16 rounded-lg object-contain border border-slate-200 bg-white"
+                    fallback="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=600"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block truncate max-w-[200px]">
+                      {modalBarcodeFileName || 'receiving_barcode.png'}
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
+                      ✓ Receiving Barcode Attached
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => { setModalBarcodePreviewUrl(''); setModalBarcodeUrl(''); setModalBarcodeFileName(''); }}
+                  className="font-bold text-xs"
+                >
+                  Remove
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-100 mt-4">
+            <Button onClick={() => setIsAddWalletModalOpen(false)} size="large">
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={modalSubmitting}
+              size="large"
+              className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold px-6"
+            >
+              Save Wallet Account
+            </Button>
+          </div>
+        </Form>
+      </Modal>
 
     </div>
   );
