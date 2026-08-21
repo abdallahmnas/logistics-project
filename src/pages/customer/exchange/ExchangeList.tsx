@@ -6,6 +6,8 @@ import { fetchExchanges, fetchActiveRate, submitExchangeRequest, fetchSavedAccou
 import { useNavigate } from 'react-router-dom';
 import type { ExchangeRequest, RmbDestinationType, SavedAccount } from '../../../types/exchange.types';
 
+import apiClient from '../../../api/axios';
+
 const { Dragger } = Upload;
 const { Option } = Select;
 
@@ -76,8 +78,8 @@ export const ExchangeList: React.FC = () => {
     }
   };
 
-  // Modal Barcode Upload Handler
-  const handleModalBarcodeFileChange = (fileList: any[]) => {
+  // Modal Barcode Upload Handler (Direct Multipart Upload)
+  const handleModalBarcodeFileChange = async (fileList: any[]) => {
     if (!fileList || fileList.length === 0) {
       setModalBarcodePreviewUrl('');
       setModalBarcodeFileName('');
@@ -88,14 +90,33 @@ export const ExchangeList: React.FC = () => {
     const file = fileItem.originFileObj || fileItem;
 
     if (file && file instanceof File) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setModalBarcodePreviewUrl(result);
-        setModalBarcodeUrl(result);
-        setModalBarcodeFileName(file.name);
-      };
-      reader.readAsDataURL(file);
+      // 1. Instant local preview
+      const previewUrl = URL.createObjectURL(file);
+      setModalBarcodePreviewUrl(previewUrl);
+      setModalBarcodeFileName(file.name);
+
+      // 2. Direct upload to server
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'logicore/barcodes');
+
+        const hideLoading = message.loading('Uploading QR barcode...', 0);
+        const res = await apiClient.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        hideLoading();
+
+        if (res.data && res.data.url) {
+          setModalBarcodeUrl(res.data.url);
+          message.success('QR barcode image uploaded!');
+        }
+      } catch (err) {
+        console.warn('Direct upload error, falling back to FileReader:', err);
+        const reader = new FileReader();
+        reader.onload = (e) => setModalBarcodeUrl(e.target?.result as string);
+        reader.readAsDataURL(file);
+      }
     } else if (fileItem.url || fileItem.thumbUrl) {
       setModalBarcodePreviewUrl(fileItem.url || fileItem.thumbUrl);
       setModalBarcodeUrl(fileItem.url || fileItem.thumbUrl);
@@ -166,7 +187,8 @@ export const ExchangeList: React.FC = () => {
     }
   };
 
-  const handleProofFileChange = (fileList: any[]) => {
+  // Payment Proof Upload Handler (Direct Multipart Upload)
+  const handleProofFileChange = async (fileList: any[]) => {
     if (!fileList || fileList.length === 0) {
       setProofPreviewUrl('');
       setProofFileName('');
@@ -177,14 +199,33 @@ export const ExchangeList: React.FC = () => {
     const file = fileItem.originFileObj || fileItem;
 
     if (file && file instanceof File) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setProofPreviewUrl(result);
-        setProofUrl(result);
-        setProofFileName(file.name);
-      };
-      reader.readAsDataURL(file);
+      // 1. Instant local preview
+      const previewUrl = URL.createObjectURL(file);
+      setProofPreviewUrl(previewUrl);
+      setProofFileName(file.name);
+
+      // 2. Direct upload to server
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'logicore/exchange-receipts');
+
+        const hideLoading = message.loading('Uploading payment proof screenshot...', 0);
+        const res = await apiClient.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        hideLoading();
+
+        if (res.data && res.data.url) {
+          setProofUrl(res.data.url);
+          message.success('Payment proof uploaded successfully!');
+        }
+      } catch (err) {
+        console.warn('Direct upload error, falling back to FileReader:', err);
+        const reader = new FileReader();
+        reader.onload = (e) => setProofUrl(e.target?.result as string);
+        reader.readAsDataURL(file);
+      }
     } else if (fileItem.url || fileItem.thumbUrl) {
       setProofPreviewUrl(fileItem.url || fileItem.thumbUrl);
       setProofUrl(fileItem.url || fileItem.thumbUrl);

@@ -8,21 +8,43 @@ cloudinary.config({
 
 export { cloudinary };
 
+import fs from 'fs';
+import path from 'path';
+
 export async function uploadToCloudinary(
   buffer: Buffer,
   folder: string,
   publicId?: string
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      { folder, public_id: publicId, resource_type: 'auto' },
-      (error, result) => {
-        if (error || !result) return reject(error || new Error('Upload failed'));
-        resolve(result.secure_url);
-      }
-    );
-    uploadStream.end(buffer);
-  });
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+    try {
+      return await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder, public_id: publicId, resource_type: 'auto' },
+          (error, result) => {
+            if (error || !result) return reject(error || new Error('Upload failed'));
+            resolve(result.secure_url);
+          }
+        );
+        uploadStream.end(buffer);
+      });
+    } catch (err) {
+      console.warn('Cloudinary upload warning, saving to local disk fallback:', err);
+    }
+  }
+
+  try {
+    const uploadsDir = path.resolve(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const filename = `${publicId || Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
+    const filepath = path.join(uploadsDir, filename);
+    fs.writeFileSync(filepath, buffer);
+    return `/uploads/${filename}`;
+  } catch (err) {
+    return `data:image/png;base64,${buffer.toString('base64')}`;
+  }
 }
 
 export async function uploadBase64ToCloudinary(

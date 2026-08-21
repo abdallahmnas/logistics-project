@@ -18,6 +18,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
 
 import authRoutes from './routes/auth.routes';
 import shipmentRoutes from './routes/shipment.routes';
