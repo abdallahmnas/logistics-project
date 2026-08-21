@@ -52,14 +52,14 @@ export const LocalDeliveryForm: React.FC = () => {
           dropoffContactName: values.dropoffContactName,
           packageDescription: values.packageDescription,
           vehicleType: priority === 'express' ? 'motorbike' : 'sedan',
-          paymentMethod: 'wallet',
+          paymentMethod: values.paymentMethod === 'cash_on_delivery' ? 'cash_on_delivery' : 'wallet',
         })
       ).unwrap();
 
       message.success('Local Delivery request dispatched successfully!');
       navigate('/customer/delivery');
     } catch (err: any) {
-      const msg = err?.message || 'Failed to submit delivery request. Please check fields.';
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to submit delivery request. Please check fields.';
       message.error(msg);
     } finally {
       setSubmitting(false);
