@@ -25,14 +25,20 @@ export const OpenSupportTicket: React.FC = () => {
   }) => {
     setSubmitting(true);
     try {
-      const attachments = await Promise.all(
-        files.map(async ({ originFileObj }) => {
-          if (!originFileObj) throw new Error('An attachment could not be read. Please remove it and try again.');
-          return uploadSingleFile(originFileObj, 'support-tickets');
-        })
-      );
-      await dispatch(createTicket({ ...values, attachments } as any)).unwrap();
-      message.success('Your support ticket has been submitted.');
+      const formData = new FormData();
+      formData.append('subject', values.subject);
+      formData.append('category', values.category || 'other');
+      formData.append('message', values.message);
+      if (values.referenceId) formData.append('referenceId', values.referenceId);
+
+      files.forEach((f) => {
+        if (f.originFileObj) {
+          formData.append('attachments', f.originFileObj);
+        }
+      });
+
+      await dispatch(createTicket(formData)).unwrap();
+      message.success('Your support ticket has been submitted successfully.');
       navigate('/customer/support');
     } catch (error: any) {
       message.error(error?.message || 'Unable to submit the support ticket. Please try again.');

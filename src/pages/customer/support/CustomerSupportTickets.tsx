@@ -1,42 +1,29 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, Table, Input, Select, Tag } from 'antd';
 import { SearchOutlined, DownloadOutlined, PlusOutlined, FileTextOutlined, ExclamationCircleOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { fetchTickets } from '../../../store/slices/supportSlice';
+import { formatDate } from '../../../utils/formatters';
 
 export const CustomerSupportTickets: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { tickets, loading } = useAppSelector((state) => state.support);
   const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all_statuses');
+  const [categoryFilter, setCategoryFilter] = useState('all_categories');
 
-  const tickets = [
-    {
-      id: 'TKT-9823',
-      subject: 'Delayed Shipment GL-982 in Cus...',
-      category: 'Shipping',
-      status: 'Open',
-      lastUpdated: '10 mins ago',
-    },
-    {
-      id: 'TKT-9755',
-      subject: 'Wallet Funding Issue - EUR Acco...',
-      category: 'Billing',
-      status: 'In Progress',
-      lastUpdated: '2 hours ago',
-    },
-    {
-      id: 'TKT-9701',
-      subject: 'Address correction for manifest #...',
-      category: 'Shipping',
-      status: 'Resolved',
-      lastUpdated: 'Yesterday, 14:30',
-    },
-    {
-      id: 'TKT-9650',
-      subject: 'API Authentication Token Expired',
-      category: 'Technical',
-      status: 'Closed',
-      lastUpdated: 'Oct 12, 2023',
-    },
-  ];
+  useEffect(() => {
+    dispatch(fetchTickets());
+  }, [dispatch]);
+
+  const filteredTickets = tickets.filter((t) => {
+    const matchesSearch = !searchText || t.subject.toLowerCase().includes(searchText.toLowerCase()) || t.id.toLowerCase().includes(searchText.toLowerCase());
+    const matchesStatus = statusFilter === 'all_statuses' || t.status === statusFilter;
+    const matchesCategory = categoryFilter === 'all_categories' || t.category === categoryFilter;
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
 
   const columns = [
     {
@@ -44,15 +31,20 @@ export const CustomerSupportTickets: React.FC = () => {
       dataIndex: 'id',
       key: 'id',
       render: (text: string) => (
-        <span className="text-slate-500 text-xs font-mono">{text}</span>
+        <span className="text-slate-500 text-xs font-mono">#{text.substring(0, 8)}</span>
       ),
     },
     {
       title: 'SUBJECT',
       dataIndex: 'subject',
       key: 'subject',
-      render: (text: string) => (
-        <span className="text-[#0A1128] font-bold text-sm cursor-pointer hover:text-brand-orange">{text}</span>
+      render: (text: string, record: any) => (
+        <span 
+          className="text-[#0A1128] font-bold text-sm cursor-pointer hover:text-brand-orange"
+          onClick={() => navigate(`/customer/support/${record.id}`)}
+        >
+          {text}
+        </span>
       ),
     },
     {
@@ -60,7 +52,7 @@ export const CustomerSupportTickets: React.FC = () => {
       dataIndex: 'category',
       key: 'category',
       render: (text: string) => (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-slate-100 border border-slate-200 text-slate-500 text-xs font-bold">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-slate-100 border border-slate-200 text-slate-500 text-xs font-bold uppercase">
           <FileTextOutlined /> {text}
         </span>
       ),
@@ -70,22 +62,22 @@ export const CustomerSupportTickets: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => {
-        if (status === 'Open') {
+        if (status === 'open') {
           return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-500 text-xs font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> {status}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-500 text-xs font-bold uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Open
             </span>
           );
         }
-        if (status === 'In Progress') {
+        if (status === 'in_progress') {
           return (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0A1128] text-white text-xs font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-white"></span> {status}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0A1128] text-white text-xs font-bold uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-white"></span> In Progress
             </span>
           );
         }
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-bold">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold uppercase">
             <CheckCircleOutlined /> {status}
           </span>
         );
@@ -93,16 +85,14 @@ export const CustomerSupportTickets: React.FC = () => {
     },
     {
       title: 'LAST UPDATED',
-      dataIndex: 'lastUpdated',
-      key: 'lastUpdated',
-      render: (text: string) => <span className="text-slate-500 text-sm whitespace-pre-wrap">{text.replace(', ', ',\n')}</span>,
-    },
-    {
-      title: 'ACTION',
-      key: 'action',
-      render: () => null,
+      dataIndex: 'updatedAt',
+      key: 'updatedAt',
+      render: (text: string) => <span className="text-slate-500 text-xs">{text ? formatDate(text) : 'Recently'}</span>,
     },
   ];
+
+  const openCount = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
+  const resolvedCount = tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length;
 
   return (
     <div className="animate-fade-in-up max-w-[1000px] mx-auto py-8">
@@ -135,8 +125,8 @@ export const CustomerSupportTickets: React.FC = () => {
             </div>
           </div>
           <div>
-            <div className="text-4xl font-extrabold text-[#0A1128] mb-2">14</div>
-            <div className="text-xs font-bold text-brand-orange">↗ +2 this month</div>
+            <div className="text-4xl font-extrabold text-[#0A1128] mb-2">{tickets.length}</div>
+            <div className="text-xs font-bold text-brand-orange">Active Customer Inquiries</div>
           </div>
         </div>
 
@@ -149,9 +139,9 @@ export const CustomerSupportTickets: React.FC = () => {
             </div>
           </div>
           <div className="relative z-10">
-            <div className="text-4xl font-extrabold text-white mb-2">3</div>
+            <div className="text-4xl font-extrabold text-white mb-2">{openCount}</div>
             <div className="flex items-center gap-1.5 text-xs font-bold text-blue-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-300"></span> Requires attention
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-300"></span> In progress with support staff
             </div>
           </div>
         </div>
@@ -164,9 +154,9 @@ export const CustomerSupportTickets: React.FC = () => {
             </div>
           </div>
           <div>
-            <div className="text-4xl font-extrabold text-[#0A1128] mb-2">11</div>
+            <div className="text-4xl font-extrabold text-[#0A1128] mb-2">{resolvedCount}</div>
             <div className="text-xs font-medium text-slate-500 flex items-center gap-1">
-              <ClockCircleOutlined /> Avg response: 4h
+              <ClockCircleOutlined /> Closed & Resolved
             </div>
           </div>
         </div>
@@ -182,46 +172,45 @@ export const CustomerSupportTickets: React.FC = () => {
           onChange={(e) => setSearchText(e.target.value)}
         />
         <Select
-          defaultValue="all_statuses"
+          value={statusFilter}
+          onChange={setStatusFilter}
           className="w-40 h-12 [&_.ant-select-selector]:border-transparent [&_.ant-select-selector]:hover:border-slate-300 [&_.ant-select-selector]:h-12 [&_.ant-select-selection-item]:leading-[46px] bg-white rounded-lg font-bold text-[#0A1128]"
           options={[
             { value: 'all_statuses', label: 'All Statuses' },
             { value: 'open', label: 'Open' },
+            { value: 'in_progress', label: 'In Progress' },
             { value: 'resolved', label: 'Resolved' },
           ]}
         />
         <Select
-          defaultValue="all_categories"
+          value={categoryFilter}
+          onChange={setCategoryFilter}
           className="w-44 h-12 [&_.ant-select-selector]:border-transparent [&_.ant-select-selector]:hover:border-slate-300 [&_.ant-select-selector]:h-12 [&_.ant-select-selection-item]:leading-[46px] bg-white rounded-lg font-bold text-[#0A1128]"
           options={[
             { value: 'all_categories', label: 'All Categories' },
-            { value: 'shipping', label: 'Shipping' },
-            { value: 'billing', label: 'Billing' },
+            { value: 'shipment', label: 'Shipment' },
+            { value: 'payment', label: 'Billing' },
+            { value: 'exchange', label: 'Exchange' },
+            { value: 'procurement', label: 'Buy For Me' },
+            { value: 'delivery', label: 'Delivery' },
+            { value: 'account', label: 'Account' },
           ]}
         />
-        <Button className="h-12 w-12 p-0 border-transparent text-[#0A1128] bg-white rounded-lg flex items-center justify-center font-bold">
-          <DownloadOutlined />
-        </Button>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-b-xl border border-slate-100 shadow-sm overflow-hidden mb-6">
         <Table
           columns={columns}
-          dataSource={tickets}
+          dataSource={filteredTickets}
           rowKey="id"
-          pagination={false}
-          className="[&_.ant-table-thead_th]:!bg-slate-100 [&_.ant-table-thead_th]:!text-slate-500 [&_.ant-table-thead_th]:!text-[10px] [&_.ant-table-thead_th]:!font-bold [&_.ant-table-thead_th]:!uppercase [&_.ant-table-thead_th]:!tracking-wider [&_.ant-table-thead_th]:!border-b-2 [&_.ant-table-thead_th]:!border-slate-100 [&_.ant-table-thead_th]:!py-4 [&_.ant-table-tbody_td]:!py-6 border-b border-slate-100"
+          loading={loading}
+          pagination={{ pageSize: 10 }}
+          className="[&_.ant-table-thead_th]:!bg-slate-100 [&_.ant-table-thead_th]:!text-slate-500 [&_.ant-table-thead_th]:!text-[10px] [&_.ant-table-thead_th]:!font-bold [&_.ant-table-thead_th]:!uppercase [&_.ant-table-thead_th]:!tracking-wider [&_.ant-table-thead_th]:!border-b-2 [&_.ant-table-thead_th]:!border-slate-100 [&_.ant-table-thead_th]:!py-4 [&_.ant-table-tbody_td]:!py-6 border-b border-slate-100 cursor-pointer"
+          onRow={(record) => ({
+            onClick: () => navigate(`/customer/support/${record.id}`),
+          })}
         />
-      </div>
-
-      {/* Footer Pagination */}
-      <div className="flex justify-between items-center text-sm text-slate-500 font-medium bg-slate-50 p-4 rounded-xl border border-slate-100">
-        <div>Showing 1-4 of 14 tickets</div>
-        <div className="flex gap-2">
-          <Button className="border-transparent text-slate-400 bg-slate-200 font-medium px-4">Previous</Button>
-          <Button className="border-slate-200 text-[#0A1128] bg-white font-bold px-6 shadow-sm">Next</Button>
-        </div>
       </div>
     </div>
   );
