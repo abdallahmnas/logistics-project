@@ -793,3 +793,5 @@ export const ExchangeList: React.FC = () => {
     </div>
   );
 };
+
+export default ExchangeList;
