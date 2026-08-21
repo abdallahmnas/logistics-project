@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Table, Tag, message, Select, Form } from 'antd';
-import { ArrowLeftOutlined, PlusOutlined, DatabaseOutlined, SaveOutlined } from '@ant-design/icons';
+import { Card, Button, Table, Tag, message, Select, Form, Modal, Input } from 'antd';
+import { ArrowLeftOutlined, PlusOutlined, DatabaseOutlined, SaveOutlined, EnvironmentOutlined, SyncOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchAllBatches } from '../../../store/slices/adminSlice';
 import { addPackagesToBatch, fetchConsolidations, updateBatchStatus } from '../../../store/slices/shipmentSlice';
+import { fetchFacilities } from '../../../store/slices/facilitySlice';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { formatWeight, formatCbm, formatDate } from '../../../utils/formatters';
 
@@ -16,17 +17,69 @@ export const ViewBatchPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { allBatches, loading: adminLoading } = useAppSelector((state) => state.admin);
   const { consolidations, loading: shipLoading } = useAppSelector((state) => state.shipments);
+  const { facilities } = useAppSelector((state) => state.facilities);
+
   const [adding, setAdding] = useState(false);
   const [form] = Form.useForm();
   
+  // Status Update & Arrival Modal State
+  const [arrivedModalOpen, setArrivedModalOpen] = useState(false);
+  const [selectedNgWarehouse, setSelectedNgWarehouse] = useState<string>('');
+  const [currentLocationNote, setCurrentLocationNote] = useState<string>('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
   const selectedConsolidationIds = Form.useWatch('newConsolidationIds', form) || [];
 
   useEffect(() => {
     if (allBatches.length === 0) dispatch(fetchAllBatches());
     dispatch(fetchConsolidations());
+    dispatch(fetchFacilities());
   }, [dispatch, allBatches.length]);
 
   const batch = allBatches.find((b) => b.id === id);
+  const [pendingStatus, setPendingStatus] = useState<string>(batch?.status || 'shipping_exported');
+
+  useEffect(() => {
+    if (batch?.status) {
+      setPendingStatus(batch.status);
+    }
+  }, [batch?.status]);
+
+  // Dynamic Nigerian Warehouse Facilities from Database
+  const ngWarehouseOptions = useMemo(() => {
+    const ngFacilities = facilities.filter(f =>
+      f.country?.toLowerCase() === 'nigeria' ||
+      f.country?.toLowerCase() === 'ng' ||
+      f.location?.toLowerCase().includes('nigeria') ||
+      f.location?.toLowerCase().includes('lagos') ||
+      f.location?.toLowerCase().includes('abuja') ||
+      f.location?.toLowerCase().includes('kano') ||
+      f.location?.toLowerCase().includes('port harcourt')
+    );
+
+    if (ngFacilities.length > 0) {
+      return ngFacilities.map(f => ({
+        label: `🏢 ${f.name} (${f.location || f.code})`,
+        value: f.name,
+      }));
+    }
+
+    // Default Fallback Nigerian Warehouses if not created in settings yet
+    return [
+      { label: '🏢 Lagos Main Hub (Ikeja Central Warehouse)', value: 'Lagos Main Hub (Ikeja Central Warehouse)' },
+      { label: '🏢 Abuja Branch Distribution Center', value: 'Abuja Branch Distribution Center' },
+      { label: '🏢 Kano Regional Hub', value: 'Kano Regional Hub' },
+      { label: '🏢 Port Harcourt Cargo Hub', value: 'Port Harcourt Cargo Hub' },
+    ];
+  }, [facilities]);
+
+  useEffect(() => {
+    if (batch?.destinationWarehouse) {
+      setSelectedNgWarehouse(batch.destinationWarehouse);
+    } else if (ngWarehouseOptions.length > 0) {
+      setSelectedNgWarehouse(ngWarehouseOptions[0].value);
+    }
+  }, [batch?.destinationWarehouse, ngWarehouseOptions]);
 
   const batchConsolidations = useMemo(() => {
     if (!batch) return [];
@@ -78,6 +131,51 @@ export const ViewBatchPage: React.FC = () => {
       message.error('Failed to add consolidations.');
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleApplyStatusUpdate = async () => {
+    if (!pendingStatus || pendingStatus === batch.status) return;
+
+    if (pendingStatus === 'arrived_ng') {
+      setArrivedModalOpen(true);
+      return;
+    }
+
+    setUpdatingStatus(true);
+    try {
+      await dispatch(updateBatchStatus({ id: batch.id, status: pendingStatus })).unwrap();
+      dispatch(fetchAllBatches());
+      dispatch(fetchConsolidations());
+      message.success(`Batch status updated to ${pendingStatus}`);
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to update batch status');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleConfirmArrivedNigeria = async () => {
+    if (!selectedNgWarehouse) {
+      message.error('Please select a Nigerian destination warehouse facility.');
+      return;
+    }
+    setUpdatingStatus(true);
+    try {
+      await dispatch(updateBatchStatus({
+        id: batch.id,
+        status: 'arrived_ng',
+        destinationWarehouse: selectedNgWarehouse,
+        currentLocation: currentLocationNote || selectedNgWarehouse,
+      })).unwrap();
+      dispatch(fetchAllBatches());
+      dispatch(fetchConsolidations());
+      message.success(`Master Batch updated: Arrived at ${selectedNgWarehouse}`);
+      setArrivedModalOpen(false);
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to update arrival status');
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -142,6 +240,22 @@ export const ViewBatchPage: React.FC = () => {
             </div>
           </Card>
 
+          {/* Destination Warehouse Facility Info */}
+          <Card bordered={false} className="shadow-sm rounded-xl bg-orange-50/70 border border-orange-200">
+            <div className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+              <EnvironmentOutlined /> NIGERIA DESTINATION WAREHOUSE
+            </div>
+            <div className="text-base font-extrabold text-[#0A1128]">
+              {batch.destinationWarehouse || 'Lagos Main Hub (Default)'}
+            </div>
+            {batch.currentLocation && (
+              <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                <span>📍 Location / Notes:</span>
+                <span className="font-semibold text-slate-700">{batch.currentLocation}</span>
+              </div>
+            )}
+          </Card>
+
           <Card bordered={false} className="shadow-sm rounded-xl">
             <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
               <PlusOutlined className="text-brand-orange" />
@@ -191,26 +305,31 @@ export const ViewBatchPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <Select
                   size="large"
-                  value={batch.status}
+                  value={pendingStatus}
                   className="w-full sm:w-64"
-                  onChange={async (newStatus) => {
-                    try {
-                      await dispatch(updateBatchStatus({ id: batch.id, status: newStatus })).unwrap();
-                      dispatch(fetchAllBatches());
-                      dispatch(fetchConsolidations());
-                      message.success(`Batch status updated to ${newStatus}`);
-                    } catch (err: any) {
-                      message.error(err?.message || 'Failed to update batch status');
-                    }
-                  }}
+                  onChange={(newVal) => setPendingStatus(newVal)}
                 >
                   <Option value="shipping_exported">✈️ Shipped / Exported (In Transit)</Option>
-                  <Option value="arrived_ng">🇳🇬 Arrived in Nigeria (Lagos Hub)</Option>
+                  <Option value="arrived_ng">
+                    🇳🇬 Arrived in Nigeria ({batch.destinationWarehouse || 'Select Warehouse...'})
+                  </Option>
                   <Option value="delivered">✅ Delivered / Completed</Option>
                 </Select>
+
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<SyncOutlined />}
+                  disabled={pendingStatus === batch.status}
+                  loading={updatingStatus}
+                  onClick={handleApplyStatusUpdate}
+                  className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-sm"
+                >
+                  Update Status
+                </Button>
               </div>
             </div>
           </Card>
@@ -234,6 +353,59 @@ export const ViewBatchPage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Arrival in Nigeria Destination Warehouse Selection Modal */}
+      <Modal
+        open={arrivedModalOpen}
+        title={
+          <div className="flex items-center gap-2 text-[#0A1128]">
+            <span className="text-2xl">🇳🇬</span>
+            <span className="font-bold text-lg">Select Destination Warehouse (Nigeria)</span>
+          </div>
+        }
+        onCancel={() => {
+          setArrivedModalOpen(false);
+          setPendingStatus(batch.status);
+        }}
+        onOk={handleConfirmArrivedNigeria}
+        confirmLoading={updatingStatus}
+        okText="Confirm Arrival & Update Status"
+        okButtonProps={{ className: "bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-md" }}
+        width={520}
+        destroyOnHidden
+      >
+        <div className="space-y-4 py-3 border-t border-slate-100 mt-3">
+          <p className="text-xs text-slate-500 m-0 leading-relaxed">
+            Select the legitimate Nigerian warehouse facility where Master Batch <strong className="text-slate-800">{batch.masterTrackingId}</strong> has physically arrived and will be received for sorting & local dispatch.
+          </p>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Destination Warehouse Facility <span className="text-red-500">*</span>
+            </label>
+            <Select
+              size="large"
+              className="w-full"
+              value={selectedNgWarehouse}
+              onChange={setSelectedNgWarehouse}
+              options={ngWarehouseOptions}
+              placeholder="Select Nigerian warehouse facility..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Clearance Remarks / Current Location Note (Optional)
+            </label>
+            <Input
+              size="large"
+              placeholder="e.g. Cleared at MMIA Ikeja Terminal, received at Lagos Main Hub"
+              value={currentLocationNote}
+              onChange={(e) => setCurrentLocationNote(e.target.value)}
+            />
+          </div>
+        </div>
+      </Modal>
 
     </div>
   );

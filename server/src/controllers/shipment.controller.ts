@@ -97,9 +97,9 @@ export const addPackagesToBatch = async (req: Request, res: Response): Promise<v
 export const updateBatchStatus = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, destinationWarehouse, currentLocation } = req.body;
     const adminUser = (req as any).user;
-    const batch = await ShipmentService.updateBatchStatus(id, status, adminUser);
+    const batch = await ShipmentService.updateBatchStatus(id, status, { destinationWarehouse, currentLocation }, adminUser);
     res.status(200).json({ success: true, data: batch });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

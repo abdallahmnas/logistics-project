@@ -53,8 +53,22 @@ export const updateConsolidation = createAsyncThunk(
 
 export const updateBatchStatus = createAsyncThunk(
   'shipments/updateBatchStatus',
-  async ({ id, status }: { id: string; status: string }) => {
-    const res = await apiClient.patch(`/shipments/batches/${id}/status`, { status });
+  async ({
+    id,
+    status,
+    destinationWarehouse,
+    currentLocation,
+  }: {
+    id: string;
+    status: string;
+    destinationWarehouse?: string;
+    currentLocation?: string;
+  }) => {
+    const res = await apiClient.patch(`/shipments/batches/${id}/status`, {
+      status,
+      destinationWarehouse,
+      currentLocation,
+    });
     return res.data.data;
   }
 );
