@@ -222,65 +222,6 @@ export const ExchangeList: React.FC = () => {
   const totalToPay = sendAmount + processingFee;
   const recentExchanges = exchanges.slice(0, 3);
 
-  // Handle Payment Proof screenshot upload
-  const handleProofFileChange = (fileList: any[]) => {
-    if (!fileList || fileList.length === 0) {
-      setProofPreviewUrl('');
-      setProofFileName('');
-      setProofUrl('');
-      return;
-    }
-    const fileItem = fileList[0];
-    const file = fileItem.originFileObj || fileItem;
-
-    if (file && file instanceof File) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setProofPreviewUrl(result);
-        setProofUrl(result);
-        setProofFileName(file.name);
-      };
-      reader.readAsDataURL(file);
-    } else if (fileItem.url || fileItem.thumbUrl) {
-      setProofPreviewUrl(fileItem.url || fileItem.thumbUrl);
-      setProofUrl(fileItem.url || fileItem.thumbUrl);
-      setProofFileName(fileItem.name || 'payment_proof.png');
-    }
-  };
-
-  const handleSubmit = async (values: any) => {
-    try {
-      setSubmitting(true);
-      await dispatch(
-        submitExchangeRequest({
-          amountNaira: Number(sendAmount) || 500000,
-          rmbDestType: rmbDestType,
-          rmbDestAccount: values.rmbDestAccount,
-          rmbDestName: values.rmbDestName || 'Customer Account',
-          rmbDestQrCode: barcodeUrl || undefined,
-          receivingBarcodeUrl: barcodeUrl || undefined,
-          nairaReceiptUrl: proofUrl || undefined,
-          saveAccount: saveAccountChecked,
-        } as any)
-      ).unwrap();
-
-      message.success('Currency exchange request created successfully!');
-      form.resetFields();
-      setBarcodePreviewUrl('');
-      setBarcodeFileName('');
-      setBarcodeUrl('');
-      setProofPreviewUrl('');
-      setProofFileName('');
-      setProofUrl('');
-      dispatch(fetchExchanges());
-    } catch (err: any) {
-      message.error(err?.message || 'Failed to submit exchange request');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const columns = [
     {
       title: 'ID / DATE',
@@ -701,6 +642,9 @@ export const ExchangeList: React.FC = () => {
           <Button type="link" className="text-brand-orange font-bold text-xs tracking-wider" onClick={() => navigate('/customer/exchange/history')}>
             VIEW ALL REQUESTS ➔
           </Button>
+        </div>
+      </Card>
+
       {/* Add New Saved Wallet Account Modal */}
       <Modal
         title={
