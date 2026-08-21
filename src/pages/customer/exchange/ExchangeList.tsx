@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, InputNumber, Upload, Table, Tag, Form, message, Image, Select, Checkbox } from 'antd';
-import { SwapOutlined, CloudUploadOutlined, BankOutlined, QuestionCircleOutlined, DownloadOutlined, SyncOutlined, DeleteOutlined, QrcodeOutlined, BarcodeOutlined, CheckOutlined } from '@ant-design/icons';
+import { Card, Button, Input, InputNumber, Upload, Table, Tag, Form, message, Image, Select, Checkbox, Radio, Alert } from 'antd';
+import { SwapOutlined, CloudUploadOutlined, BankOutlined, QuestionCircleOutlined, DownloadOutlined, SyncOutlined, DeleteOutlined, QrcodeOutlined, BarcodeOutlined, CheckOutlined, PlusOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchExchanges, fetchActiveRate, submitExchangeRequest, fetchSavedAccounts } from '../../../store/slices/exchangeSlice';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +23,8 @@ export const ExchangeList: React.FC = () => {
   const [barcodePreviewUrl, setBarcodePreviewUrl] = useState<string>('');
   const [barcodeFileName, setBarcodeFileName] = useState<string>('');
 
-  // Saved account selection & auto-save toggle
+  // Saved account selection & mode toggle
+  const [accountMode, setAccountMode] = useState<'saved' | 'new'>('saved');
   const [selectedSavedAccountId, setSelectedSavedAccountId] = useState<string>('');
   const [saveAccountChecked, setSaveAccountChecked] = useState<boolean>(true);
 
@@ -37,12 +38,20 @@ export const ExchangeList: React.FC = () => {
   useEffect(() => {
     dispatch(fetchExchanges());
     dispatch(fetchActiveRate());
-    dispatch(fetchSavedAccounts());
+    dispatch(fetchSavedAccounts()).unwrap().then((accs) => {
+      if (accs && accs.length > 0) {
+        setAccountMode('saved');
+        handleSelectSavedAccount(accs[0].id, accs);
+      } else {
+        setAccountMode('new');
+      }
+    });
   }, [dispatch]);
 
-  const handleSelectSavedAccount = (accountId: string) => {
+  const handleSelectSavedAccount = (accountId: string, listOverride?: SavedAccount[]) => {
+    const list = listOverride || savedAccounts;
     setSelectedSavedAccountId(accountId);
-    const acc = savedAccounts.find((a) => a.id === accountId);
+    const acc = list.find((a) => a.id === accountId);
     if (!acc) return;
 
     setRmbDestType(acc.platform);
@@ -55,8 +64,96 @@ export const ExchangeList: React.FC = () => {
       setBarcodeUrl(acc.barcodeUrl);
       setBarcodePreviewUrl(acc.barcodeUrl);
       setBarcodeFileName(`${acc.platform}_saved_barcode.png`);
+    } else {
+      setBarcodeUrl('');
+      setBarcodePreviewUrl('');
+      setBarcodeFileName('');
     }
-    message.info(`Loaded saved receiving account: ${acc.label || acc.accountName}`);
+  };
+
+  const handleBarcodeFileChange = (fileList: any[]) => {
+    if (!fileList || fileList.length === 0) {
+      setBarcodePreviewUrl('');
+      setBarcodeFileName('');
+      setBarcodeUrl('');
+      return;
+    }
+    const fileItem = fileList[0];
+    const file = fileItem.originFileObj || fileItem;
+
+    if (file && file instanceof File) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setBarcodePreviewUrl(result);
+        setBarcodeUrl(result);
+        setBarcodeFileName(file.name);
+      };
+      reader.readAsDataURL(file);
+    } else if (fileItem.url || fileItem.thumbUrl) {
+      setBarcodePreviewUrl(fileItem.url || fileItem.thumbUrl);
+      setBarcodeUrl(fileItem.url || fileItem.thumbUrl);
+      setBarcodeFileName(fileItem.name || 'barcode.png');
+    }
+  };
+
+  const handleProofFileChange = (fileList: any[]) => {
+    if (!fileList || fileList.length === 0) {
+      setProofPreviewUrl('');
+      setProofFileName('');
+      setProofUrl('');
+      return;
+    }
+    const fileItem = fileList[0];
+    const file = fileItem.originFileObj || fileItem;
+
+    if (file && file instanceof File) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setProofPreviewUrl(result);
+        setProofUrl(result);
+        setProofFileName(file.name);
+      };
+      reader.readAsDataURL(file);
+    } else if (fileItem.url || fileItem.thumbUrl) {
+      setProofPreviewUrl(fileItem.url || fileItem.thumbUrl);
+      setProofUrl(fileItem.url || fileItem.thumbUrl);
+      setProofFileName(fileItem.name || 'payment_proof.png');
+    }
+  };
+
+  const handleSubmit = async (values: any) => {
+    try {
+      setSubmitting(true);
+      await dispatch(
+        submitExchangeRequest({
+          amountNaira: Number(sendAmount) || 500000,
+          rmbDestType: rmbDestType,
+          rmbDestAccount: values.rmbDestAccount,
+          rmbDestName: values.rmbDestName || 'Customer Account',
+          rmbDestQrCode: barcodeUrl || undefined,
+          receivingBarcodeUrl: barcodeUrl || undefined,
+          nairaReceiptUrl: proofUrl || undefined,
+          saveAccount: accountMode === 'new' ? saveAccountChecked : false,
+        } as any)
+      ).unwrap();
+
+      message.success('Currency exchange request created successfully!');
+      form.resetFields();
+      setBarcodePreviewUrl('');
+      setBarcodeFileName('');
+      setBarcodeUrl('');
+      setProofPreviewUrl('');
+      setProofFileName('');
+      setProofUrl('');
+      dispatch(fetchExchanges());
+      dispatch(fetchSavedAccounts());
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to submit exchange request');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const platformRate = activeRate?.platformRate || 215.00;
@@ -253,152 +350,245 @@ export const ExchangeList: React.FC = () => {
             <p className="text-sm text-slate-500 mb-6">Submit a request to fund your RMB wallet from NGN.</p>
 
             <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
-              {/* Saved Account Selector */}
-              {savedAccounts && savedAccounts.length > 0 && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50/50 border border-blue-200/80 rounded-xl p-4 mb-6 shadow-sm">
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="block text-xs font-black text-[#0A1128] uppercase tracking-wider flex items-center gap-1.5">
-                      <BankOutlined className="text-blue-600" /> SELECT FROM SAVED RECEIVING ACCOUNTS (1-CLICK FILL)
-                    </label>
-                    <Tag color="blue" className="font-bold border-none text-[10px] uppercase">
-                      {savedAccounts.length} Saved
-                    </Tag>
-                  </div>
-                  <Select
-                    size="large"
-                    placeholder="Choose a saved WeChat / Alipay / Bank Account..."
-                    className="w-full bg-white rounded-lg shadow-sm"
-                    onChange={handleSelectSavedAccount}
-                    value={selectedSavedAccountId || undefined}
-                    allowClear
-                    onClear={() => {
-                      setSelectedSavedAccountId('');
-                      form.resetFields(['rmbDestAccount', 'rmbDestName']);
-                      setBarcodePreviewUrl('');
-                      setBarcodeUrl('');
-                    }}
-                  >
-                    {savedAccounts.map((acc: SavedAccount) => (
-                      <Option key={acc.id} value={acc.id}>
-                        <div className="flex justify-between items-center py-0.5">
-                          <span className="font-bold text-slate-800 text-sm">
-                            {acc.platform === 'wechat_pay' ? '💚 WeChat' : acc.platform === 'alipay' ? '💙 Alipay' : '🏛️ Chinese Bank'} — {acc.accountName} ({acc.accountNumber})
-                          </span>
-                          {acc.barcodeUrl && (
-                            <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded ml-2">
-                              ✓ Barcode Saved
-                            </span>
-                          )}
-                        </div>
-                      </Option>
-                    ))}
-                  </Select>
-                </div>
-              )}
-
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 space-y-4">
-                <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+              {/* Receiving Wallet Section */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6 space-y-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-200 pb-3 gap-3">
                   <span className="text-xs font-extrabold text-[#0A1128] uppercase tracking-wider flex items-center gap-1.5">
                     <BarcodeOutlined className="text-brand-orange text-base" /> RECEIVING WALLET ACCOUNT INFORMATION
                   </span>
-                  <Tag color="orange" className="font-bold border-none text-[10px] uppercase">
-                    Stored Barcode Account
-                  </Tag>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">RECEIVING PLATFORM</label>
-                    <div className="flex bg-white p-1 rounded-lg border border-slate-200">
-                      <Button 
-                        type={rmbDestType === 'wechat_pay' ? 'primary' : 'text'} 
-                        onClick={() => setRmbDestType('wechat_pay')}
-                        className={`flex-1 font-bold ${rmbDestType === 'wechat_pay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
-                      >
-                        WeChat
-                      </Button>
-                      <Button 
-                        type={rmbDestType === 'alipay' ? 'primary' : 'text'} 
-                        onClick={() => setRmbDestType('alipay')}
-                        className={`flex-1 font-bold ${rmbDestType === 'alipay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
-                      >
-                        Alipay
-                      </Button>
-                    </div>
-                  </div>
-                  <div>
-                    <Form.Item name="rmbDestAccount" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">WALLET ID / PHONE NUMBER</span>} rules={[{ required: true, message: 'Please enter WeChat/Alipay ID' }]}>
-                      <Input size="large" placeholder="Enter WeChat/Alipay ID" className="bg-white border-slate-200" />
-                    </Form.Item>
-                  </div>
-                </div>
-
-                <Form.Item name="rmbDestName" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">ACCOUNT HOLDER NAME</span>} rules={[{ required: true, message: 'Please enter account name' }]}>
-                  <Input size="large" placeholder="e.g. Li Wei / Account Holder" className="bg-white border-slate-200" />
-                </Form.Item>
-
-                {/* Barcode & QR Code Upload in Account Info */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex justify-between items-center">
-                    <span>RECEIVING BARCODE / QR CODE IMAGE (OPTIONAL)</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Add or edit barcode to be funded</span>
-                  </label>
-                  
-                  <Dragger
-                    className="bg-white border-dashed border-slate-300 rounded-xl py-2"
-                    beforeUpload={() => false}
-                    onChange={({ fileList: newFileList }) => handleBarcodeFileChange(newFileList)}
-                    showUploadList={false}
-                    accept="image/*"
-                    customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
-                  >
-                    <p className="ant-upload-drag-icon flex justify-center gap-2 mb-1">
-                      <BarcodeOutlined className="text-brand-orange text-2xl" />
-                      <QrcodeOutlined className="text-slate-400 text-2xl" />
-                    </p>
-                    <p className="ant-upload-text font-bold text-slate-700 text-xs m-0">Click or drag receiving Barcode/QR image to save with account</p>
-                  </Dragger>
-
-                  {barcodePreviewUrl && (
-                    <div className="mt-3 bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm animate-fade-in-up">
-                      <div className="flex items-center gap-3">
-                        <Image
-                          src={barcodePreviewUrl}
-                          alt="Receiving Barcode Preview"
-                          className="w-16 h-16 rounded-lg object-contain border border-slate-200 bg-slate-50"
-                          fallback="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=600"
-                        />
-                        <div>
-                          <span className="text-xs font-bold text-slate-800 block truncate max-w-[200px]">
-                            {barcodeFileName || 'receiving_barcode.png'}
-                          </span>
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
-                            ✓ Receiving Barcode Attached
-                          </span>
-                        </div>
-                      </div>
-                      <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => { setBarcodePreviewUrl(''); setBarcodeUrl(''); setBarcodeFileName(''); }}
-                        className="font-bold text-xs"
-                      >
-                        Remove
-                      </Button>
-                    </div>
+                  {savedAccounts && savedAccounts.length > 0 && (
+                    <Radio.Group
+                      value={accountMode}
+                      onChange={(e) => {
+                        setAccountMode(e.target.value);
+                        if (e.target.value === 'saved' && savedAccounts.length > 0) {
+                          handleSelectSavedAccount(savedAccounts[0].id);
+                        } else {
+                          setSelectedSavedAccountId('');
+                          form.resetFields(['rmbDestAccount', 'rmbDestName']);
+                          setBarcodePreviewUrl('');
+                          setBarcodeUrl('');
+                        }
+                      }}
+                      optionType="button"
+                      buttonStyle="solid"
+                      size="small"
+                      className="[&_.ant-radio-button-wrapper-checked]:!bg-[#0A1128]"
+                    >
+                      <Radio.Button value="saved">
+                        <BankOutlined /> Saved Wallets ({savedAccounts.length})
+                      </Radio.Button>
+                      <Radio.Button value="new">
+                        <PlusOutlined /> Enter New
+                      </Radio.Button>
+                    </Radio.Group>
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-slate-200">
-                  <Checkbox
-                    checked={saveAccountChecked}
-                    onChange={(e) => setSaveAccountChecked(e.target.checked)}
-                    className="text-xs font-bold text-slate-700"
-                  >
-                    Save this receiving account & barcode for future 1-click transactions
-                  </Checkbox>
-                </div>
+                {/* MODE A: Customer Has Saved Accounts & is in 'saved' mode */}
+                {savedAccounts && savedAccounts.length > 0 && accountMode === 'saved' && (
+                  <div className="space-y-4 animate-fade-in-up">
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">
+                      SELECT SAVED RECEIVING WALLET DETAIL (1-CLICK FILL)
+                    </label>
+                    <Select
+                      size="large"
+                      placeholder="Select a saved WeChat, Alipay, or Chinese Bank account..."
+                      className="w-full bg-white rounded-lg shadow-sm"
+                      onChange={(val) => handleSelectSavedAccount(val)}
+                      value={selectedSavedAccountId || undefined}
+                    >
+                      {savedAccounts.map((acc: SavedAccount) => (
+                        <Option key={acc.id} value={acc.id}>
+                          <div className="flex justify-between items-center py-0.5">
+                            <span className="font-bold text-slate-800 text-sm">
+                              {acc.platform === 'wechat_pay' ? '💚 WeChat' : acc.platform === 'alipay' ? '💙 Alipay' : '🏛️ Chinese Bank'} — {acc.accountName} ({acc.accountNumber})
+                            </span>
+                            {acc.barcodeUrl && (
+                              <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded ml-2">
+                                ✓ Barcode Saved
+                              </span>
+                            )}
+                          </div>
+                        </Option>
+                      ))}
+                    </Select>
+
+                    {/* Selected Account Summary Card - Super Clean & Uncluttered */}
+                    {selectedSavedAccountId && (
+                      <div className="bg-white border border-blue-200 rounded-xl p-4 shadow-sm space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                              {rmbDestType === 'wechat_pay' ? '💚 WeChat Pay' : rmbDestType === 'alipay' ? '💙 Alipay' : '🏛️ Chinese Bank'}
+                            </span>
+                            <div className="text-base font-extrabold text-[#0A1128] mt-1">
+                              {form.getFieldValue('rmbDestName') || 'Account Holder'}
+                            </div>
+                            <div className="text-xs font-mono text-slate-500 mt-0.5">
+                              ID / Number: {form.getFieldValue('rmbDestAccount')}
+                            </div>
+                          </div>
+                          <Tag color="green" className="font-bold border-none text-[10px] uppercase py-0.5">
+                            ✓ Ready for Funding
+                          </Tag>
+                        </div>
+
+                        {barcodePreviewUrl && (
+                          <div className="pt-2 border-t border-slate-100 flex items-center gap-3">
+                            <Image
+                              src={barcodePreviewUrl}
+                              alt="Stored Barcode"
+                              className="w-14 h-14 rounded-lg object-contain border border-slate-200 bg-slate-50"
+                              fallback="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=600"
+                            />
+                            <div>
+                              <div className="text-xs font-bold text-slate-800">
+                                Stored Receiving Barcode/QR Attached
+                              </div>
+                              <div className="text-[10px] text-slate-400">
+                                Click photo thumbnail to view full resolution
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Hidden inputs to pass validation to Ant Design form */}
+                    <div className="hidden">
+                      <Form.Item name="rmbDestAccount" rules={[{ required: true, message: 'Please select a receiving wallet' }]}>
+                        <Input />
+                      </Form.Item>
+                      <Form.Item name="rmbDestName" rules={[{ required: true, message: 'Please select a receiving wallet' }]}>
+                        <Input />
+                      </Form.Item>
+                    </div>
+                  </div>
+                )}
+
+                {/* MODE B: No Saved Accounts or Customer Chose 'Enter New' */}
+                {(savedAccounts.length === 0 || accountMode === 'new') && (
+                  <div className="space-y-4 animate-fade-in-up">
+                    {savedAccounts.length === 0 && (
+                      <Alert
+                        type="info"
+                        showIcon
+                        message={<span className="font-bold text-xs">No Saved Wallet Account Details Found</span>}
+                        description={<span className="text-xs">Please enter and save your receiving wallet account details below (WeChat / Alipay ID & Barcode) so you can receive your funded RMB.</span>}
+                        className="rounded-xl mb-4"
+                      />
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">RECEIVING PLATFORM</label>
+                        <div className="flex bg-white p-1 rounded-lg border border-slate-200">
+                          <Button 
+                            type={rmbDestType === 'wechat_pay' ? 'primary' : 'text'} 
+                            onClick={() => setRmbDestType('wechat_pay')}
+                            className={`flex-1 font-bold ${rmbDestType === 'wechat_pay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
+                          >
+                            WeChat
+                          </Button>
+                          <Button 
+                            type={rmbDestType === 'alipay' ? 'primary' : 'text'} 
+                            onClick={() => setRmbDestType('alipay')}
+                            className={`flex-1 font-bold ${rmbDestType === 'alipay' ? 'bg-[#0A1128] border-none shadow-sm text-white' : 'text-slate-600'}`}
+                          >
+                            Alipay
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Form.Item name="rmbDestAccount" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">WALLET ID / PHONE NUMBER</span>} rules={[{ required: true, message: 'Please enter WeChat/Alipay ID' }]}>
+                          <Input size="large" placeholder="Enter WeChat/Alipay ID" className="bg-white border-slate-200" />
+                        </Form.Item>
+                      </div>
+                    </div>
+
+                    <Form.Item name="rmbDestName" label={<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">ACCOUNT HOLDER NAME</span>} rules={[{ required: true, message: 'Please enter account name' }]}>
+                      <Input size="large" placeholder="e.g. Li Wei / Account Holder" className="bg-white border-slate-200" />
+                    </Form.Item>
+
+                    {/* Barcode & QR Code Upload */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex justify-between items-center">
+                        <span>RECEIVING BARCODE / QR CODE IMAGE (OPTIONAL)</span>
+                        <span className="text-[10px] text-slate-400 font-normal">Add barcode to be saved</span>
+                      </label>
+                      
+                      <Dragger
+                        className="bg-white border-dashed border-slate-300 rounded-xl py-2"
+                        beforeUpload={() => false}
+                        onChange={({ fileList: newFileList }) => handleBarcodeFileChange(newFileList)}
+                        showUploadList={false}
+                        accept="image/*"
+                        customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
+                      >
+                        <p className="ant-upload-drag-icon flex justify-center gap-2 mb-1">
+                          <BarcodeOutlined className="text-brand-orange text-2xl" />
+                          <QrcodeOutlined className="text-slate-400 text-2xl" />
+                        </p>
+                        <p className="ant-upload-text font-bold text-slate-700 text-xs m-0">Click or drag receiving Barcode/QR image to save with account</p>
+                      </Dragger>
+
+                      {barcodePreviewUrl && (
+                        <div className="mt-3 bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm animate-fade-in-up">
+                          <div className="flex items-center gap-3">
+                            <Image
+                              src={barcodePreviewUrl}
+                              alt="Receiving Barcode Preview"
+                              className="w-16 h-16 rounded-lg object-contain border border-slate-200 bg-slate-50"
+                              fallback="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=600"
+                            />
+                            <div>
+                              <span className="text-xs font-bold text-slate-800 block truncate max-w-[200px]">
+                                {barcodeFileName || 'receiving_barcode.png'}
+                              </span>
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
+                                ✓ Receiving Barcode Attached
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => { setBarcodePreviewUrl(''); setBarcodeUrl(''); setBarcodeFileName(''); }}
+                            className="font-bold text-xs"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                      <Checkbox
+                        checked={saveAccountChecked}
+                        onChange={(e) => setSaveAccountChecked(e.target.checked)}
+                        className="text-xs font-bold text-slate-700"
+                      >
+                        Save this receiving account & barcode for future 1-click transactions
+                      </Checkbox>
+
+                      {savedAccounts.length > 0 && (
+                        <Button
+                          type="link"
+                          onClick={() => {
+                            setAccountMode('saved');
+                            handleSelectSavedAccount(savedAccounts[0].id);
+                          }}
+                          className="text-xs font-bold text-brand-navy p-0"
+                        >
+                          ← Select Saved Account
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Amount Exchange Inputs */}

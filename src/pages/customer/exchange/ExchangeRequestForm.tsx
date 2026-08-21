@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Form, Input, InputNumber, Select, Button, Alert, message, Tag } from 'antd';
+import { Card, Form, Input, InputNumber, Select, Button, Alert, message, Tag, Radio, Image, Checkbox } from 'antd';
 import type { UploadFile } from 'antd';
-import { ArrowLeftOutlined, SendOutlined, SwapOutlined, SafetyCertificateOutlined, QrcodeOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, SendOutlined, SwapOutlined, SafetyCertificateOutlined, QrcodeOutlined, BankOutlined, PlusOutlined, BarcodeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchActiveRate, submitExchangeRequest } from '../../../store/slices/exchangeSlice';
-import { exchangeRequestSchema, validateForm } from '../../../utils/validators';
+import { fetchActiveRate, submitExchangeRequest, fetchSavedAccounts } from '../../../store/slices/exchangeSlice';
 import { formatRmb } from '../../../utils/formatters';
-import type { ExchangeRequestPayload, RmbDestinationType } from '../../../types/exchange.types';
+import type { ExchangeRequestPayload, RmbDestinationType, SavedAccount } from '../../../types/exchange.types';
 import { ImageDropzone } from '../../../components/common/ImageDropzone';
 
 const PLATFORM_LABELS: Record<RmbDestinationType, string> = {
@@ -20,19 +19,44 @@ export const ExchangeRequestForm: React.FC = () => {
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { activeRate } = useAppSelector((state) => state.exchange);
+  const { activeRate, savedAccounts } = useAppSelector((state) => state.exchange);
   const [direction, setDirection] = useState<'ngn_to_rmb' | 'rmb_to_ngn'>('ngn_to_rmb');
   const [amountNaira, setAmountNaira] = useState<number>(0);
   const [amountRmb, setAmountRmb] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
   const [qrFileList, setQrFileList] = useState<UploadFile[]>([]);
+  const [accountMode, setAccountMode] = useState<'saved' | 'new'>('saved');
+  const [selectedSavedAccountId, setSelectedSavedAccountId] = useState<string>('');
+  const [saveAccountChecked, setSaveAccountChecked] = useState<boolean>(true);
+
   const platform: RmbDestinationType | undefined = Form.useWatch('rmbDestType', form);
 
   useEffect(() => {
     if (!activeRate) {
       dispatch(fetchActiveRate());
     }
+    dispatch(fetchSavedAccounts()).unwrap().then((accs) => {
+      if (accs && accs.length > 0) {
+        setAccountMode('saved');
+        handleSelectSavedAccount(accs[0].id, accs);
+      } else {
+        setAccountMode('new');
+      }
+    });
   }, [dispatch, activeRate]);
+
+  const handleSelectSavedAccount = (accountId: string, listOverride?: SavedAccount[]) => {
+    const list = listOverride || savedAccounts;
+    setSelectedSavedAccountId(accountId);
+    const acc = list.find((a) => a.id === accountId);
+    if (!acc) return;
+
+    form.setFieldsValue({
+      rmbDestType: acc.platform,
+      rmbDestAccount: acc.accountNumber,
+      rmbDestName: acc.accountName,
+    });
+  };
 
   const calculateRmb = (naira: number) => {
     if (!activeRate || !naira) return 0;
@@ -60,6 +84,7 @@ export const ExchangeRequestForm: React.FC = () => {
           rmbDestName: values.rmbDestName,
           rmbDestQrCode: barcodeUrl,
           receivingBarcodeUrl: barcodeUrl,
+          saveAccount: accountMode === 'new' ? saveAccountChecked : false,
         } as any)
       ).unwrap();
       message.success('Currency exchange request created successfully.');
@@ -70,6 +95,8 @@ export const ExchangeRequestForm: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+  const selectedAcc = savedAccounts.find((a) => a.id === selectedSavedAccountId);
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -184,59 +211,134 @@ export const ExchangeRequestForm: React.FC = () => {
               1 ¥ = ₦{activeRate?.platformRate ?? '—'} &middot; rate is locked for 24 hours once submitted
             </p>
 
-            <Alert
-              message="Escrow Protection"
-              description="Your Naira will be held in a secure escrow account until the RMB is successfully transferred to your destination."
-              type="info"
-              showIcon
-              icon={<SafetyCertificateOutlined />}
-              className="mb-6"
-            />
+            {/* Receiving Wallet Section */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+                <h4 className="font-bold text-slate-700 m-0">RMB Destination Details</h4>
+                {savedAccounts && savedAccounts.length > 0 && (
+                  <Radio.Group
+                    value={accountMode}
+                    onChange={(e) => {
+                      setAccountMode(e.target.value);
+                      if (e.target.value === 'saved' && savedAccounts.length > 0) {
+                        handleSelectSavedAccount(savedAccounts[0].id);
+                      } else {
+                        setSelectedSavedAccountId('');
+                        form.resetFields(['rmbDestAccount', 'rmbDestName']);
+                      }
+                    }}
+                    optionType="button"
+                    buttonStyle="solid"
+                    size="small"
+                  >
+                    <Radio.Button value="saved"><BankOutlined /> Saved ({savedAccounts.length})</Radio.Button>
+                    <Radio.Button value="new"><PlusOutlined /> Enter New</Radio.Button>
+                  </Radio.Group>
+                )}
+              </div>
 
-            <h4 className="font-bold text-slate-700 mb-4 border-b pb-2">RMB Destination Details</h4>
+              {savedAccounts && savedAccounts.length > 0 && accountMode === 'saved' && (
+                <div className="space-y-3">
+                  <Select
+                    size="large"
+                    placeholder="Select saved wallet account..."
+                    className="w-full bg-white"
+                    onChange={(val) => handleSelectSavedAccount(val)}
+                    value={selectedSavedAccountId || undefined}
+                  >
+                    {savedAccounts.map((acc) => (
+                      <Select.Option key={acc.id} value={acc.id}>
+                        {acc.platform === 'wechat_pay' ? '💚 WeChat' : acc.platform === 'alipay' ? '💙 Alipay' : '🏛️ Bank'} — {acc.accountName} ({acc.accountNumber})
+                      </Select.Option>
+                    ))}
+                  </Select>
 
-            <Form.Item name="rmbDestType" label="Platform" rules={[{ required: true, message: 'Please select a platform' }]}>
-              <Select placeholder="Select Platform" size="large">
-                <Select.Option value="alipay">{PLATFORM_LABELS.alipay}</Select.Option>
-                <Select.Option value="wechat_pay">{PLATFORM_LABELS.wechat_pay}</Select.Option>
-                <Select.Option value="chinese_bank">{PLATFORM_LABELS.chinese_bank}</Select.Option>
-              </Select>
-            </Form.Item>
+                  {selectedAcc && (
+                    <div className="bg-white border border-slate-200 rounded-xl p-3 flex justify-between items-center">
+                      <div>
+                        <div className="text-xs font-bold text-slate-800">{selectedAcc.accountName}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">{selectedAcc.platform.toUpperCase()} &middot; {selectedAcc.accountNumber}</div>
+                      </div>
+                      <Tag color="green" className="font-bold border-none text-[10px] uppercase">✓ Selected</Tag>
+                    </div>
+                  )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Form.Item
-                name="rmbDestAccount"
-                label="Account Number / ID"
-                rules={[{ required: true, message: 'Please enter the destination account' }]}
-              >
-                <Input size="large" />
-              </Form.Item>
+                  {/* Hidden inputs to pass validation */}
+                  <div className="hidden">
+                    <Form.Item name="rmbDestType"><Input /></Form.Item>
+                    <Form.Item name="rmbDestAccount" rules={[{ required: true, message: 'Please select account' }]}><Input /></Form.Item>
+                    <Form.Item name="rmbDestName" rules={[{ required: true, message: 'Please select account' }]}><Input /></Form.Item>
+                  </div>
+                </div>
+              )}
 
-              <Form.Item
-                name="rmbDestName"
-                label="Account Name"
-                rules={[{ required: true, message: 'Please enter the account holder name' }]}
-              >
-                <Input size="large" />
-              </Form.Item>
+              {(savedAccounts.length === 0 || accountMode === 'new') && (
+                <div className="space-y-4">
+                  {savedAccounts.length === 0 && (
+                    <Alert
+                      type="info"
+                      showIcon
+                      message={<span className="font-bold text-xs">No Saved Wallet Account Found</span>}
+                      description={<span className="text-xs">Please enter and save your receiving wallet details below so you can receive your funded RMB.</span>}
+                      className="mb-3"
+                    />
+                  )}
+
+                  <Form.Item name="rmbDestType" label="Platform" rules={[{ required: true, message: 'Please select a platform' }]}>
+                    <Select placeholder="Select Platform" size="large">
+                      <Select.Option value="alipay">{PLATFORM_LABELS.alipay}</Select.Option>
+                      <Select.Option value="wechat_pay">{PLATFORM_LABELS.wechat_pay}</Select.Option>
+                      <Select.Option value="chinese_bank">{PLATFORM_LABELS.chinese_bank}</Select.Option>
+                    </Select>
+                  </Form.Item>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Form.Item
+                      name="rmbDestAccount"
+                      label="Account Number / ID"
+                      rules={[{ required: true, message: 'Please enter the destination account' }]}
+                    >
+                      <Input size="large" />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="rmbDestName"
+                      label="Account Name"
+                      rules={[{ required: true, message: 'Please enter the account holder name' }]}
+                    >
+                      <Input size="large" />
+                    </Form.Item>
+                  </div>
+
+                  {supportsQr && (
+                    <Form.Item label={`Attach receiving Barcode / QR code image (optional)`} className="mb-0">
+                      <ImageDropzone
+                        fileList={qrFileList}
+                        onChange={setQrFileList}
+                        multiple={false}
+                        maxCount={1}
+                        title={
+                          <span className="flex items-center gap-1.5 justify-center text-xs font-bold">
+                            <QrcodeOutlined /> Click or drag Barcode/QR image to save with account
+                          </span>
+                        }
+                        hint="PNG, JPG, WEBP up to 5MB"
+                      />
+                    </Form.Item>
+                  )}
+
+                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                    <Checkbox
+                      checked={saveAccountChecked}
+                      onChange={(e) => setSaveAccountChecked(e.target.checked)}
+                      className="text-xs font-bold text-slate-700"
+                    >
+                      Save this receiving wallet & barcode for 1-click reuse
+                    </Checkbox>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {supportsQr && (
-              <Form.Item label={`Or attach your ${PLATFORM_LABELS[platform]} QR code (optional)`} className="mb-0">
-                <ImageDropzone
-                  fileList={qrFileList}
-                  onChange={setQrFileList}
-                  multiple={false}
-                  maxCount={1}
-                  title={
-                    <span className="flex items-center gap-1.5 justify-center">
-                      <QrcodeOutlined /> Click or drag your QR code image here
-                    </span>
-                  }
-                  hint="Helps our agent pay to the exact account, no typing needed"
-                />
-              </Form.Item>
-            )}
 
             <Form.Item className="mb-0 mt-8 text-right">
               <Button onClick={() => navigate('/customer/exchange')} className="mr-2" size="large">
