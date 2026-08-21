@@ -104,6 +104,10 @@ export class ExchangeService {
       amountNaira = Number((amountRmb * platformRate).toFixed(2));
     }
 
+    if (!payload.rmbDestAccount || !payload.rmbDestName) {
+      throw new Error('Please save and select a receiving wallet account (WeChat / Alipay ID & Barcode) first');
+    }
+
     const platformFee = 5000;
     const totalNaira = amountNaira + platformFee;
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);

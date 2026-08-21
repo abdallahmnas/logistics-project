@@ -23,17 +23,25 @@ export const fetchSavedAccounts = createAsyncThunk('exchange/fetchSavedAccounts'
 
 export const createSavedAccount = createAsyncThunk(
   'exchange/createSavedAccount',
-  async (payload: any) => {
-    const res = await apiClient.post('/exchanges/saved-accounts', payload);
-    return res.data.data;
+  async (payload: any, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.post('/exchanges/saved-accounts', payload);
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
   }
 );
 
 export const deleteSavedAccount = createAsyncThunk(
   'exchange/deleteSavedAccount',
-  async (accountId: string) => {
-    await apiClient.delete(`/exchanges/saved-accounts/${accountId}`);
-    return accountId;
+  async (accountId: string, { rejectWithValue }) => {
+    try {
+      await apiClient.delete(`/exchanges/saved-accounts/${accountId}`);
+      return accountId;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
   }
 );
 
@@ -44,9 +52,13 @@ export const fetchActiveRate = createAsyncThunk('exchange/fetchRate', async () =
 
 export const submitExchangeRequest = createAsyncThunk(
   'exchange/submit',
-  async (payload: ExchangeRequestPayload) => {
-    const res = await apiClient.post('/exchanges', payload);
-    return res.data.data;
+  async (payload: ExchangeRequestPayload, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.post('/exchanges', payload);
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
   }
 );
 
