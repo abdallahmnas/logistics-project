@@ -108,6 +108,10 @@ export class ExchangeService {
       throw new Error('Please save and select a receiving wallet account (WeChat / Alipay ID & Barcode) first');
     }
 
+    if (!payload.nairaReceiptUrl && !(payload as any).nairaReceipt) {
+      throw new Error('Bank transfer screenshot proof of payment is required to submit an exchange request');
+    }
+
     const platformFee = 5000;
     const totalNaira = amountNaira + platformFee;
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);

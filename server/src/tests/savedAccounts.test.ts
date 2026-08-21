@@ -66,6 +66,7 @@ describe('Saved Receiving Accounts API', () => {
         rmbDestAccount: 'alipay_user_5544',
         rmbDestName: 'Chen Guo',
         receivingBarcodeUrl: 'data:image/png;base64,sample_alipay_barcode',
+        nairaReceiptUrl: 'https://example.com/receipt.png',
         saveAccount: true,
       });
 

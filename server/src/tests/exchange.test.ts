@@ -51,6 +51,7 @@ describe('Currency Exchange API', () => {
         rmbDestType: 'alipay',
         rmbDestAccount: '13800001111',
         rmbDestName: 'Kemi Ade',
+        nairaReceiptUrl: 'https://example.com/sample_receipt.png',
       });
 
     expect(res.status).toBe(201);

@@ -201,6 +201,11 @@ export const ExchangeList: React.FC = () => {
         return;
       }
 
+      if (!proofUrl) {
+        message.error('Please upload your bank transfer screenshot proof of payment before submitting');
+        return;
+      }
+
       setSubmitting(true);
       await dispatch(
         submitExchangeRequest({
@@ -544,10 +549,10 @@ export const ExchangeList: React.FC = () => {
               <div className="mb-6 space-y-3">
                 <div className="flex justify-between items-center">
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <CloudUploadOutlined className="text-brand-orange" /> UPLOAD PROOF OF PAYMENT (BANK TRANSFER SCREENSHOT)
+                    <CloudUploadOutlined className="text-brand-orange" /> UPLOAD PROOF OF PAYMENT (BANK TRANSFER SCREENSHOT) <span className="text-red-500 font-extrabold">* (REQUIRED)</span>
                   </label>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                    Payment Receipt Proof
+                  <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider bg-red-50 px-2 py-0.5 rounded border border-red-200">
+                    REQUIRED
                   </span>
                 </div>
 

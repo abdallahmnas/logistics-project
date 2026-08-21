@@ -23,14 +23,19 @@ describe('Local Delivery API', () => {
       isVerified: true,
     });
 
-    await Wallet.destroy({ where: { userId: customerUser.id } });
-    await Wallet.create({
-      userId: customerUser.id,
-      balance: 50000,
-      availableBalance: 50000,
-      escrowHeld: 0,
-      currency: 'NGN',
+    const [wallet] = await Wallet.findOrCreate({
+      where: { userId: customerUser.id },
+      defaults: {
+        userId: customerUser.id,
+        balance: 50000,
+        availableBalance: 50000,
+        escrowHeld: 0,
+        currency: 'NGN',
+      },
     });
+    wallet.balance = 50000;
+    wallet.availableBalance = 50000;
+    await wallet.save();
 
     customerToken = generateToken({ id: customerUser.id, role: customerUser.role });
   });
