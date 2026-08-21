@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, InputNumber, Upload, Table, Tag, Form, message, Image, Select, Modal, Alert } from 'antd';
-import { SwapOutlined, CloudUploadOutlined, BankOutlined, DownloadOutlined, DeleteOutlined, QrcodeOutlined, BarcodeOutlined, PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { SwapOutlined, CloudUploadOutlined, BankOutlined, DownloadOutlined, DeleteOutlined, QrcodeOutlined, BarcodeOutlined, PlusOutlined, QuestionCircleOutlined, CopyOutlined, CheckOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchExchanges, fetchActiveRate, submitExchangeRequest, fetchSavedAccounts, createSavedAccount } from '../../../store/slices/exchangeSlice';
+import { fetchSettings } from '../../../store/slices/settingsSlice';
 import { useNavigate } from 'react-router-dom';
 import type { ExchangeRequest, RmbDestinationType, SavedAccount } from '../../../types/exchange.types';
 
@@ -17,7 +18,9 @@ export const ExchangeList: React.FC = () => {
   const [form] = Form.useForm();
   const [modalForm] = Form.useForm();
   const { exchanges, activeRate, savedAccounts, loading } = useAppSelector((state) => state.exchange);
+  const { settings } = useAppSelector((state) => state.settings);
 
+  const [direction, setDirection] = useState<'ngn_to_rmb' | 'rmb_to_ngn'>('ngn_to_rmb');
   const [rmbDestType, setRmbDestType] = useState<RmbDestinationType>('wechat_pay');
   const [sendAmount, setSendAmount] = useState<number>(500000);
   
@@ -44,6 +47,7 @@ export const ExchangeList: React.FC = () => {
   useEffect(() => {
     dispatch(fetchExchanges());
     dispatch(fetchActiveRate());
+    dispatch(fetchSettings());
     dispatch(fetchSavedAccounts()).unwrap().then((accs) => {
       if (accs && accs.length > 0) {
         handleSelectSavedAccount(accs[0].id, accs);
@@ -56,6 +60,16 @@ export const ExchangeList: React.FC = () => {
       handleSelectSavedAccount(savedAccounts[0].id, savedAccounts);
     }
   }, [savedAccounts, selectedSavedAccountId]);
+
+  const [copiedKey, setCopiedKey] = useState<string>('');
+
+  const copyToClipboard = (text: string, label: string, key: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    message.success(`${label} copied to clipboard!`);
+    setTimeout(() => setCopiedKey(''), 2500);
+  };
 
   const handleSelectSavedAccount = (accountId: string, listOverride?: SavedAccount[]) => {
     const list = listOverride || savedAccounts;
@@ -703,25 +717,125 @@ export const ExchangeList: React.FC = () => {
           </Card>
         </div>
 
-        {/* Right Column */}
+        {/* Right Column: Dynamic Company Official Receiving Account Details (Point of Transfer) */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex items-start gap-4 hover:shadow-md transition-shadow cursor-pointer">
-            <div className="w-10 h-10 rounded-lg bg-[#0A1128] text-white flex items-center justify-center shrink-0 shadow-sm">
-              <BankOutlined className="text-lg" />
+          <div className="bg-gradient-to-br from-[#0A1128] to-[#1E293B] rounded-2xl p-6 shadow-lg text-white border border-slate-700">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-brand-orange flex items-center justify-center text-xl border border-brand-orange/30">
+                <BankOutlined />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-white m-0">Official Company Receiving Account</h3>
+                <p className="text-xs text-slate-300 m-0">Deposit funds here to complete your transfer</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-[#0A1128] m-0 mb-1">Bank Transfer Details</h3>
-              <p className="text-xs text-slate-500 m-0 leading-relaxed">View official NGN receiving accounts.</p>
-            </div>
-          </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex items-start gap-4 hover:shadow-md transition-shadow cursor-pointer">
-            <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-              <QuestionCircleOutlined className="text-lg" />
+            {/* Account Details Box */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10 space-y-4">
+              <div className="flex justify-between items-center pb-2 border-b border-white/10">
+                <span className="text-xs text-slate-300 font-medium">Transfer Currency Target:</span>
+                <span className="text-xs font-black bg-brand-orange/20 text-orange-300 px-2 py-0.5 rounded uppercase border border-brand-orange/40">
+                  {direction === 'ngn_to_rmb' ? '🇳🇬 NGN Bank Deposit' : '🇨🇳 RMB / Yen Account'}
+                </span>
+              </div>
+
+              {direction === 'ngn_to_rmb' ? (
+                /* NGN Escrow Account Details */
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Bank Name</span>
+                    <span className="text-sm font-extrabold text-white">{settings?.ngnEscrowBankName || 'GTBank'}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Account Number</span>
+                    <div className="flex items-center justify-between mt-0.5 bg-black/30 px-3 py-2 rounded-lg border border-white/10">
+                      <span className="font-mono text-base font-black text-amber-300 tracking-wider">
+                        {settings?.ngnEscrowAccountNo || '0123456789'}
+                      </span>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={copiedKey === 'ngn_acc' ? <CheckOutlined className="text-green-400" /> : <CopyOutlined className="text-slate-300" />}
+                        onClick={() => copyToClipboard(settings?.ngnEscrowAccountNo || '0123456789', 'Account Number', 'ngn_acc')}
+                        className="text-slate-300 hover:text-white font-bold text-xs"
+                      >
+                        {copiedKey === 'ngn_acc' ? 'Copied!' : 'Copy'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Account Name</span>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <span className="text-xs font-extrabold text-slate-200">{settings?.ngnEscrowAccountName || 'Hamza RMB Trading Escrow Ltd'}</span>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CopyOutlined className="text-slate-300" />}
+                        onClick={() => copyToClipboard(settings?.ngnEscrowAccountName || 'Hamza RMB Trading Escrow Ltd', 'Account Name', 'ngn_name')}
+                        className="text-slate-300 hover:text-white text-xs"
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* RMB Receiving Account Details */
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Alipay ID</span>
+                    <div className="flex items-center justify-between mt-0.5 bg-black/30 px-3 py-2 rounded-lg border border-white/10">
+                      <span className="font-mono text-xs font-bold text-cyan-300">
+                        {settings?.rmbReceivingAlipay || 'hamza_rmb@alipay.com'}
+                      </span>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CopyOutlined className="text-slate-300" />}
+                        onClick={() => copyToClipboard(settings?.rmbReceivingAlipay || 'hamza_rmb@alipay.com', 'Alipay ID', 'rmb_alipay')}
+                        className="text-slate-300 hover:text-white text-xs"
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">WeChat Pay ID</span>
+                    <div className="flex items-center justify-between mt-0.5 bg-black/30 px-3 py-2 rounded-lg border border-white/10">
+                      <span className="font-mono text-xs font-bold text-emerald-300">
+                        {settings?.rmbReceivingWechat || 'HamzaRMB_Pay'}
+                      </span>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CopyOutlined className="text-slate-300" />}
+                        onClick={() => copyToClipboard(settings?.rmbReceivingWechat || 'HamzaRMB_Pay', 'WeChat ID', 'rmb_wechat')}
+                        className="text-slate-300 hover:text-white text-xs"
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Chinese Bank Details</span>
+                    <div className="text-xs font-bold text-slate-200 mt-1">
+                      {settings?.rmbReceivingBankName || 'ICBC Bank'} - {settings?.rmbReceivingAccountNo || '6222021001008888888'}
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      Holder: {settings?.rmbReceivingAccountName || 'Guangzhou Hamza Logistics Co., Ltd'}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div>
-              <h3 className="font-bold text-[#0A1128] m-0 mb-1">Exchange FAQ</h3>
-              <p className="text-xs text-slate-500 m-0 leading-relaxed">Learn about limits, timing, and compliance.</p>
+
+            <div className="mt-4 pt-3 border-t border-white/10 flex items-center gap-2 text-[11px] text-slate-300">
+              <span>💡</span>
+              <span>After making your transfer, upload your payment receipt screenshot on the left to complete your exchange!</span>
             </div>
           </div>
         </div>

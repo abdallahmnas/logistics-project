@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../index';
-import { sequelize, User, Package } from '../models';
+import { sequelize, User, Package, Wallet } from '../models';
+import { WalletService } from '../services/WalletService';
 import { generateToken } from '../config/jwt';
 
 describe('Shipment & Logistics API', () => {
@@ -97,6 +98,11 @@ describe('Shipment & Logistics API', () => {
       cbm: 0.015,
       preAlertDate: new Date(),
     });
+
+    const wallet = await WalletService.getWalletByUserId(customerUser.id);
+    wallet.balance = 500000;
+    wallet.availableBalance = 500000;
+    await wallet.save();
 
     const res = await request(app)
       .post('/api/v1/shipments/consolidate')

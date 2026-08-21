@@ -9,6 +9,7 @@ import notificationReducer from './slices/notificationSlice';
 import adminReducer from './slices/adminSlice';
 import supportReducer from './slices/supportSlice';
 import facilityReducer from './slices/facilitySlice';
+import settingsReducer from './slices/settingsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ export const store = configureStore({
     admin: adminReducer,
     support: supportReducer,
     facilities: facilityReducer,
+    settings: settingsReducer,
   },
 });
 

@@ -4,6 +4,8 @@ import { app } from '../index';
 import { sequelize, User, ProcurementRequest } from '../models';
 import { generateToken } from '../config/jwt';
 
+import { WalletService } from '../services/WalletService';
+
 describe('Buy-For-Me Procurement API', () => {
   let customerToken: string;
   let adminToken: string;
@@ -35,6 +37,11 @@ describe('Buy-For-Me Procurement API', () => {
       role: 'super_admin',
       isVerified: true,
     });
+
+    const wallet = await WalletService.getWalletByUserId(customerUser.id);
+    wallet.balance = 500000;
+    wallet.availableBalance = 500000;
+    await wallet.save();
 
     customerToken = generateToken({ id: customerUser.id, role: customerUser.role });
     adminToken = generateToken({ id: adminUser.id, role: adminUser.role });

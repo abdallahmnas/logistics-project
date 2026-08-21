@@ -2,6 +2,7 @@ import { ExchangeRate, ExchangeRequest, User, SavedAccount } from '../models';
 import { uploadToCloudinary, uploadBase64ToCloudinary } from '../config/cloudinary';
 import { ActivityLogService } from './ActivityLogService';
 import { NotificationService } from './NotificationService';
+import { SettingsService } from './SettingsService';
 
 export class ExchangeService {
   public static async getSavedAccounts(userId: string) {
@@ -85,8 +86,9 @@ export class ExchangeService {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('User not found');
 
+    const settings = await SettingsService.getSettings();
     const activeRate = await this.getActiveRate();
-    const platformRate = activeRate.platformRate;
+    const platformRate = settings.cnyExchangeRate || activeRate.platformRate || 215.0;
     const direction = payload.direction || 'ngn_to_rmb';
 
     let amountNaira = payload.amountNaira || 0;
@@ -138,9 +140,9 @@ export class ExchangeService {
       platformFee,
       totalNaira,
       status: uploadedReceiptUrl ? 'receipt_uploaded' : 'pending',
-      escrowBankName: 'GTBank',
-      escrowAccountNo: '0123456789',
-      escrowAccountName: 'Hamza RMB Trading Ltd',
+      escrowBankName: settings.ngnEscrowBankName || 'GTBank',
+      escrowAccountNo: settings.ngnEscrowAccountNo || '0123456789',
+      escrowAccountName: settings.ngnEscrowAccountName || 'Hamza RMB Trading Ltd',
       nairaReceiptUrl: uploadedReceiptUrl,
       rmbDestType: payload.rmbDestType,
       rmbDestAccount: payload.rmbDestAccount,

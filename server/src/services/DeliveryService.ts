@@ -2,6 +2,8 @@ import { LocalDelivery, User, Wallet } from '../models';
 import { ActivityLogService } from './ActivityLogService';
 import { NotificationService } from './NotificationService';
 
+import { SettingsService } from './SettingsService';
+
 export class DeliveryService {
   public static async createDelivery(userId: string, payload: {
     pickupAddress: string;
@@ -19,7 +21,12 @@ export class DeliveryService {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('User not found');
 
-    const rates = { motorbike: { base: 1500, perKm: 150 }, sedan: { base: 3000, perKm: 250 }, box_truck: { base: 8000, perKm: 500 } };
+    const settings = await SettingsService.getSettings();
+    const rates = {
+      motorbike: { base: settings.deliveryMotorbikeBaseRate || 1500, perKm: settings.deliveryMotorbikePerKm || 150 },
+      sedan: { base: settings.deliverySedanBaseRate || 3000, perKm: settings.deliverySedanPerKm || 250 },
+      box_truck: { base: settings.deliveryTruckBaseRate || 8000, perKm: settings.deliveryTruckPerKm || 500 },
+    };
     const r = rates[payload.vehicleType] || rates.sedan;
     const distanceKm = 15;
     const baseFare = r.base;

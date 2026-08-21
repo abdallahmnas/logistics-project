@@ -31,6 +31,7 @@ import adminRoutes from './routes/admin.routes';
 import supportRoutes from './routes/support.routes';
 import uploadRoutes from './routes/upload.routes';
 import facilityRoutes from './routes/facility.routes';
+import settingsRoutes from './routes/settings.routes';
 
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
@@ -64,6 +65,7 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/support', supportRoutes);
 app.use('/api/v1/upload', uploadRoutes);
 app.use('/api/v1/facilities', facilityRoutes);
+app.use('/api/v1/settings', settingsRoutes);
 
 // Serve frontend static build in production
 if (process.env.NODE_ENV === 'production') {

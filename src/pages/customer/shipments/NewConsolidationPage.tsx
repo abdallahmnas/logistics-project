@@ -14,12 +14,14 @@ import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { fetchPackages, fetchConsolidations, submitConsolidation } from "../../../store/slices/shipmentSlice";
 import { fetchFacilities } from "../../../store/slices/facilitySlice";
+import { fetchSettings } from "../../../store/slices/settingsSlice";
 
 export const NewConsolidationPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { packages, consolidations } = useAppSelector((state) => state.shipments);
   const { facilities } = useAppSelector((state) => state.facilities || { facilities: [] });
+  const { settings } = useAppSelector((state) => state.settings);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeWarehouse, setActiveWarehouse] = useState<string>("all");
   const [freight, setFreight] = useState<"air" | "sea">("air");
@@ -32,6 +34,7 @@ export const NewConsolidationPage: React.FC = () => {
     dispatch(fetchPackages());
     dispatch(fetchConsolidations());
     dispatch(fetchFacilities());
+    dispatch(fetchSettings());
   }, [dispatch]);
 
   const warehouseTabs = useMemo(() => {
@@ -495,13 +498,7 @@ export const NewConsolidationPage: React.FC = () => {
                 block
                 className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-md h-12 text-base"
                 disabled={selectedIds.length === 0}
-                onClick={() => {
-                  if (paymentMethod === "pay_now") {
-                    setPayModalOpen(true);
-                  } else {
-                    handleConsolidateSubmit();
-                  }
-                }}
+                onClick={() => setPayModalOpen(true)}
               >
                 Apply to Pack →
               </Button>
@@ -510,114 +507,146 @@ export const NewConsolidationPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Pay Now Modal */}
+      {/* Consolidation Price Quote & Payment Confirmation Modal */}
       <Modal
         open={payModalOpen}
         onCancel={() => setPayModalOpen(false)}
         footer={null}
-        width={520}
+        width={560}
         destroyOnHidden
       >
         <div className="text-center mb-6">
           <div className="w-16 h-16 rounded-full bg-brand-orange/10 text-brand-orange flex items-center justify-center mx-auto mb-4">
-            <BankOutlined className="text-3xl" />
+            {paymentMethod === "pay_now" ? (
+              <BankOutlined className="text-3xl" />
+            ) : (
+              <CarOutlined className="text-3xl" />
+            )}
           </div>
           <h2 className="text-xl font-bold text-[#0A1128] m-0 mb-1">
-            Payment Instructions
+            {paymentMethod === "pay_now"
+              ? "Payment & Order Summary"
+              : "Pay on Delivery Confirmation"}
           </h2>
-          <p className="text-slate-500 text-sm m-0">
-            Transfer the amount below to complete your consolidation request.
+          <p className="text-slate-500 text-xs m-0 leading-relaxed">
+            Review your calculated freight charges and shipment details before confirming.
           </p>
         </div>
 
-        <div className="bg-[#0A1128] rounded-xl p-5 text-white mb-6">
-          <div className="text-[10px] font-bold text-blue-300 uppercase tracking-wider mb-1">
-            Amount to Pay
+        {/* Price Breakdown Banner */}
+        <div className="bg-[#0A1128] rounded-2xl p-5 text-white mb-6 shadow-md">
+          <div className="flex justify-between items-start mb-2">
+            <div>
+              <div className="text-[10px] font-bold text-blue-300 uppercase tracking-wider mb-1">
+                Estimated Freight Charge
+              </div>
+              <div className="text-3xl font-extrabold text-amber-300">
+                ₦
+                {(freight === "air"
+                  ? totalWeight * (settings?.airFreightRatePerKg || 12500)
+                  : totalVolume * (settings?.seaFreightRatePerCbm || 450000)
+                ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+            <div className="bg-white/10 px-3 py-1.5 rounded-lg text-xs font-bold border border-white/10 text-right">
+              <span className="block text-[10px] text-slate-300 uppercase">Modality</span>
+              <span className="text-amber-300">{freight === "air" ? "✈️ Air Freight" : "🚢 Sea Freight"}</span>
+            </div>
           </div>
-          <div className="text-3xl font-extrabold">
-            ₦
-            {(freight === "air"
-              ? totalWeight * 3500
-              : totalVolume * 180000
-            ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </div>
-          <div className="text-xs text-blue-200 mt-1">
-            {freight === "air"
-              ? `${totalWeight.toFixed(1)} kg × ₦3,500/kg`
-              : `${totalVolume.toFixed(2)} cbm × ₦180,000/cbm`}
+          <div className="text-xs text-blue-200 border-t border-white/10 pt-2.5 mt-2 flex justify-between">
+            <span>
+              {freight === "air"
+                ? `${totalWeight.toFixed(1)} kg × ₦${(settings?.airFreightRatePerKg || 12500).toLocaleString()}/kg`
+                : `${totalVolume.toFixed(2)} cbm × ₦${(settings?.seaFreightRatePerCbm || 450000).toLocaleString()}/cbm`}
+            </span>
+            <span className="font-bold">
+              {selectedIds.length} Packages Included
+            </span>
           </div>
         </div>
 
-        <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-4 mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                Bank Name
+        {paymentMethod === "pay_now" ? (
+          <>
+            {/* Pay Now Escrow Bank Details */}
+            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-3 mb-6">
+              <div className="text-xs font-bold text-[#0A1128] mb-2 uppercase tracking-wider border-b border-slate-200 pb-2">
+                Naira Receiving Account Details
               </div>
-              <div className="text-sm font-bold text-[#0A1128]">
-                Guaranty Trust Bank (GTB)
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Bank Name:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-[#0A1128]">{settings?.ngnEscrowBankName || "GTBank"}</span>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CopyOutlined />}
+                    className="text-brand-orange font-bold p-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(settings?.ngnEscrowBankName || "GTBank");
+                      message.success("Copied!");
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Account Number:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-[#0A1128] font-mono text-sm">{settings?.ngnEscrowAccountNo || "0123456789"}</span>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CopyOutlined />}
+                    className="text-brand-orange font-bold p-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(settings?.ngnEscrowAccountNo || "0123456789");
+                      message.success("Copied!");
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Account Name:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-[#0A1128]">{settings?.ngnEscrowAccountName || "Hamza RMB Trading Escrow Ltd"}</span>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CopyOutlined />}
+                    className="text-brand-orange font-bold p-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(settings?.ngnEscrowAccountName || "Hamza RMB Trading Escrow Ltd");
+                      message.success("Copied!");
+                    }}
+                  />
+                </div>
               </div>
             </div>
-            <Button
-              type="text"
-              size="small"
-              icon={<CopyOutlined />}
-              className="text-brand-orange"
-              onClick={() => {
-                navigator.clipboard.writeText("Guaranty Trust Bank (GTB)");
-                message.success("Copied!");
-              }}
-            />
-          </div>
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                Account Number
-              </div>
-              <div className="text-sm font-bold text-[#0A1128] font-mono tracking-wider">
-                0123456789
-              </div>
-            </div>
-            <Button
-              type="text"
-              size="small"
-              icon={<CopyOutlined />}
-              className="text-brand-orange"
-              onClick={() => {
-                navigator.clipboard.writeText("0123456789");
-                message.success("Copied!");
-              }}
-            />
-          </div>
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                Account Name
-              </div>
-              <div className="text-sm font-bold text-[#0A1128]">
-                Global Logistics Ltd
-              </div>
-            </div>
-            <Button
-              type="text"
-              size="small"
-              icon={<CopyOutlined />}
-              className="text-brand-orange"
-              onClick={() => {
-                navigator.clipboard.writeText("Global Logistics Ltd");
-                message.success("Copied!");
-              }}
-            />
-          </div>
-        </div>
 
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-          <p className="text-orange-700 text-xs m-0 leading-relaxed">
-            <strong>Important:</strong> Use your Member Code as the payment
-            reference/narration. Your consolidation will be processed within 2
-            hours of payment confirmation.
-          </p>
-        </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 text-xs text-orange-800">
+              <strong>Note:</strong> Transfer the exact amount above to complete your consolidation. Your request will be queued for packing upon transfer verification.
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Pay On Delivery Alert Banner */}
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-green-900 text-sm">
+                <span>🚚 Pay on Delivery / Pickup Selected</span>
+              </div>
+              <p className="text-xs text-green-800 m-0 leading-relaxed">
+                You do not need to make an immediate transfer right now. Your total freight charge of{" "}
+                <strong className="text-green-950 font-extrabold">
+                  ₦
+                  {(freight === "air"
+                    ? totalWeight * (settings?.airFreightRatePerKg || 12500)
+                    : totalVolume * (settings?.seaFreightRatePerCbm || 450000)
+                  ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </strong>{" "}
+                will be collected when your master batch arrives at your designated Nigeria destination hub prior to pickup or doorstep dispatch.
+              </p>
+            </div>
+          </>
+        )}
 
         <div className="flex gap-3">
           <Button
@@ -636,7 +665,7 @@ export const NewConsolidationPage: React.FC = () => {
             className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-md"
             onClick={handleConsolidateSubmit}
           >
-            I've Made Payment
+            {paymentMethod === "pay_now" ? "I've Made Payment" : "Confirm & Submit Request"}
           </Button>
         </div>
       </Modal>

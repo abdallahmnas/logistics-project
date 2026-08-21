@@ -3,15 +3,9 @@ import { Upload, Modal, Image, Button } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
 import { InboxOutlined, DeleteOutlined, EyeOutlined, QrcodeOutlined, BarcodeOutlined } from '@ant-design/icons';
 
-const { Dragger } = Upload;
+import { uploadImageFile } from '../../utils/fileUpload';
 
-const getBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-  });
+const { Dragger } = Upload;
 
 interface ImageDropzoneProps {
   fileList: UploadFile[];
@@ -37,10 +31,8 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
   const [previewTitle, setPreviewTitle] = useState('');
 
   const handlePreview = async (file: UploadFile) => {
-    if (!file.url && !file.preview && file.originFileObj) {
-      file.preview = await getBase64(file.originFileObj as File);
-    }
-    setPreviewImage(file.url || (file.preview as string) || '');
+    const src = file.url || file.preview || (file.originFileObj ? URL.createObjectURL(file.originFileObj as File) : '');
+    setPreviewImage(src);
     setPreviewTitle(file.name || 'Image preview');
     setPreviewOpen(true);
   };
@@ -48,14 +40,16 @@ export const ImageDropzone: React.FC<ImageDropzoneProps> = ({
   const handleChange: UploadProps['onChange'] = async ({ fileList: newFileList }) => {
     const processedList = await Promise.all(
       newFileList.map(async (file) => {
-        if (!file.url && !file.thumbUrl && file.originFileObj) {
+        if (!file.url && file.originFileObj) {
+          const objectUrl = URL.createObjectURL(file.originFileObj as File);
+          file.thumbUrl = objectUrl;
+          file.preview = objectUrl;
+
           try {
-            const b64 = await getBase64(file.originFileObj as File);
-            file.thumbUrl = b64;
-            file.preview = b64;
-            file.url = b64;
+            const uploadedUrl = await uploadImageFile(file.originFileObj as File, 'procurement');
+            file.url = uploadedUrl;
           } catch (e) {
-            console.error('Failed to generate image preview base64:', e);
+            file.url = objectUrl;
           }
         }
         return file;

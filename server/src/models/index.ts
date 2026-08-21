@@ -16,6 +16,7 @@ import { PermissionGroup } from './PermissionGroup';
 import { ActivityLog } from './ActivityLog';
 import { Facility } from './Facility';
 import { SavedAccount } from './SavedAccount';
+import { SystemSettings } from './SystemSettings';
 
 // Define Relationships
 User.hasOne(Wallet, { foreignKey: 'userId', as: 'wallet' });
@@ -48,4 +49,5 @@ export {
   ActivityLog,
   Facility,
   SavedAccount,
+  SystemSettings,
 };

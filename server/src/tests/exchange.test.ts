@@ -54,6 +54,7 @@ describe('Currency Exchange API', () => {
         nairaReceiptUrl: 'https://example.com/sample_receipt.png',
       });
 
+    if (res.status !== 201) console.log('DEBUG EXCHANGE RES BODY:', res.body);
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
     expect(res.body.data.amountNaira).toBe(500000);

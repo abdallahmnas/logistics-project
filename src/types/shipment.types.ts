@@ -100,6 +100,8 @@ export interface PreAlertPayload {
   supplierName: string;
   description: string;
   originCountry?: string;
+  shippingMethod?: ShippingMethod;
+  paymentOption?: string;
   estimatedItems?: number;
   notes?: string;
   photos?: string[];

@@ -7,10 +7,15 @@ import {
   LinkOutlined,
   AppstoreOutlined,
   PictureOutlined,
+  WalletOutlined,
+  CheckCircleOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { useAppDispatch } from "../../../store/hooks";
+import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { submitProcurement } from "../../../store/slices/procurementSlice";
+import { fetchWallet } from "../../../store/slices/walletSlice";
+import { fetchSettings } from "../../../store/slices/settingsSlice";
 import { buyForMeSchema, validateForm } from "../../../utils/validators";
 import type { ProcurementSubmitPayload } from "../../../types/procurement.types";
 import { ImageDropzone } from "../../../components/common/ImageDropzone";
@@ -37,8 +42,19 @@ export const BuyForMeForm: React.FC = () => {
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const walletState = useAppSelector((state) => state.wallet);
+  const { settings } = useAppSelector((state) => state.settings);
+
   const [submitting, setSubmitting] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
+
+  React.useEffect(() => {
+    dispatch(fetchWallet());
+    dispatch(fetchSettings());
+  }, [dispatch]);
+
+  const walletBalance = walletState.wallet?.balance || 0;
+  const submissionFee = settings?.buyForMeFixedFee || 1000;
 
   const onFinish = async (values: ProcurementSubmitPayload) => {
     const errors = await validateForm(
@@ -60,7 +76,7 @@ export const BuyForMeForm: React.FC = () => {
       await dispatch(
         submitProcurement({
           productUrl: values.productUrl,
-          productPhotos: fileList.map((f) => f.name),
+          productPhotos: fileList.map((f) => f.url || f.preview || f.name).filter((u): u is string => Boolean(u)),
           quantity: values.quantity,
           specifications: values.specifications,
           sizes: values.sizes,
@@ -191,7 +207,57 @@ export const BuyForMeForm: React.FC = () => {
               />
             </Form.Item>
 
-            <Form.Item className="mb-0 mt-8 text-right">
+            {/* Fee & Charge Preview Box */}
+            <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-lg border border-slate-800 my-6 text-left">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4 mb-4">
+                <div>
+                  <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                    <WalletOutlined /> ORDER SUBMISSION CHARGE PREVIEW
+                  </div>
+                  <div className="text-2xl font-extrabold text-white">
+                    ₦{submissionFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-xs text-slate-400 m-0 mt-0.5">
+                    Submission & sourcing fee automatically deducted from your platform wallet balance upon placing this order.
+                  </p>
+                </div>
+
+                <div className="bg-slate-800/90 border border-slate-700 px-4 py-2.5 rounded-xl text-right shrink-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Your Wallet Balance</span>
+                  <span className={`text-lg font-extrabold ${walletBalance >= submissionFee ? "text-emerald-400" : "text-red-400"}`}>
+                    ₦{walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {walletBalance >= submissionFee ? (
+                <div className="bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 rounded-xl p-3 text-xs flex items-center gap-2">
+                  <CheckCircleOutlined className="text-emerald-400 text-base shrink-0" />
+                  <span>
+                    <strong>Balance Sufficient:</strong> ₦{submissionFee.toLocaleString()} will be charged to place this order. Remaining balance after order: <strong>₦{(walletBalance - submissionFee).toLocaleString()}</strong>
+                  </span>
+                </div>
+              ) : (
+                <div className="bg-red-950/60 border border-red-500/30 text-red-300 rounded-xl p-3 text-xs flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <WarningOutlined className="text-red-400 text-base shrink-0" />
+                    <span>
+                      <strong>Insufficient Wallet Balance:</strong> You need ₦{submissionFee.toLocaleString()} to place this order (Short by ₦{(submissionFee - walletBalance).toLocaleString()}).
+                    </span>
+                  </div>
+                  <Button
+                    type="primary"
+                    size="small"
+                    className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold text-xs shrink-0"
+                    onClick={() => navigate('/customer/wallet')}
+                  >
+                    Top Up Wallet →
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <Form.Item className="mb-0 mt-6 text-right">
               <Button
                 onClick={() => navigate("/customer/buy-for-me")}
                 className="mr-2"
@@ -204,9 +270,11 @@ export const BuyForMeForm: React.FC = () => {
                 htmlType="submit"
                 icon={<SendOutlined />}
                 loading={submitting}
+                disabled={walletBalance < submissionFee}
                 size="large"
+                className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-md"
               >
-                Submit Request
+                Submit Request (Charge ₦{submissionFee.toLocaleString()})
               </Button>
             </Form.Item>
           </Form>
