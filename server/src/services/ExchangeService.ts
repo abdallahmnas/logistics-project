@@ -1,5 +1,5 @@
 import { ExchangeRate, ExchangeRequest, User, SavedAccount } from '../models';
-import { uploadToCloudinary } from '../config/cloudinary';
+import { uploadToCloudinary, uploadBase64ToCloudinary } from '../config/cloudinary';
 import { ActivityLogService } from './ActivityLogService';
 import { NotificationService } from './NotificationService';
 
@@ -112,6 +112,18 @@ export class ExchangeService {
       throw new Error('Bank transfer screenshot proof of payment is required to submit an exchange request');
     }
 
+    const rawReceipt = payload.nairaReceiptUrl || (payload as any).nairaReceipt;
+    let uploadedReceiptUrl = rawReceipt;
+    if (rawReceipt && rawReceipt.startsWith('data:image')) {
+      uploadedReceiptUrl = await uploadBase64ToCloudinary(rawReceipt, 'logicore/exchange-receipts');
+    }
+
+    const rawBarcode = payload.rmbDestQrCode || payload.receivingBarcodeUrl;
+    let uploadedBarcodeUrl = rawBarcode;
+    if (rawBarcode && rawBarcode.startsWith('data:image')) {
+      uploadedBarcodeUrl = await uploadBase64ToCloudinary(rawBarcode, 'logicore/barcodes');
+    }
+
     const platformFee = 5000;
     const totalNaira = amountNaira + platformFee;
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -125,15 +137,16 @@ export class ExchangeService {
       exchangeRate: platformRate,
       platformFee,
       totalNaira,
-      status: 'pending',
+      status: uploadedReceiptUrl ? 'receipt_uploaded' : 'pending',
       escrowBankName: 'GTBank',
       escrowAccountNo: '0123456789',
       escrowAccountName: 'Hamza RMB Trading Ltd',
+      nairaReceiptUrl: uploadedReceiptUrl,
       rmbDestType: payload.rmbDestType,
       rmbDestAccount: payload.rmbDestAccount,
       rmbDestName: payload.rmbDestName,
-      rmbDestQrCode: payload.rmbDestQrCode || payload.receivingBarcodeUrl,
-      receivingBarcodeUrl: payload.receivingBarcodeUrl || payload.rmbDestQrCode,
+      rmbDestQrCode: uploadedBarcodeUrl,
+      receivingBarcodeUrl: uploadedBarcodeUrl,
       requestedAt: new Date(),
       expiresAt,
     });
