@@ -493,20 +493,44 @@ export class ShipmentService {
     return batch;
   }
 
-  public static async updateBatchStatus(batchId: string, status: string, adminUser?: any) {
+  public static async updateBatchStatus(
+    batchId: string,
+    status: string,
+    extraOrAdmin?: any,
+    adminUser?: any
+  ) {
+    let extra: { destinationWarehouse?: string; currentLocation?: string } = {};
+    let admin = adminUser;
+    
+    if (extraOrAdmin && (extraOrAdmin.destinationWarehouse || extraOrAdmin.currentLocation)) {
+      extra = extraOrAdmin;
+    } else if (extraOrAdmin && extraOrAdmin.id) {
+      admin = extraOrAdmin;
+    }
+
     const batch = await Batch.findByPk(batchId);
     if (!batch) throw new Error('Batch not found');
 
     batch.status = status as any;
+    if (extra.destinationWarehouse) {
+      batch.destinationWarehouse = extra.destinationWarehouse;
+    }
+    if (extra.currentLocation) {
+      batch.currentLocation = extra.currentLocation;
+    }
     if (status === 'arrived_ng') batch.arrivedDate = new Date();
     await batch.save();
 
     const consolidationIds = batch.consolidationIds || [];
     const packageIds = batch.packageIds || [];
+    const targetDestWh = extra.destinationWarehouse || batch.destinationWarehouse || 'Lagos Main Hub';
 
     if (status === 'arrived_ng') {
       if (consolidationIds.length > 0) {
-        await Consolidation.update({ status: 'arrived_destination' }, { where: { id: consolidationIds } });
+        await Consolidation.update(
+          { status: 'arrived_destination', destinationWarehouse: targetDestWh },
+          { where: { id: consolidationIds } }
+        );
       }
       if (packageIds.length > 0) {
         await Package.update({ status: 'arrived_destination', arrivedDate: new Date() }, { where: { id: packageIds } });
@@ -520,14 +544,14 @@ export class ShipmentService {
       }
     }
 
-    if (adminUser) {
+    if (admin) {
       ActivityLogService.logActivity({
-        userId: adminUser.id,
-        userName: adminUser.name,
-        userRole: adminUser.role,
+        userId: admin.id,
+        userName: admin.name,
+        userRole: admin.role,
         module: 'warehouse',
         action: 'UPDATE_BATCH_STATUS',
-        description: `Updated Master Batch ${batch.masterTrackingId} status to ${status}`,
+        description: `Updated Master Batch ${batch.masterTrackingId} status to ${status} (${targetDestWh})`,
         entityId: batch.id,
       });
     }
