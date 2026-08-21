@@ -8,6 +8,7 @@ import {
   FileTextOutlined,
   PictureOutlined,
   EnvironmentOutlined,
+  CreditCardOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
@@ -39,7 +40,7 @@ export const PreAlertForm: React.FC = () => {
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { facilities } = useAppSelector((state) => state.facilities || { facilities: [] });
+  const { facilities, loading: facilitiesLoading } = useAppSelector((state) => state.facilities || { facilities: [], loading: false });
   const [submitting, setSubmitting] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
 
@@ -47,20 +48,24 @@ export const PreAlertForm: React.FC = () => {
     dispatch(fetchFacilities());
   }, [dispatch]);
 
+  // Purely fetch and map China receiving facilities directly from the database table via API
   const warehouseOptions = useMemo(() => {
-    if (!facilities || facilities.length === 0) {
-      return [
-        { label: "🇨🇳 Guangzhou Main Hub (China)", value: "Guangzhou Hub, China" },
-        { label: "🇨🇳 Yiwu Commodity Hub (China)", value: "Yiwu Hub, China" },
-        { label: "🇬🇧 London Cargo Hub (UK)", value: "London Hub, UK" },
-        { label: "🇺🇸 New York Cargo Hub (US)", value: "New York Hub, US" },
-      ];
-    }
-    return facilities.filter(f => f.status !== 'inactive').map((f) => ({
-      label: `${f.country === 'CN' ? '🇨🇳' : f.country === 'UK' ? '🇬🇧' : f.country === 'US' ? '🇺🇸' : '📍'} ${f.name} (${f.location})`,
+    const cnFacilities = (facilities || []).filter(
+      (f) => f.country === "CN" && f.status !== "inactive"
+    );
+
+    return cnFacilities.map((f) => ({
+      label: `🇨🇳 ${f.name} (${f.location})`,
       value: `${f.name}, ${f.location}`,
     }));
   }, [facilities]);
+
+  // Set default initial value to the first China facility returned from the database
+  useEffect(() => {
+    if (warehouseOptions.length > 0 && !form.getFieldValue("originCountry")) {
+      form.setFieldsValue({ originCountry: warehouseOptions[0].value });
+    }
+  }, [warehouseOptions, form]);
 
   const onFinish = async (values: PreAlertPayload) => {
     const errors = await validateForm(
@@ -85,6 +90,8 @@ export const PreAlertForm: React.FC = () => {
           supplierName: values.supplierName,
           description: values.description,
           originCountry: values.originCountry,
+          shippingMethod: values.shippingMethod,
+          paymentOption: values.paymentOption,
           estimatedItems: values.estimatedItems,
           notes: values.notes,
           photos: fileList.map((f) => f.name),
@@ -128,14 +135,11 @@ export const PreAlertForm: React.FC = () => {
             layout="vertical"
             onFinish={onFinish}
             requiredMark={false}
-            initialValues={{
-              originCountry: 'Guangzhou Hub, China',
-            }}
           >
             <SectionHeading
               icon={<EnvironmentOutlined />}
               title="Receiving Warehouse Facility"
-              subtitle="Select where your supplier is dropping off your package"
+              subtitle="Select where your supplier is dropping off your package in China"
             />
             <Form.Item
               name="originCountry"
@@ -144,6 +148,7 @@ export const PreAlertForm: React.FC = () => {
             >
               <Select
                 size="large"
+                loading={facilitiesLoading}
                 placeholder="Select receiving warehouse..."
                 options={warehouseOptions}
               />
@@ -209,6 +214,44 @@ export const PreAlertForm: React.FC = () => {
                 <Input placeholder="Anything else to flag" size="large" />
               </Form.Item>
             </div>
+
+            <div className="border-t border-slate-100 my-6" />
+
+            <SectionHeading
+              icon={<CreditCardOutlined />}
+              title="Payment Preference"
+              subtitle="Indicate when you prefer to pay for your freight shipping"
+            />
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-start gap-3 text-xs text-blue-900">
+              <span className="text-base leading-none">ℹ️</span>
+              <div>
+                <p className="font-bold m-0 mb-0.5">No payment is required right now!</p>
+                <p className="m-0 text-blue-800 leading-relaxed">
+                  Your final freight charges will be calculated after our China warehouse team physically receives, weighs, and measures your package.
+                </p>
+              </div>
+            </div>
+
+            <Form.Item
+              name="paymentOption"
+              label="Preferred Payment Option"
+              initialValue="pay_before_dispatch"
+            >
+              <Select
+                size="large"
+                options={[
+                  {
+                    label: "💳 Pay Before Overseas Dispatch (Pay when weighed in China)",
+                    value: "pay_before_dispatch",
+                  },
+                  {
+                    label: "🚚 Pay On Delivery / Pickup (Pay at Nigeria hub arrival)",
+                    value: "pay_on_delivery",
+                  },
+                ]}
+              />
+            </Form.Item>
 
             <div className="border-t border-slate-100 my-6" />
 

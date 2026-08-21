@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { submitDelivery } from '../../../store/slices/deliverySlice';
 import { fetchPackages, fetchConsolidations } from '../../../store/slices/shipmentSlice';
+import { fetchSettings } from '../../../store/slices/settingsSlice';
 
 export const LocalDeliveryForm: React.FC = () => {
   const navigate = useNavigate();
@@ -12,12 +13,14 @@ export const LocalDeliveryForm: React.FC = () => {
   const [form] = Form.useForm();
   const { user } = useAppSelector((state) => state.auth);
   const { packages, consolidations } = useAppSelector((state) => state.shipments);
+  const { settings } = useAppSelector((state) => state.settings);
   const [priority, setPriority] = useState<'standard' | 'express'>('standard');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     dispatch(fetchPackages());
     dispatch(fetchConsolidations());
+    dispatch(fetchSettings());
   }, [dispatch]);
 
   const arrivedItems = [
@@ -33,8 +36,14 @@ export const LocalDeliveryForm: React.FC = () => {
     })),
   ];
 
-  const baseRate = priority === 'express' ? 1500 : 3000;
-  const distanceFee = 2250;
+  const baseRate = priority === 'express' 
+    ? (settings?.deliveryMotorbikeBaseRate || 1500)
+    : (settings?.deliverySedanBaseRate || 3000);
+  const distanceKm = 15;
+  const perKmRate = priority === 'express'
+    ? (settings?.deliveryMotorbikePerKm || 150)
+    : (settings?.deliverySedanPerKm || 250);
+  const distanceFee = distanceKm * perKmRate;
   const totalFareNaira = baseRate + distanceFee;
 
   const handleSubmit = async (values: any) => {
@@ -52,14 +61,14 @@ export const LocalDeliveryForm: React.FC = () => {
           dropoffContactName: values.dropoffContactName,
           packageDescription: values.packageDescription,
           vehicleType: priority === 'express' ? 'motorbike' : 'sedan',
-          paymentMethod: 'wallet',
+          paymentMethod: values.paymentMethod === 'cash_on_delivery' ? 'cash_on_delivery' : 'wallet',
         })
       ).unwrap();
 
       message.success('Local Delivery request dispatched successfully!');
       navigate('/customer/delivery');
     } catch (err: any) {
-      const msg = err?.message || 'Failed to submit delivery request. Please check fields.';
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to submit delivery request. Please check fields.';
       message.error(msg);
     } finally {
       setSubmitting(false);

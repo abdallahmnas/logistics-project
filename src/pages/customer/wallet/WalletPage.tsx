@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Button, Table, Tag, Modal, InputNumber, message } from "antd";
+import { Button, Table, Tag, Modal, InputNumber, message, Image } from "antd";
 import {
   WalletOutlined,
   PlusOutlined,
@@ -7,6 +7,8 @@ import {
   CreditCardOutlined,
   BankOutlined,
   CarOutlined,
+  BarcodeOutlined,
+  QrcodeOutlined,
 } from "@ant-design/icons";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import {
@@ -289,6 +291,56 @@ export const WalletPage: React.FC = () => {
                     Mastercard
                   </div>
                   <div className="text-[10px] text-slate-400">****7792</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Receiving Barcodes & Wallet Account Info */}
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <BarcodeOutlined className="text-brand-orange text-lg" />
+                <h3 className="font-bold text-[#0A1128] text-base m-0">
+                  Receiving Barcodes
+                </h3>
+              </div>
+              <Tag color="orange" className="font-bold border-none text-[10px] uppercase">
+                To Be Funded
+              </Tag>
+            </div>
+            <p className="text-xs text-slate-500 m-0">
+              Manage your WeChat & Alipay receiving account barcodes for RMB funding.
+            </p>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                <Image
+                  src="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=300"
+                  alt="WeChat Barcode"
+                  className="w-12 h-12 rounded-lg object-contain bg-white border border-slate-200"
+                />
+                <div className="flex-1 overflow-hidden">
+                  <div className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                    <span>WeChat Pay Barcode</span>
+                    <span className="text-[10px] text-green-600 font-bold bg-green-50 px-1 rounded">Active</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-mono truncate">ID: wx_889123490</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                <Image
+                  src="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=300"
+                  alt="Alipay Barcode"
+                  className="w-12 h-12 rounded-lg object-contain bg-white border border-slate-200"
+                />
+                <div className="flex-1 overflow-hidden">
+                  <div className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                    <span>Alipay Barcode</span>
+                    <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-1 rounded">Active</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-mono truncate">ID: ali_pay_user992</div>
                 </div>
               </div>
             </div>

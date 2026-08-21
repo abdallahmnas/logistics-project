@@ -1,6 +1,8 @@
-import { ProcurementRequest, User } from '../models';
+import { ProcurementRequest, User, Wallet } from '../models';
 import { ActivityLogService } from './ActivityLogService';
 import { NotificationService } from './NotificationService';
+
+import { SettingsService } from './SettingsService';
 
 export class ProcurementService {
   public static async createRequest(userId: string, payload: {
@@ -15,6 +17,25 @@ export class ProcurementService {
   }) {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('User not found');
+
+    // Fetch system settings & check wallet balance for Buy-For-Me submission fee
+    const settings = await SettingsService.getSettings();
+    const submissionFee = settings?.buyForMeFixedFee || 1000;
+
+    if (submissionFee > 0) {
+      let wallet = await Wallet.findOne({ where: { userId: user.id } });
+      const currentBalance = wallet ? wallet.balance : 0;
+      if (currentBalance < submissionFee) {
+        throw new Error(
+          `Insufficient wallet balance. Buy-For-Me submission fee is ₦${submissionFee.toLocaleString()}, but your available balance is ₦${currentBalance.toLocaleString()}. Please top up your wallet.`
+        );
+      }
+      if (wallet) {
+        wallet.balance = wallet.balance - submissionFee;
+        wallet.availableBalance = wallet.balance - (wallet.escrowHeld || 0);
+        await wallet.save();
+      }
+    }
 
     const req = await ProcurementRequest.create({
       customerId: user.customerId,
@@ -66,8 +87,9 @@ export class ProcurementService {
     const proc = await ProcurementRequest.findByPk(id);
     if (!proc) throw new Error('Procurement request not found');
 
+    const settings = await SettingsService.getSettings();
     const totalCostRmb = Number(payload.productCostRmb) + Number(payload.serviceFeeRmb);
-    const rate = payload.exchangeRateUsed || 215;
+    const rate = payload.exchangeRateUsed || settings.cnyExchangeRate || 215;
     const totalCostNaira = Math.round(totalCostRmb * rate);
 
     proc.productCostRmb = payload.productCostRmb;
@@ -106,6 +128,22 @@ export class ProcurementService {
     if (!proc) throw new Error('Procurement request not found');
     if (proc.customerId !== customerId) throw new Error('You cannot approve another customer\'s request');
     if (proc.status !== 'quoted') throw new Error('Only quoted requests can be approved');
+
+    // Deduct totalCostNaira from customer's platform wallet
+    const wallet = await Wallet.findOne({ where: { userId: user.id } });
+    const currentBalance = wallet ? wallet.balance : 0;
+    const totalCost = proc.totalCostNaira || 0;
+
+    if (currentBalance < totalCost) {
+      throw new Error(`Insufficient wallet balance. Total quote fee is ₦${totalCost.toLocaleString()}, but your balance is ₦${currentBalance.toLocaleString()}. Please top up your wallet.`);
+    }
+
+    if (wallet) {
+      wallet.balance = wallet.balance - totalCost;
+      wallet.availableBalance = wallet.balance - (wallet.escrowHeld || 0);
+      await wallet.save();
+    }
+
     proc.status = 'approved';
     proc.approvedAt = new Date();
     await proc.save();

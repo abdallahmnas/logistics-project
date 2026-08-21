@@ -9,26 +9,26 @@ export const PlatformSettings: React.FC = () => {
   return (
     <div className="max-w-[1200px] mx-auto py-4">
       <Tabs
-        defaultActiveKey="shipping"
+        defaultActiveKey="financial"
         className="[&_.ant-tabs-nav]:mb-8 [&_.ant-tabs-tab]:text-base [&_.ant-tabs-tab-active]:font-bold [&_.ant-tabs-ink-bar]:bg-brand-orange"
         items={[
-          {
-            key: 'shipping',
-            label: (
-              <span className="flex items-center gap-2">
-                <GlobalOutlined /> Shipping Rates
-              </span>
-            ),
-            children: <ShippingRatesConfig />,
-          },
           {
             key: 'financial',
             label: (
               <span className="flex items-center gap-2">
-                <SwapOutlined /> Exchange & Financial
+                <SwapOutlined /> Exchange, Rates & Accounts
               </span>
             ),
             children: <FinancialRatesConfig />,
+          },
+          {
+            key: 'shipping',
+            label: (
+              <span className="flex items-center gap-2">
+                <GlobalOutlined /> China ➔ Nigeria Freight Routes
+              </span>
+            ),
+            children: <ShippingRatesConfig />,
           },
           {
             key: 'notifications',

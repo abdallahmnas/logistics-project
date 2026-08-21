@@ -22,6 +22,7 @@ export interface ExchangeRequestAttributes {
   rmbDestQrCode?: string;
   receivingBarcodeUrl?: string;
   rmbReceiptUrl?: string;
+  rejectionReason?: string;
   requestedAt: Date;
   nairaConfirmedAt?: Date;
   rmbReleasedAt?: Date;
@@ -54,6 +55,7 @@ export class ExchangeRequest extends Model<ExchangeRequestAttributes, ExchangeRe
   public declare rmbDestQrCode?: string;
   public declare receivingBarcodeUrl?: string;
   public declare rmbReceiptUrl?: string;
+  public declare rejectionReason?: string;
   public declare requestedAt: Date;
   public declare nairaConfirmedAt?: Date;
   public declare rmbReleasedAt?: Date;
@@ -129,6 +131,7 @@ ExchangeRequest.init(
     rmbDestQrCode: { type: DataTypes.STRING, allowNull: true },
     receivingBarcodeUrl: { type: DataTypes.STRING, allowNull: true },
     rmbReceiptUrl: { type: DataTypes.STRING, allowNull: true },
+    rejectionReason: { type: DataTypes.TEXT, allowNull: true },
     requestedAt: {
       type: DataTypes.DATE,
       allowNull: false,

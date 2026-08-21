@@ -59,8 +59,22 @@ export interface ExchangeRate {
   isActive: boolean;
 }
 
+export interface SavedAccount {
+  id: string;
+  userId: string;
+  label: string;
+  platform: RmbDestinationType;
+  accountNumber: string;
+  accountName: string;
+  barcodeUrl?: string;
+  isDefault?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface ExchangeState {
   exchanges: ExchangeRequest[];
+  savedAccounts: SavedAccount[];
   selectedExchange: ExchangeRequest | null;
   activeRate: ExchangeRate | null;
   loading: boolean;

@@ -62,6 +62,18 @@ export const releaseRmb = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
+export const rejectExchange = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const adminId = (req as any).user.id;
+    const { reason } = req.body;
+    const exchange = await ExchangeService.rejectExchange(id, adminId, reason);
+    res.status(200).json({ success: true, data: exchange });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 export const uploadReceipt = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -69,6 +81,48 @@ export const uploadReceipt = async (req: Request, res: Response): Promise<void> 
     if (!photoBuffer) { res.status(400).json({ success: false, message: 'No receipt file provided' }); return; }
     const exchange = await ExchangeService.uploadReceipt(id, (req as any).user.customerId, photoBuffer);
     res.status(200).json({ success: true, data: exchange });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const getSavedAccounts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const list = await ExchangeService.getSavedAccounts(userId);
+    res.status(200).json({ success: true, data: list });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createSavedAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const account = await ExchangeService.createSavedAccount(userId, req.body);
+    res.status(201).json({ success: true, data: account });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteSavedAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+    const result = await ExchangeService.deleteSavedAccount(userId, id);
+    res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const setDefaultAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+    const account = await ExchangeService.setDefaultAccount(userId, id);
+    res.status(200).json({ success: true, data: account });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }

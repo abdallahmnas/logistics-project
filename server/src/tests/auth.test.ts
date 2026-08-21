@@ -3,6 +3,7 @@ import request from 'supertest';
 import { app } from '../index';
 import { sequelize } from '../config/database';
 import { User, Wallet } from '../models';
+import { WalletService } from '../services/WalletService';
 
 describe('Auth & RBAC API', () => {
   let customerToken = '';
@@ -44,7 +45,7 @@ describe('Auth & RBAC API', () => {
     customerToken = res.body.data.token;
 
     // Verify wallet was created
-    const wallet = await Wallet.findOne({ where: { userId: customerId } });
+    const wallet = await WalletService.getWalletByUserId(customerId);
     expect(wallet).not.toBeNull();
     expect(wallet?.currency).toBe('NGN');
   });

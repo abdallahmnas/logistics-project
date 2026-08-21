@@ -8,7 +8,12 @@ import {
   updateRate,
   verifyNairaPayment,
   releaseRmb,
+  rejectExchange,
   uploadReceipt,
+  getSavedAccounts,
+  createSavedAccount,
+  deleteSavedAccount,
+  setDefaultAccount,
 } from '../controllers/exchange.controller';
 
 const router = Router();
@@ -20,11 +25,17 @@ router.get('/rate', getActiveRate);
 // Authenticated
 router.use(authenticate);
 
+router.get('/saved-accounts', getSavedAccounts);
+router.post('/saved-accounts', createSavedAccount);
+router.delete('/saved-accounts/:id', deleteSavedAccount);
+router.patch('/saved-accounts/:id/default', setDefaultAccount);
+
 router.post('/', createExchange);
 router.get('/', getExchanges);
 router.post('/rate', authorize('super_admin', 'admin', 'finance'), updateRate);
 router.patch('/:id/verify-naira', authorize('super_admin', 'admin', 'finance'), verifyNairaPayment);
 router.patch('/:id/release-rmb', authorize('super_admin', 'admin', 'finance'), releaseRmb);
+router.patch('/:id/reject', authorize('super_admin', 'admin', 'finance'), rejectExchange);
 router.post('/:id/receipt', upload.single('receipt'), uploadReceipt);
 
 export default router;

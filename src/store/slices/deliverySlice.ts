@@ -9,16 +9,24 @@ const initialState: DeliveryState = {
   error: null,
 };
 
-export const fetchDeliveries = createAsyncThunk('delivery/fetchAll', async () => {
-  const res = await apiClient.get('/delivery');
-  return res.data.data;
+export const fetchDeliveries = createAsyncThunk('delivery/fetchAll', async (_, { rejectWithValue }) => {
+  try {
+    const res = await apiClient.get('/delivery');
+    return res.data.data;
+  } catch (err: any) {
+    return rejectWithValue(err.response?.data?.message || err.message);
+  }
 });
 
 export const submitDelivery = createAsyncThunk(
   'delivery/submit',
-  async (payload: LocalDeliveryPayload) => {
-    const res = await apiClient.post('/delivery', payload);
-    return res.data.data;
+  async (payload: LocalDeliveryPayload, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.post('/delivery', payload);
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
   }
 );
 
@@ -30,17 +38,25 @@ export interface AssignDriverPayload {
 
 export const assignDriver = createAsyncThunk(
   'delivery/assignDriver',
-  async (payload: AssignDriverPayload) => {
-    const res = await apiClient.post(`/delivery/${payload.deliveryId}/driver`, payload);
-    return { deliveryId: payload.deliveryId, ...res.data.data };
+  async (payload: AssignDriverPayload, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.post(`/delivery/${payload.deliveryId}/driver`, payload);
+      return { deliveryId: payload.deliveryId, ...res.data.data };
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
   }
 );
 
 export const updateDeliveryStatus = createAsyncThunk(
   'delivery/updateStatus',
-  async (payload: { deliveryId: string; status: string }) => {
-    const res = await apiClient.patch(`/delivery/${payload.deliveryId}/status`, { status: payload.status });
-    return res.data.data;
+  async (payload: { deliveryId: string; status: string }, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.patch(`/delivery/${payload.deliveryId}/status`, { status: payload.status });
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
   }
 );
 

@@ -1,7 +1,8 @@
-import { Package, Consolidation, Batch, User } from '../models';
+import { Package, Consolidation, Batch, User, Wallet } from '../models';
 import { uploadBase64ToCloudinary } from '../config/cloudinary';
 import { ActivityLogService } from './ActivityLogService';
 import { NotificationService } from './NotificationService';
+import { SettingsService } from './SettingsService';
 
 export class ShipmentService {
 
@@ -233,8 +234,29 @@ export class ShipmentService {
 
     const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);
     const totalCbm = packages.reduce((acc, p) => acc + (p.cbm || 0), 0);
-    const ratePerKg = payload.shippingMethod === 'air' ? 10 : 2;
-    const shippingFee = totalWeightKg * ratePerKg;
+    
+    // Fetch live platform freight rates
+    const settings = await SettingsService.getSettings();
+    const airRate = settings?.airFreightRatePerKg || 12500;
+    const seaRate = settings?.seaFreightRatePerCbm || 450000;
+    
+    const shippingFee = payload.shippingMethod === 'air'
+      ? (totalWeightKg > 0 ? totalWeightKg * airRate : airRate)
+      : (totalCbm > 0 ? totalCbm * seaRate : seaRate);
+
+    // If Pay Now via Wallet, check balance and deduct
+    if (payload.paymentMethod === 'wallet') {
+      const wallet = await Wallet.findOne({ where: { userId: user.id } });
+      const currentBalance = wallet ? wallet.balance : 0;
+      if (currentBalance < shippingFee) {
+        throw new Error(`Insufficient wallet balance. Total freight fee is ₦${shippingFee.toLocaleString()}, but your balance is ₦${currentBalance.toLocaleString()}. Please top up your wallet.`);
+      }
+      if (wallet) {
+        wallet.balance = wallet.balance - shippingFee;
+        wallet.availableBalance = wallet.balance - (wallet.escrowHeld || 0);
+        await wallet.save();
+      }
+    }
 
     const count = (await Consolidation.count()) + 1;
     const consolidationId = `CON-${10000 + count}`;
