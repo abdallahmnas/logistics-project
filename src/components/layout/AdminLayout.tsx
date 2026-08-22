@@ -176,17 +176,17 @@ export const AdminLayout: React.FC = () => {
     opsItems.push({
       key: "/admin/procurement",
       icon: <ShoppingCartOutlined />,
-      label: "Procurements",
+      label: "Procurements / Buy For Me",
     });
   }
-  if (role === "super_admin") {
+  if (role === "super_admin" || role === "finance") {
     opsItems.push({
       key: "/admin/exchange",
       icon: <SwapOutlined />,
-      label: "Exchange",
+      label: "RMB Exchange & Payments",
     });
   }
-  if (role === "super_admin" || role === "warehouse_ng") {
+  if (role === "super_admin" || role === "warehouse_ng" || role === "warehouse_cn") {
     opsItems.push({
       key: "/admin/delivery",
       icon: <CarOutlined />,
@@ -195,25 +195,27 @@ export const AdminLayout: React.FC = () => {
   }
   if (opsItems.length) sections.push({ title: "Operations", items: opsItems });
 
-  if (role === "super_admin") {
-    sections.push({
-      title: "Manage",
-      items: [
-        {
-          key: "/admin/support",
-          icon: <CustomerServiceOutlined />,
-          label: "Support Tickets",
-        },
-        {
-          key: "/admin/customers",
-          icon: <UsergroupAddOutlined />,
-          label: "Customers",
-        },
+  if (role === "super_admin" || role === "customer_service") {
+    const manageItems = [
+      {
+        key: "/admin/support",
+        icon: <CustomerServiceOutlined />,
+        label: "Support Tickets",
+      },
+      {
+        key: "/admin/customers",
+        icon: <UsergroupAddOutlined />,
+        label: "Customers",
+      },
+    ];
+
+    if (role === "super_admin") {
+      manageItems.push(
         { key: "/admin/staff", icon: <TeamOutlined />, label: "Staff Members" },
         {
           key: "/admin/permissions",
           icon: <SafetyCertificateOutlined />,
-          label: "Permissions",
+          label: "Permissions & RBAC",
         },
         {
           key: "/admin/activity-trail",
@@ -223,9 +225,14 @@ export const AdminLayout: React.FC = () => {
         {
           key: "/admin/settings",
           icon: <SettingOutlined />,
-          label: "Settings",
-        },
-      ],
+          label: "System Settings & Rates",
+        }
+      );
+    }
+
+    sections.push({
+      title: "Management",
+      items: manageItems,
     });
   }
 
@@ -318,7 +325,7 @@ export const AdminLayout: React.FC = () => {
         <div className="h-[72px] flex items-center px-6 border-b border-white/5 gap-3">
           <Logo
             withText={!collapsed}
-            className="[&_span]:text-white filter brightness-125"
+            variant="light"
           />
         </div>
         <div className="h-[calc(100%-72px)]">

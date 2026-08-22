@@ -27,6 +27,12 @@ export interface SystemSettings {
   walletFundingFeePercent: number;
   walletWithdrawalFlatFee: number;
   customRoutes?: string;
+  companyName?: string;
+  chinaAirCargoAddressCn?: string;
+  chinaAirCargoAddressEn?: string;
+  chinaAirCargoPhone?: string;
+  nigeriaOfficeAddress?: string;
+  companyContacts?: string;
   updatedAt?: string;
 }
 

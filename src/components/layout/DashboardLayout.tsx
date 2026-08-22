@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import { Button, Input, Dropdown, Badge } from "antd";
 import {
   AppstoreOutlined,
@@ -188,11 +188,35 @@ export const DashboardLayout: React.FC = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 overflow-x-hidden">
+        <main className="flex-1 p-4 sm:p-6 overflow-x-hidden pb-20 lg:pb-6">
           <div className="max-w-[1400px] mx-auto">
             <Outlet />
           </div>
         </main>
+
+        {/* Mobile Bottom App Navigation Bar */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 flex items-center justify-around py-2 px-1 shadow-lg">
+          <Link to="/customer" className="flex flex-col items-center text-slate-600 hover:text-brand-orange text-[10px] font-bold no-underline">
+            <AppstoreOutlined className="text-lg mb-0.5" />
+            Home
+          </Link>
+          <Link to="/customer/shipments" className="flex flex-col items-center text-slate-600 hover:text-brand-orange text-[10px] font-bold no-underline">
+            <InboxOutlined className="text-lg mb-0.5" />
+            Shipments
+          </Link>
+          <Link to="/customer/exchange" className="flex flex-col items-center text-slate-600 hover:text-brand-orange text-[10px] font-bold no-underline">
+            <SwapOutlined className="text-lg mb-0.5" />
+            RMB
+          </Link>
+          <Link to="/customer/wallet" className="flex flex-col items-center text-slate-600 hover:text-brand-orange text-[10px] font-bold no-underline">
+            <WalletOutlined className="text-lg mb-0.5" />
+            Wallet
+          </Link>
+          <Link to="/customer/profile" className="flex flex-col items-center text-slate-600 hover:text-brand-orange text-[10px] font-bold no-underline">
+            <UserOutlined className="text-lg mb-0.5" />
+            Profile
+          </Link>
+        </nav>
       </div>
     </div>
   );

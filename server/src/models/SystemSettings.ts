@@ -43,6 +43,14 @@ export interface SystemSettingsAttributes {
   // Custom Shipping Corridors & Ports JSON
   customRoutes?: string;
 
+  // Business Card & Metadata
+  companyName?: string;
+  chinaAirCargoAddressCn?: string;
+  chinaAirCargoAddressEn?: string;
+  chinaAirCargoPhone?: string;
+  nigeriaOfficeAddress?: string;
+  companyContacts?: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -75,6 +83,12 @@ export class SystemSettings extends Model<SystemSettingsAttributes, SystemSettin
   public declare walletFundingFeePercent: number;
   public declare walletWithdrawalFlatFee: number;
   public declare customRoutes?: string;
+  public declare companyName?: string;
+  public declare chinaAirCargoAddressCn?: string;
+  public declare chinaAirCargoAddressEn?: string;
+  public declare chinaAirCargoPhone?: string;
+  public declare nigeriaOfficeAddress?: string;
+  public declare companyContacts?: string;
   public declare readonly createdAt: Date;
   public declare readonly updatedAt: Date;
 }
@@ -181,6 +195,37 @@ SystemSettings.init(
     customRoutes: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    companyName: {
+      type: DataTypes.STRING,
+      defaultValue: 'HAMZA RMB GLOBAL COMPANY LTD',
+    },
+    chinaAirCargoAddressCn: {
+      type: DataTypes.TEXT,
+      defaultValue: '义乌市稠州北路国贸大厦6楼602',
+    },
+    chinaAirCargoAddressEn: {
+      type: DataTypes.TEXT,
+      defaultValue: 'Room 602, International Trade Mansion, Chouzhou North Road, Yiwu City, Jinhua City, Zhejiang Province, China',
+    },
+    chinaAirCargoPhone: {
+      type: DataTypes.STRING,
+      defaultValue: '+86 158 6890 7118',
+    },
+    nigeriaOfficeAddress: {
+      type: DataTypes.TEXT,
+      defaultValue: 'No. 08 Gwarzo Road Beside Shopwell, Gwale Kano State, Nigeria',
+    },
+    companyContacts: {
+      type: DataTypes.TEXT,
+      defaultValue: JSON.stringify([
+        { name: 'HAMZA RMB CHINA', phone: '+86 198 4662 5061' },
+        { name: 'AMMARU', phone: '+234 8168416814' },
+        { name: 'HUZAIFA', phone: '+234 8028324798' },
+        { name: 'ABDUL GANIYU', phone: '+234 9033577012' },
+        { name: 'SAYYADI', phone: '+86 17766369841' },
+        { name: 'ANAS NARIMI', phone: '+86 13185109544' },
+      ]),
     },
   },
   {

@@ -9,20 +9,32 @@ import {
   ShareAltOutlined,
   GlobalOutlined,
   MailOutlined,
+  PhoneOutlined,
+  WhatsAppOutlined,
+  EnvironmentOutlined,
 } from '@ant-design/icons';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchSettings } from '../../store/slices/settingsSlice';
 
 const NAV_LINKS = [
   { label: 'Home', path: '/' },
+  { label: 'About Us', path: '/about' },
   { label: 'Services', path: '/services' },
   { label: 'Tracking', path: '/track' },
-  { label: 'About', path: '/about' },
+  { label: 'RMB Exchange', path: '/customer/exchange' },
   { label: 'Contact', path: '/contact' },
 ];
 
 export const PublicLayout: React.FC = () => {
   const location = useLocation();
+  const dispatch = useAppDispatch();
+  const { settings } = useAppSelector((state) => state.settings);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchSettings());
+  }, [dispatch]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -34,6 +46,25 @@ export const PublicLayout: React.FC = () => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
+  const companyName = settings?.companyName || 'HAMZA RMB GLOBAL COMPANY LTD';
+  const chinaAirCargoAddressEn = settings?.chinaAirCargoAddressEn || 'Room 602, International Trade Mansion, Chouzhou North Road, Yiwu City, Zhejiang Province, China';
+  const chinaAirCargoPhone = settings?.chinaAirCargoPhone || '+86 158 6890 7118';
+  const nigeriaOfficeAddress = settings?.nigeriaOfficeAddress || 'No. 08 Gwarzo Road Beside Shopwell, Gwale Kano State, Nigeria';
+
+  let contactsList: Array<{ name: string; phone: string }> = [
+    { name: 'HAMZA RMB CHINA', phone: '+86 198 4662 5061' },
+    { name: 'AMMARU', phone: '+234 8168416814' },
+    { name: 'HUZAIFA', phone: '+234 8028324798' },
+  ];
+  if (settings?.companyContacts) {
+    try {
+      const parsed = JSON.parse(settings.companyContacts);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        contactsList = parsed;
+      }
+    } catch {}
+  }
+
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
@@ -43,24 +74,24 @@ export const PublicLayout: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Header */}
       <header
-        className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+        className={`sticky top-0 z-50 transition-all duration-300 ${
           scrolled
-            ? 'bg-white/95 backdrop-blur-md shadow-md'
-            : 'bg-white border-b border-slate-100'
+            ? 'bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/80 py-3'
+            : 'bg-white border-b border-slate-100 py-4'
         }`}
       >
-        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-          <Logo variant="dark" />
+        <div className="container mx-auto px-4 flex items-center justify-between">
+          <Logo />
 
-          {/* Desktop Nav */}
-          <nav className="hidden lg:flex items-center gap-1">
+          {/* Desktop Nav Links */}
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${
                   isActive(link.path)
-                    ? 'text-brand-orange'
+                    ? 'text-brand-orange bg-orange-50/80'
                     : 'text-slate-600 hover:text-brand-navy hover:bg-slate-50'
                 }`}
               >
@@ -69,68 +100,75 @@ export const PublicLayout: React.FC = () => {
             ))}
           </nav>
 
-          {/* Desktop Actions */}
-          <div className="hidden lg:flex items-center gap-3">
-            <Link to="/get-quote">
+          {/* Actions */}
+          <div className="hidden md:flex items-center space-x-3">
+            <Link to="/login">
               <Button
-                type="primary"
-                className="!bg-brand-orange hover:!bg-orange-600 !border-brand-orange hover:!border-orange-600 font-semibold h-8 px-4 text-sm rounded shadow-sm shadow-orange-900/10"
+                type="text"
+                icon={<UserOutlined />}
+                className="text-slate-700 hover:text-brand-navy font-semibold text-sm"
               >
-                Get a Quote
+                Sign In
               </Button>
             </Link>
-            <Link to="/login">
-              <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white hover:bg-slate-800 transition-colors cursor-pointer">
-                <UserOutlined className="text-sm" />
-              </div>
+            <Link to="/register">
+              <Button
+                type="primary"
+                className="!bg-[#C0262D] hover:!bg-[#A01F25] !border-none font-bold text-sm h-10 px-5 rounded-lg shadow-sm"
+              >
+                Create Account
+              </Button>
             </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            className="lg:hidden w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700 hover:bg-slate-200 transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none"
+            aria-label="Toggle menu"
           >
-            {mobileMenuOpen ? <CloseOutlined /> : <MenuOutlined />}
+            {mobileMenuOpen ? (
+              <CloseOutlined className="text-xl" />
+            ) : (
+              <MenuOutlined className="text-xl" />
+            )}
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Navigation Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-slate-100 animate-fade-in shadow-lg">
-            <div className="container mx-auto px-4 py-4 flex flex-col gap-1">
-              {NAV_LINKS.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`px-4 py-3 text-sm font-semibold rounded-lg transition-colors ${
-                    isActive(link.path)
-                      ? 'text-brand-orange bg-orange-50'
-                      : 'text-slate-600 hover:text-brand-navy hover:bg-slate-50'
-                  }`}
+          <div className="md:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-6 space-y-3 animate-fade-in">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`block px-3 py-2.5 rounded-lg text-base font-semibold transition-colors ${
+                  isActive(link.path)
+                    ? 'text-brand-orange bg-orange-50'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className="pt-4 border-t border-slate-100 space-y-2">
+              <Link to="/register" className="block w-full">
+                <Button
+                  type="primary"
+                  block
+                  className="!bg-brand-orange hover:!bg-orange-600 !border-brand-orange font-semibold h-10 rounded-lg"
                 >
-                  {link.label}
-                </Link>
-              ))}
-              <div className="flex flex-col gap-2 pt-4 mt-2 border-t border-slate-100">
-                <Link to="/get-quote">
-                  <Button
-                    type="primary"
-                    block
-                    className="!bg-brand-orange hover:!bg-orange-600 !border-brand-orange font-semibold h-10 rounded-lg"
-                  >
-                    Get a Quote
-                  </Button>
-                </Link>
-                <Link to="/login">
-                  <Button
-                    block
-                    className="!text-brand-navy !border-slate-200 hover:!border-brand-navy h-10 rounded-lg font-semibold"
-                  >
-                    Sign In
-                  </Button>
-                </Link>
-              </div>
+                  Get a Quote
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button
+                  block
+                  className="!text-brand-navy !border-slate-200 hover:!border-brand-navy h-10 rounded-lg font-semibold"
+                >
+                  Sign In
+                </Button>
+              </Link>
             </div>
           </div>
         )}
@@ -147,70 +185,52 @@ export const PublicLayout: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
             {/* Brand Column */}
             <div>
-              <Logo variant="light" className="mb-5" />
-              <p className="text-slate-400 text-sm leading-relaxed mt-4 max-w-xs">
-                Reliable, efficient, and industrial precision in global shipping and logistics solutions.
+              <Logo variant="light" className="mb-4" />
+              <div className="text-amber-400 font-extrabold text-xs tracking-wider uppercase mb-3">
+                {companyName}
+              </div>
+              <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
+                Reliable, efficient, and industrial precision in global shipping and China ➔ Nigeria logistics.
               </p>
-              <div className="flex items-center gap-3 mt-6">
-                <a
-                  href="#"
-                  className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-                >
-                  <ShareAltOutlined className="text-sm" />
-                </a>
-                <a
-                  href="#"
-                  className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-                >
-                  <GlobalOutlined className="text-sm" />
-                </a>
-                <a
-                  href="#"
-                  className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-                >
-                  <MailOutlined className="text-sm" />
-                </a>
+            </div>
+
+            {/* China Air Hub */}
+            <div>
+              <h4 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                <GlobalOutlined className="text-brand-orange" /> China Air Cargo Hub
+              </h4>
+              <p className="text-slate-300 text-sm leading-relaxed mb-2 font-medium">
+                {chinaAirCargoAddressEn}
+              </p>
+              <div className="text-brand-orange text-xs font-bold flex items-center gap-1.5">
+                <PhoneOutlined /> Tel: {chinaAirCargoPhone}
               </div>
             </div>
 
-            {/* Quick Links */}
+            {/* Nigeria Hub */}
             <div>
-              <h4 className="text-base font-bold text-white mb-5">Quick Links</h4>
-              <ul className="space-y-3">
-                <li>
-                  <Link to="/services" className="text-slate-400 text-sm hover:text-white transition-colors">
-                    Our Services
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/track" className="text-slate-400 text-sm hover:text-white transition-colors">
-                    Track Shipment
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/about" className="text-slate-400 text-sm hover:text-white transition-colors">
-                    Carrier Network
-                  </Link>
-                </li>
-              </ul>
+              <h4 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                <EnvironmentOutlined className="text-emerald-400" /> Nigeria Office & Distribution
+              </h4>
+              <p className="text-slate-300 text-sm leading-relaxed mb-2 font-medium">
+                {nigeriaOfficeAddress}
+              </p>
             </div>
 
-            {/* Global Offices */}
+            {/* Direct Contacts Directory */}
             <div>
-              <h4 className="text-base font-bold text-white mb-5">Global Offices</h4>
-              <ul className="space-y-3 text-sm text-slate-400">
-                <li>China: Guangzhou, GD</li>
-                <li>Nigeria: Lagos, LG</li>
-                <li>Nigeria: Abuja, FCT</li>
-              </ul>
-            </div>
-
-            {/* Contact */}
-            <div>
-              <h4 className="text-base font-bold text-white mb-5">Contact</h4>
-              <ul className="space-y-3 text-sm text-slate-400">
-                <li>support@hamzarmb.com</li>
-                <li>+234 800 HAMZA RMB</li>
+              <h4 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                <WhatsAppOutlined className="text-emerald-400" /> Key Representatives
+              </h4>
+              <ul className="space-y-2 text-xs">
+                {contactsList.slice(0, 4).map((c, i) => (
+                  <li key={i} className="flex justify-between items-center text-slate-300 bg-white/5 px-2.5 py-1.5 rounded border border-white/10">
+                    <span className="font-semibold">{c.name}:</span>
+                    <a href={`https://wa.me/${c.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="font-mono font-bold text-emerald-400 hover:underline">
+                      {c.phone}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
@@ -218,8 +238,9 @@ export const PublicLayout: React.FC = () => {
 
         {/* Copyright bar */}
         <div className="border-t border-white/10">
-          <div className="container mx-auto px-4 py-5 flex flex-col md:flex-row items-center justify-center text-xs text-slate-500">
-            <p>&copy; {new Date().getFullYear()} Hamza RMB. Industrial Excellence Guaranteed.</p>
+          <div className="container mx-auto px-4 py-5 flex flex-col md:flex-row items-center justify-between text-xs text-slate-400">
+            <p>&copy; {new Date().getFullYear()} {companyName}. All rights reserved.</p>
+            <p className="text-slate-500 mt-2 md:mt-0">Industrial Freight & Logistics Platform</p>
           </div>
         </div>
       </footer>

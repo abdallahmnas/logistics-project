@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo } from 'react';
 import { Button, message } from 'antd';
-import { CopyOutlined, EnvironmentOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { CopyOutlined, EnvironmentOutlined, InfoCircleOutlined, PhoneOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchFacilities } from '../../../store/slices/facilitySlice';
+import { fetchSettings } from '../../../store/slices/settingsSlice';
 
 export const WarehouseAddresses: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { facilities } = useAppSelector((state) => state.facilities || { facilities: [] });
+  const { settings } = useAppSelector((state) => state.settings);
 
   const memberCode = user?.customerId || 'HZ-20260819-0001';
   const phone = user?.phone || '';
@@ -15,46 +17,46 @@ export const WarehouseAddresses: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchFacilities());
+    dispatch(fetchSettings());
   }, [dispatch]);
 
+  const chinaAirCargoAddressCn = settings?.chinaAirCargoAddressCn || '义乌市稠州北路国贸大厦6楼602';
+  const chinaAirCargoAddressEn = settings?.chinaAirCargoAddressEn || 'Room 602, International Trade Mansion, Chouzhou North Road, Yiwu City, Jinhua City, Zhejiang Province, China';
+  const chinaAirCargoPhone = settings?.chinaAirCargoPhone || '+86 158 6890 7118';
+  const nigeriaOfficeAddress = settings?.nigeriaOfficeAddress || 'No. 08 Gwarzo Road Beside Shopwell, Gwale Kano State, Nigeria';
+
   const activeHubs = useMemo(() => {
+    const defaultHubs = [
+      {
+        hub: 'Yiwu Air Cargo Hub (Official Business Card Address)',
+        type: 'AIR FREIGHT',
+        lines: [
+          `收货人名字：${memberCode}转${userName} ${phone}`,
+          `收货人号码：${chinaAirCargoPhone}`,
+          `收货人地址：${chinaAirCargoAddressCn}`,
+          `英文地址 / Eng Address: ${chinaAirCargoAddressEn}`,
+          `标记 / Mark: ${memberCode}转${userName} (${settings?.companyName || 'HAMZA RMB'} AIR)`,
+        ],
+      },
+    ];
+
     const cnFacilities = facilities ? facilities.filter(f => f.country === 'CN' && f.status !== 'inactive') : [];
     if (cnFacilities.length > 0) {
-      return cnFacilities.map((f) => ({
+      const dynamicFacilities = cnFacilities.map((f) => ({
         hub: f.name,
         type: f.type === 'cross_dock' ? 'SEA FREIGHT' : 'AIR FREIGHT',
         lines: [
           `收货人名字：${memberCode}转${userName} ${phone}`,
-          `收货人号码：${f.contactPhone || '13246490077'}`,
-          `收货人地址：${f.address || '广东省广州市白云区均禾街道清湖村苏元庄街888号'}`,
-          `${memberCode}转${userName} ${phone}赛捷集运(${f.type === 'cross_dock' ? 'SEA' : 'AIR'})`,
+          `收货人号码：${f.contactPhone || chinaAirCargoPhone}`,
+          `收货人地址：${f.address || chinaAirCargoAddressCn}`,
+          `标记 / Mark: ${memberCode}转${userName} (${f.type === 'cross_dock' ? 'SEA' : 'AIR'})`,
         ],
       }));
+      return [...defaultHubs, ...dynamicFacilities];
     }
 
-    return [
-      {
-        hub: 'Guangzhou Hub',
-        type: 'AIR FREIGHT',
-        lines: [
-          `收货人名字：${memberCode}转${userName} ${phone}`,
-          `收货人号码：13246490077`,
-          `收货人地址：广东省广州市白云区均禾街道清湖村苏元庄街888号`,
-          `${memberCode}转${userName} ${phone}赛捷集运(AIR)`,
-        ],
-      },
-      {
-        hub: 'Shanghai Hub',
-        type: 'SEA FREIGHT',
-        lines: [
-          `收货人名字：${memberCode}转${userName} ${phone}`,
-          `收货人号码：13246490077`,
-          `收货人地址：上海市浦东新区外高桥保税区富特北路211号302部位`,
-          `${memberCode}转${userName} ${phone}赛捷集运(SEA)`,
-        ],
-      },
-    ];
-  }, [facilities, memberCode, phone, userName]);
+    return defaultHubs;
+  }, [facilities, memberCode, phone, userName, chinaAirCargoPhone, chinaAirCargoAddressCn, chinaAirCargoAddressEn, settings?.companyName]);
 
   const copyToClipboard = (lines: string[]) => {
     const text = lines.join('\n');

@@ -30,6 +30,19 @@ export class SettingsService {
         deliveryTruckPerKm: 500,
         walletFundingFeePercent: 1.5,
         walletWithdrawalFlatFee: 500,
+        companyName: 'HAMZA RMB GLOBAL COMPANY LTD',
+        chinaAirCargoAddressCn: '义乌市稠州北路国贸大厦6楼602',
+        chinaAirCargoAddressEn: 'Room 602, International Trade Mansion, Chouzhou North Road, Yiwu City, Jinhua City, Zhejiang Province, China',
+        chinaAirCargoPhone: '+86 158 6890 7118',
+        nigeriaOfficeAddress: 'No. 08 Gwarzo Road Beside Shopwell, Gwale Kano State, Nigeria',
+        companyContacts: JSON.stringify([
+          { name: 'HAMZA RMB CHINA', phone: '+86 198 4662 5061' },
+          { name: 'AMMARU', phone: '+234 8168416814' },
+          { name: 'HUZAIFA', phone: '+234 8028324798' },
+          { name: 'ABDUL GANIYU', phone: '+234 9033577012' },
+          { name: 'SAYYADI', phone: '+86 17766369841' },
+          { name: 'ANAS NARIMI', phone: '+86 13185109544' },
+        ]),
       });
     }
     return settings;

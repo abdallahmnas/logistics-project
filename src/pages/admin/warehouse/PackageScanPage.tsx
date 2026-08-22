@@ -56,7 +56,14 @@ export const PackageScanPage: React.FC = () => {
   }, [searchParams]);
 
   const activePackage = useMemo(() => {
-    return allPackages.find((p) => p.trackingId === scannedTracking || p.id === scannedTracking) || null;
+    const term = scannedTracking.trim().toLowerCase();
+    if (!term) return null;
+    return allPackages.find(
+      (p) =>
+        p.trackingId.toLowerCase() === term ||
+        p.id.toLowerCase() === term ||
+        (p.chineseTrackingNo && p.chineseTrackingNo.toLowerCase() === term)
+    ) || null;
   }, [allPackages, scannedTracking]);
 
   const selectedUserId = Form.useWatch('userId', form);
@@ -72,40 +79,64 @@ export const PackageScanPage: React.FC = () => {
   }, [selectedUserId, activePackage, users]);
 
   useEffect(() => {
-    const paramUserId = searchParams.get('userId');
-    const paramWeight = searchParams.get('weightKg');
-    const paramLength = searchParams.get('length');
-    const paramWidth = searchParams.get('width');
-    const paramHeight = searchParams.get('height');
-    const paramDesc = searchParams.get('desc');
+    const trimmedTracking = scannedTracking.trim();
 
-    const targetUserId = paramUserId || matchedCustomer?.id || activePackage?.userId || activePackage?.customerId;
-    if (targetUserId) {
-      form.setFieldsValue({ userId: targetUserId });
+    if (!trimmedTracking) {
+      // Input deleted/cleared: wipe all form values & uploaded photos completely
+      form.resetFields();
+      setFileList([]);
+      return;
     }
 
-    form.setFieldsValue({
-      chineseTrackingNo: activePackage?.chineseTrackingNo || form.getFieldValue('chineseTrackingNo') || '',
-      description: activePackage?.description || (paramDesc ? decodeURIComponent(paramDesc) : form.getFieldValue('description')) || '',
-      weightKg: activePackage?.weightKg || (paramWeight ? Number(paramWeight) : form.getFieldValue('weightKg')) || 14.5,
-      length: activePackage?.dimensions?.length || (paramLength ? Number(paramLength) : form.getFieldValue('length')) || 60,
-      width: activePackage?.dimensions?.width || (paramWidth ? Number(paramWidth) : form.getFieldValue('width')) || 40,
-      height: activePackage?.dimensions?.height || (paramHeight ? Number(paramHeight) : form.getFieldValue('height')) || 40,
-      packagingIntact: true,
-    });
+    if (activePackage) {
+      // Package found: populate its exact attributes
+      const targetUserId = activePackage.userId || activePackage.customerId || '';
+      form.setFieldsValue({
+        userId: targetUserId,
+        chineseTrackingNo: activePackage.chineseTrackingNo || '',
+        description: activePackage.description || '',
+        weightKg: activePackage.weightKg || undefined,
+        length: activePackage.dimensions?.length || undefined,
+        width: activePackage.dimensions?.width || undefined,
+        height: activePackage.dimensions?.height || undefined,
+        packagingIntact: true,
+      });
 
-    if (activePackage?.photos && activePackage.photos.length > 0) {
-      const initialPhotos: UploadFile[] = activePackage.photos.map((url, i) => ({
-        uid: `existing-${i}`,
-        name: `Condition_Photo_${i + 1}.jpg`,
-        status: 'done',
-        percent: 100,
-        url,
-        preview: url,
-      }));
-      setFileList(initialPhotos);
+      if (activePackage.photos && activePackage.photos.length > 0) {
+        const initialPhotos: UploadFile[] = activePackage.photos.map((url, i) => ({
+          uid: `existing-${i}`,
+          name: `Condition_Photo_${i + 1}.jpg`,
+          status: 'done',
+          percent: 100,
+          url,
+          preview: url,
+        }));
+        setFileList(initialPhotos);
+      } else {
+        setFileList([]);
+      }
+    } else {
+      // Unknown/Fake ID entered: clear old fields so previous package data is NOT retained!
+      const paramUserId = searchParams.get('userId') || '';
+      const paramWeight = searchParams.get('weightKg');
+      const paramLength = searchParams.get('length');
+      const paramWidth = searchParams.get('width');
+      const paramHeight = searchParams.get('height');
+      const paramDesc = searchParams.get('desc');
+
+      form.setFieldsValue({
+        userId: paramUserId,
+        chineseTrackingNo: '',
+        description: paramDesc ? decodeURIComponent(paramDesc) : '',
+        weightKg: paramWeight ? Number(paramWeight) : undefined,
+        length: paramLength ? Number(paramLength) : undefined,
+        width: paramWidth ? Number(paramWidth) : undefined,
+        height: paramHeight ? Number(paramHeight) : undefined,
+        packagingIntact: true,
+      });
+      setFileList([]);
     }
-  }, [activePackage, matchedCustomer, searchParams, form]);
+  }, [scannedTracking, activePackage, searchParams, form]);
 
   const length = Form.useWatch('length', form);
   const width = Form.useWatch('width', form);
@@ -174,6 +205,8 @@ export const PackageScanPage: React.FC = () => {
       dispatch(fetchAllPackages());
       setSubmitting(false);
       form.resetFields();
+      setScannedTracking('');
+      setFileList([]);
       navigate('/admin/warehouse/inbound');
     } catch (e: any) {
       setSubmitting(false);
@@ -216,6 +249,8 @@ export const PackageScanPage: React.FC = () => {
              className="!h-12 !bg-white !border-slate-200 !text-slate-800 !text-base font-bold"
              value={scannedTracking}
              onChange={(e) => setScannedTracking(e.target.value)}
+             allowClear
+             onPressEnter={() => dispatch(fetchAllPackages())}
            />
            <Button 
              className="!bg-[#0A1128] hover:!bg-slate-800 !text-white !h-12 !px-6 font-bold !border-none !rounded flex items-center gap-2"
@@ -234,9 +269,15 @@ export const PackageScanPage: React.FC = () => {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
             </div>
             <div>
-              <h2 className="text-xl font-extrabold m-0 tracking-wide text-white">{scannedTracking || 'New Package'}</h2>
-              <p className="text-xs text-white m-0 font-medium mt-0.5">
-                {matchedCustomer ? `Assigned to: ${matchedCustomer.firstName} ${matchedCustomer.lastName} (${matchedCustomer.customerId})` : 'Select customer below'}
+              <h2 className="text-xl font-extrabold m-0 tracking-wide text-white">
+                {scannedTracking.trim() || 'New Package Intake'}
+              </h2>
+              <p className="text-xs text-slate-300 m-0 font-medium mt-0.5">
+                {!scannedTracking.trim()
+                  ? 'Scan barcode or type tracking ID above to load package details'
+                  : activePackage
+                  ? (matchedCustomer ? `Assigned to: ${matchedCustomer.firstName} ${matchedCustomer.lastName} (${matchedCustomer.customerId})` : 'Existing Pre-Alert Package')
+                  : '⚠️ Unregistered Tracking ID — Fill parcel details below for new intake'}
               </p>
             </div>
           </div>
