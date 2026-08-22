@@ -125,6 +125,7 @@ function App() {
             <Route path="buy-for-me/new" element={<BuyForMeForm />} />
             <Route path="support" element={<CustomerSupportTickets />} />
             <Route path="support/new" element={<OpenSupportTicket />} />
+            <Route path="support/:id" element={<TicketDetails />} />
             <Route path="exchange" element={<ExchangeList />} />
             <Route path="exchange/history" element={<ExchangeHistory />} />
             <Route path="exchange/new" element={<ExchangeRequestForm />} />

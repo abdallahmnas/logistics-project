@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Input, Avatar, Card, Tag, Spin, message } from 'antd';
-import { UserOutlined, SendOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Button, Input, Avatar, Card, Tag, Spin, message, Upload, Image } from 'antd';
+import type { UploadFile } from 'antd';
+import { UserOutlined, SendOutlined, CheckCircleOutlined, PaperClipOutlined, DownloadOutlined, FileOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchTicket, replyToTicket, updateTicketStatus } from '../../../store/slices/supportSlice';
@@ -16,7 +17,10 @@ export const TicketDetails: React.FC = () => {
   const user = useAppSelector((state) => state.auth.user);
 
   const [replyText, setReplyText] = useState('');
+  const [replyFiles, setReplyFiles] = useState<UploadFile[]>([]);
   const [sending, setSending] = useState(false);
+
+  const isStaff = ['super_admin', 'admin', 'finance', 'procurement'].includes(user?.role || '');
 
   useEffect(() => {
     if (id) {
@@ -25,14 +29,29 @@ export const TicketDetails: React.FC = () => {
   }, [dispatch, id]);
 
   const handleSendReply = async () => {
-    if (!id || !replyText.trim()) return;
+    if (!id || (!replyText.trim() && replyFiles.length === 0)) {
+      message.warning('Please enter a response message or attach a file.');
+      return;
+    }
     setSending(true);
     try {
-      await dispatch(replyToTicket({ ticketId: id, message: replyText })).unwrap();
+      const formData = new FormData();
+      formData.append('ticketId', id);
+      formData.append('message', replyText.trim() || 'Attached supporting documents/images');
+
+      replyFiles.forEach((file) => {
+        if (file.originFileObj) {
+          formData.append('attachments', file.originFileObj);
+        }
+      });
+
+      await dispatch(replyToTicket(formData)).unwrap();
       message.success('Reply sent successfully');
       setReplyText('');
-    } catch {
-      message.error('Failed to send reply');
+      setReplyFiles([]);
+      dispatch(fetchTicket(id));
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to send reply');
     } finally {
       setSending(false);
     }
@@ -43,6 +62,7 @@ export const TicketDetails: React.FC = () => {
     try {
       await dispatch(updateTicketStatus({ ticketId: id, status: 'resolved' })).unwrap();
       message.success('Ticket marked as resolved');
+      dispatch(fetchTicket(id));
     } catch {
       message.error('Failed to update ticket status');
     }
@@ -100,13 +120,13 @@ export const TicketDetails: React.FC = () => {
           
           {/* Thread messages */}
           {(selectedTicket.messages || []).map((msg) => {
-            const isCustomer = msg.senderRole === 'customer';
+            const isCustomerMsg = msg.senderRole === 'customer';
             return (
               <div key={msg.id} className="flex gap-4">
                 <Avatar
                   size={40}
                   icon={<UserOutlined />}
-                  className={isCustomer ? "bg-slate-200 text-slate-700 shrink-0" : "bg-[#0A1128] text-white shrink-0"}
+                  className={isCustomerMsg ? "bg-slate-200 text-slate-700 shrink-0" : "bg-[#0A1128] text-white shrink-0"}
                 />
                 <div className="flex-1">
                   <div className="flex justify-between items-end mb-2">
@@ -116,8 +136,44 @@ export const TicketDetails: React.FC = () => {
                     </div>
                     <span className="text-xs text-slate-400">{msg.createdAt ? formatDate(msg.createdAt) : 'Recently'}</span>
                   </div>
-                  <div className={`p-5 rounded-xl text-sm leading-relaxed ${isCustomer ? 'bg-slate-50 border border-slate-100 text-slate-700' : 'bg-blue-50/60 border border-blue-100 text-[#0A1128]'}`}>
-                    {msg.message}
+                  
+                  <div className={`p-5 rounded-xl text-sm leading-relaxed ${isCustomerMsg ? 'bg-slate-50 border border-slate-100 text-slate-700' : 'bg-blue-50/60 border border-blue-100 text-[#0A1128]'}`}>
+                    <div>{msg.message}</div>
+
+                    {/* Attachments preview */}
+                    {msg.attachments && msg.attachments.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-slate-200/60 flex flex-wrap gap-3">
+                        {msg.attachments.map((url, idx) => {
+                          const isImg = url.match(/\.(jpeg|jpg|gif|png|webp)/i) || url.includes('/image/upload/') || url.startsWith('data:image/');
+                          if (isImg) {
+                            return (
+                              <div key={idx} className="relative group">
+                                <Image
+                                  src={url}
+                                  alt={`Attachment ${idx + 1}`}
+                                  className="w-24 h-24 object-cover rounded-lg border border-slate-200 shadow-sm"
+                                  preview={{ mask: <span className="text-xs font-bold text-white">🔍 Zoom</span> }}
+                                />
+                              </div>
+                            );
+                          }
+                          const filename = url.split('/').pop() || `Attachment_${idx + 1}`;
+                          return (
+                            <a
+                              key={idx}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-brand-orange rounded-lg text-xs font-bold text-[#0A1128] transition-colors shadow-sm"
+                            >
+                              <PaperClipOutlined className="text-brand-orange" />
+                              <span className="truncate max-w-[160px]">{filename}</span>
+                              <DownloadOutlined className="text-slate-400" />
+                            </a>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -127,20 +183,57 @@ export const TicketDetails: React.FC = () => {
           {/* Reply Editor */}
           <Card bordered={false} className="shadow-lg border border-slate-100 rounded-xl overflow-hidden mt-8" bodyStyle={{ padding: 0 }}>
             <div className="bg-slate-50 p-3 border-b border-slate-100 flex justify-between items-center">
-              <span className="text-xs font-bold text-slate-600">Reply as Support Agent ({user?.firstName || 'Staff'})</span>
+              <span className="text-xs font-bold text-slate-600">
+                Reply as {isStaff ? `Support Agent (${user?.firstName || 'Staff'})` : `Customer (${user?.firstName || 'You'})`}
+              </span>
             </div>
             <TextArea 
               rows={4} 
-              placeholder="Type your response to the customer..." 
+              placeholder="Type your response to the ticket..." 
               className="border-none resize-none p-4 text-sm focus:shadow-none"
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
             />
-            <div className="bg-white p-3 px-4 border-t border-slate-100 flex justify-between items-center">
-              <span className="text-xs text-slate-400">Response will be saved to ticket history</span>
+
+            {/* Selected files preview before sending */}
+            {replyFiles.length > 0 && (
+              <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-2">
+                {replyFiles.map((file, i) => (
+                  <Tag
+                    key={i}
+                    closable
+                    onClose={() => setReplyFiles(replyFiles.filter((_, idx) => idx !== i))}
+                    className="px-2.5 py-1 bg-white border-slate-300 text-xs font-bold text-slate-700 rounded-md flex items-center gap-1 shadow-xs"
+                  >
+                    <PaperClipOutlined className="text-brand-orange" />
+                    <span className="max-w-[160px] truncate">{file.name}</span>
+                  </Tag>
+                ))}
+              </div>
+            )}
+
+            <div className="bg-white p-3 px-4 border-t border-slate-100 flex flex-wrap gap-2 justify-between items-center">
+              <Upload
+                beforeUpload={() => false}
+                fileList={replyFiles}
+                onChange={({ fileList }) => setReplyFiles(fileList)}
+                showUploadList={false}
+                multiple
+                accept="image/jpeg,image/png,image/webp,application/pdf,.doc,.docx,.zip"
+              >
+                <Button
+                  type="dashed"
+                  size="small"
+                  icon={<PaperClipOutlined />}
+                  className="text-xs font-bold text-slate-600 border-slate-300 hover:border-brand-orange hover:text-brand-orange"
+                >
+                  Attach Images / Documents
+                </Button>
+              </Upload>
+
               <Button
                 type="primary"
-                className="bg-[#0A1128] hover:bg-[#1a2542] border-none font-bold px-6 flex items-center gap-2 h-10"
+                className="bg-[#0A1128] hover:bg-[#1a2542] border-none font-bold px-6 flex items-center gap-2 h-10 shadow-sm"
                 loading={sending}
                 onClick={handleSendReply}
               >
@@ -159,7 +252,7 @@ export const TicketDetails: React.FC = () => {
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4">Customer Profile</div>
             <div className="flex items-center gap-3 mb-6">
               <Avatar size={48} className="bg-[#0A1128] font-bold text-lg text-white">
-                {selectedTicket.customerName.substring(0, 2).toUpperCase()}
+                {selectedTicket.customerName?.substring(0, 2).toUpperCase() || 'CU'}
               </Avatar>
               <div>
                 <div className="font-bold text-[#0A1128] text-base">{selectedTicket.customerName}</div>

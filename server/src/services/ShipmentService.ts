@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { Package, Consolidation, Batch, User, Wallet } from '../models';
 import { uploadBase64ToCloudinary } from '../config/cloudinary';
 import { ActivityLogService } from './ActivityLogService';
@@ -92,20 +93,50 @@ export class ShipmentService {
   }
 
   // ─── Public Tracking ──────────────────────────────────────────────────────
-  public static async trackPackage(trackingId: string) {
-    const pkg = await Package.findOne({ where: { trackingId } });
-    if (!pkg) throw new Error('Package not found. Please check your tracking ID.');
-    // Return limited public-safe fields
+  public static async trackPackage(trackingIdStr: string) {
+    const term = trackingIdStr.trim();
+    let pkg = await Package.findOne({
+      where: {
+        [Op.or]: [
+          { trackingId: term },
+          { chineseTrackingNo: term },
+          { id: term },
+        ]
+      }
+    });
+
+    if (!pkg && term.length >= 3) {
+      pkg = await Package.findOne({
+        where: {
+          [Op.or]: [
+            { trackingId: { [Op.like]: `%${term}%` } },
+            { chineseTrackingNo: { [Op.like]: `%${term}%` } },
+          ]
+        }
+      });
+    }
+
+    if (!pkg) throw new Error('Package not found. Please verify your tracking ID or Chinese courier number.');
+
     return {
+      id: pkg.id,
       trackingId: pkg.trackingId,
+      chineseTrackingNo: pkg.chineseTrackingNo,
+      courierName: pkg.courierName,
+      supplierName: pkg.supplierName,
       status: pkg.status,
+      shippingType: pkg.shippingType || 'air',
       description: pkg.description,
       weightKg: pkg.weightKg,
+      cbm: pkg.cbm,
+      originWarehouse: 'China Air Cargo Hub (Yiwu/Guangzhou)',
+      destinationWarehouse: pkg.destinationWarehouse || 'Nigeria Office Hub (Kano/Lagos)',
       preAlertDate: pkg.preAlertDate,
       receivedDate: pkg.receivedDate,
       shippedDate: pkg.shippedDate,
       arrivedDate: pkg.arrivedDate,
       deliveredDate: pkg.deliveredDate,
+      createdAt: pkg.createdAt,
       updatedAt: pkg.updatedAt,
     };
   }

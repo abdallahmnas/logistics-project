@@ -145,54 +145,70 @@ export const DashboardHome: React.FC = () => {
         <h2 className="text-lg font-bold text-[#0A1128] mb-4 flex items-center gap-2">
           <span className="text-brand-orange">⚡</span> Quick Actions
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link to="shipments/pre-alert" className="no-underline">
-            <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-brand-orange/30 transition-all cursor-pointer group">
-              <div className="w-12 h-12 rounded-lg bg-brand-orange/10 text-brand-orange flex items-center justify-center mb-4 group-hover:bg-brand-orange group-hover:text-white transition-colors">
-                <FileAddOutlined className="text-xl" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {/* 1. Track Shipment */}
+          <Link to="/track" className="no-underline">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-orange-50 text-brand-orange flex items-center justify-center text-xl mb-2 group-hover:bg-brand-orange group-hover:text-white transition-colors">
+                📦
               </div>
-              <h3 className="font-bold text-[#0A1128] text-sm m-0 mb-1">
-                New Shipping Request
-              </h3>
-              <p className="text-slate-500 text-xs m-0">
-                Start a new import/export
-              </p>
+              <h3 className="font-extrabold text-[#0A1128] text-xs m-0 mb-0.5">Track Shipment</h3>
+              <p className="text-slate-500 text-[10px] m-0">Live status</p>
             </div>
           </Link>
 
-          <Link to="/customer/wallet" className="no-underline">
-            <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-brand-orange/30 transition-all cursor-pointer group">
-              <div className="w-12 h-12 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center mb-4 group-hover:bg-brand-orange group-hover:text-white transition-colors">
-                <WalletOutlined className="text-xl" />
-              </div>
-              <h3 className="font-bold text-[#0A1128] text-sm m-0 mb-1">
-                Fund Wallet
-              </h3>
-              <p className="text-slate-500 text-xs m-0">Top up NGN balance</p>
-            </div>
-          </Link>
-
-          <Link to="/customer/buy-for-me" className="no-underline">
-            <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-brand-orange/30 transition-all cursor-pointer group">
-              <div className="w-12 h-12 rounded-lg bg-brand-orange/10 text-brand-orange flex items-center justify-center mb-4 group-hover:bg-brand-orange group-hover:text-white transition-colors">
-                <ShoppingCartOutlined className="text-xl" />
-              </div>
-              <h3 className="font-bold text-[#0A1128] text-sm m-0 mb-1">
-                New Buy For Me
-              </h3>
-              <p className="text-slate-500 text-xs m-0">Procurement service</p>
-            </div>
-          </Link>
-
+          {/* 2. Add Package */}
           <Link to="/customer/shipments" className="no-underline">
-            <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-brand-orange/30 transition-all cursor-pointer group">
-              <div className="w-12 h-12 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center mb-4 group-hover:bg-brand-orange group-hover:text-white transition-colors">
-                <InboxOutlined className="text-xl" />
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mb-2 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                ➕
               </div>
-              <h3 className="font-bold text-[#0A1128] text-sm m-0 mb-1">
-                Track Shipment
-              </h3>
-              <p className="text-slate-500 text-xs m-0">Locate your packages</p>
+              <h3 className="font-extrabold text-[#0A1128] text-xs m-0 mb-0.5">Add Package</h3>
+              <p className="text-slate-500 text-[10px] m-0">China pre-alert</p>
+            </div>
+          </Link>
+
+          {/* 3. Air Freight */}
+          <Link to="/services" className="no-underline">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl mb-2 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                ✈️
+              </div>
+              <h3 className="font-extrabold text-[#0A1128] text-xs m-0 mb-0.5">Air Freight</h3>
+              <p className="text-slate-500 text-[10px] m-0">3–5 days express</p>
+            </div>
+          </Link>
+
+          {/* 4. Sea Freight */}
+          <Link to="/services" className="no-underline">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center text-xl mb-2 group-hover:bg-cyan-700 group-hover:text-white transition-colors">
+                🚢
+              </div>
+              <h3 className="font-extrabold text-[#0A1128] text-xs m-0 mb-0.5">Sea Freight</h3>
+              <p className="text-slate-500 text-[10px] m-0">CBM cargo</p>
+            </div>
+          </Link>
+
+          {/* 5. RMB Exchange */}
+          <Link to="/customer/exchange" className="no-underline">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl mb-2 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                💱
+              </div>
+              <h3 className="font-extrabold text-[#0A1128] text-xs m-0 mb-0.5">RMB Exchange</h3>
+              <p className="text-slate-500 text-[10px] m-0">Buy & Sell RMB</p>
+            </div>
+          </Link>
+
+          {/* 6. Buy For Me */}
+          <Link to="/customer/buy-for-me" className="no-underline">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl mb-2 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                🛒
+              </div>
+              <h3 className="font-extrabold text-[#0A1128] text-xs m-0 mb-0.5">Buy For Me</h3>
+              <p className="text-slate-500 text-[10px] m-0">China sourcing</p>
             </div>
           </Link>
         </div>

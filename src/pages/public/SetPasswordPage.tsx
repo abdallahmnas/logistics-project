@@ -36,8 +36,7 @@ const SetPasswordPage: React.FC = () => {
 
     const resultAction = await dispatch(registerUser(payload));
     if (registerUser.fulfilled.match(resultAction)) {
-      sessionStorage.removeItem('registrationDraft');
-      navigate('/customer', { replace: true });
+      navigate('/register/verify', { replace: true });
     }
   };
 

@@ -8,6 +8,7 @@ export class SupportService {
     category?: string;
     priority?: string;
     referenceId?: string;
+    attachments?: string[];
   }) {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('User not found');
@@ -22,13 +23,14 @@ export class SupportService {
       referenceId: payload.referenceId,
     });
 
-    // Add the first message from customer
+    // Add the first message from customer with attachments
     await TicketMessage.create({
       ticketId: ticket.id,
       senderId: userId,
       senderName: `${user.firstName} ${user.lastName}`,
       senderRole: user.role,
       message: payload.message,
+      attachments: payload.attachments || [],
     });
 
     return this.getTicketById(ticket.id);

@@ -56,16 +56,36 @@ export const createTicket = createAsyncThunk('support/create', async (payload: {
   category?: string;
   priority?: string;
   referenceId?: string;
-}) => {
-  const res = await apiClient.post('/support', payload);
+  attachments?: (File | string)[];
+} | FormData) => {
+  let res;
+  if (payload instanceof FormData) {
+    res = await apiClient.post('/support', payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  } else {
+    res = await apiClient.post('/support', payload);
+  }
   return res.data.data;
 });
 
 export const replyToTicket = createAsyncThunk('support/reply', async (payload: {
   ticketId: string;
   message: string;
-}) => {
-  const res = await apiClient.post(`/support/${payload.ticketId}/reply`, { message: payload.message });
+  attachments?: (File | string)[];
+} | FormData) => {
+  let res;
+  if (payload instanceof FormData) {
+    const ticketId = payload.get('ticketId');
+    res = await apiClient.post(`/support/${ticketId}/reply`, payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  } else {
+    res = await apiClient.post(`/support/${payload.ticketId}/reply`, {
+      message: payload.message,
+      attachments: payload.attachments,
+    });
+  }
   return res.data.data;
 });
 

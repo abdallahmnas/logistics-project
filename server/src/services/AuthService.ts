@@ -79,26 +79,33 @@ export class AuthService {
   }
 
   // ─── Verify OTP ───────────────────────────────────────────────────────────
-  public async verifyOtp(userId: string, otp: string) {
-    const user = await this.userRepository.findById(userId);
-    if (!user) throw new Error('User not found');
-    if (user.isVerified) return { message: 'Already verified' };
-    if (!user.otpCode || user.otpCode !== otp) throw new Error('Invalid OTP code');
-    if (user.otpExpiry && new Date() > user.otpExpiry) throw new Error('OTP has expired');
+  public async verifyOtp(userIdOrEmail: string, otp: string) {
+    let user = await this.userRepository.findById(userIdOrEmail);
+    if (!user) {
+      user = await this.userRepository.findByEmail(userIdOrEmail);
+    }
+    if (!user) throw new Error('User account not found');
+    if (user.isVerified) return { message: 'Account is already verified' };
+    if (!user.otpCode || user.otpCode !== otp) throw new Error('Invalid 6-digit OTP code');
+    if (user.otpExpiry && new Date() > user.otpExpiry) throw new Error('OTP code has expired. Please click Resend Code.');
 
     (user as any).isVerified = true;
     (user as any).otpCode = null;
     (user as any).otpExpiry = null;
     await (user as any).save();
 
-    return { message: 'Email verified successfully' };
+    const { passwordHash, ...safeUser } = user.toJSON() as any;
+    return { message: 'Email verified successfully', user: safeUser };
   }
 
   // ─── Resend OTP ───────────────────────────────────────────────────────────
-  public async resendOtp(userId: string) {
-    const user = await this.userRepository.findById(userId);
-    if (!user) throw new Error('User not found');
-    if (user.isVerified) throw new Error('Account already verified');
+  public async resendOtp(userIdOrEmail: string) {
+    let user = await this.userRepository.findById(userIdOrEmail);
+    if (!user) {
+      user = await this.userRepository.findByEmail(userIdOrEmail);
+    }
+    if (!user) throw new Error('User account not found');
+    if (user.isVerified) throw new Error('Account is already verified');
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
@@ -109,11 +116,11 @@ export class AuthService {
     (user as any).otpExpiry = otpExpiry;
     await (user as any).save();
 
-    sendEmail(user.email, 'Your new Logicore OTP', otpEmailTemplate(otp, user.firstName)).catch(
+    sendEmail(user.email, 'Your HAMZA RMB GLOBAL Verification Code', otpEmailTemplate(otp, user.firstName)).catch(
       (e) => console.error('[Email] Resend OTP failed:', e.message)
     );
 
-    return { message: 'OTP resent successfully' };
+    return { message: 'OTP resent successfully', otpCode: otp };
   }
 
   // ─── Login ────────────────────────────────────────────────────────────────
