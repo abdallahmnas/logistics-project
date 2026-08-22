@@ -78,7 +78,7 @@ const RegisterPage: React.FC = () => {
           countryCode,
         };
         sessionStorage.setItem('registrationDraft', JSON.stringify(draft));
-        navigate('/register/verify');
+        navigate('/register/password');
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Email or Phone is already registered';

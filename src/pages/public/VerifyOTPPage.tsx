@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button } from 'antd';
-import { LockOutlined, ArrowRightOutlined, ArrowLeftOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import { Logo } from '../../components/common/Logo';
+import { Button, Alert, message } from 'antd';
+import { LockOutlined, ArrowRightOutlined, ArrowLeftOutlined, SafetyCertificateOutlined, ReloadOutlined } from '@ant-design/icons';
+import apiClient from '../../api/axios';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchCurrentUser } from '../../store/slices/authSlice';
 
 export const VerifyOTPPage: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timeLeft, setTimeLeft] = useState(52); // seconds
-  const [userEmail, setUserEmail] = useState<string>('your registered email');
+  const [timeLeft, setTimeLeft] = useState(60); // seconds
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   useEffect(() => {
     const savedDraft = sessionStorage.getItem('registrationDraft');
@@ -21,44 +30,103 @@ export const VerifyOTPPage: React.FC = () => {
       } catch (e) {
         console.error('Failed to parse registration draft:', e);
       }
+    } else if (user?.email) {
+      setUserEmail(user.email);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (timeLeft <= 0) return;
     const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
+      setTimeLeft((prev) => prev - 1);
     }, 1000);
     return () => clearInterval(timer);
   }, [timeLeft]);
 
   const handleChange = (index: number, value: string) => {
-    if (value.length > 1) return; // Only allow 1 char per input
-    
+    const cleaned = value.replace(/[^0-9]/g, '');
+    if (cleaned.length > 1) return;
+
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = cleaned;
     setOtp(newOtp);
 
     // Auto-focus next input
-    if (value !== '' && index < 5) {
+    if (cleaned !== '' && index < 5) {
       const nextInput = document.getElementById(`otp-${index + 1}`);
       nextInput?.focus();
     }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Handle backspace
     if (e.key === 'Backspace' && otp[index] === '' && index > 0) {
       const prevInput = document.getElementById(`otp-${index - 1}`);
       prevInput?.focus();
     }
   };
 
-  const handleSubmit = () => {
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').trim().replace(/[^0-9]/g, '').slice(0, 6);
+    if (pastedData.length === 6) {
+      const newOtp = pastedData.split('');
+      setOtp(newOtp);
+      const lastInput = document.getElementById('otp-5');
+      lastInput?.focus();
+    }
+  };
+
+  const handleSubmit = async () => {
     const code = otp.join('');
-    if (code.length === 6) {
-      // In a real app, verify the OTP here, then go to step 3
-      navigate('/register/password'); 
+    if (code.length !== 6) return;
+
+    setLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await apiClient.post('/auth/verify-otp', {
+        otp: code,
+        email: userEmail,
+      });
+
+      if (res.data.status === 'success') {
+        message.success('Account email verified successfully!');
+        sessionStorage.removeItem('registrationDraft');
+        await dispatch(fetchCurrentUser());
+        navigate('/customer', { replace: true });
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Invalid or expired OTP code';
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!userEmail) {
+      message.error('Email address not found. Please register again.');
+      return;
+    }
+
+    setResending(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await apiClient.post('/auth/resend-otp', {
+        email: userEmail,
+      });
+
+      message.success('New OTP verification code sent to your email!');
+      setTimeLeft(60);
+      if (res.data.otpCode) {
+        setDevOtp(res.data.otpCode);
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to resend OTP';
+      message.error(msg);
+    } finally {
+      setResending(false);
     }
   };
 
@@ -87,7 +155,7 @@ export const VerifyOTPPage: React.FC = () => {
               Secure Your<br />Access
             </h2>
             <p className="text-slate-300 text-lg leading-relaxed max-w-md mt-4">
-              Hamza RMB requires multi-factor authentication to ensure the safety of your supply chain data.
+              HAMZA RMB GLOBAL requires multi-factor authentication to ensure the security of your account and shipments.
             </p>
           </div>
 
@@ -95,10 +163,10 @@ export const VerifyOTPPage: React.FC = () => {
             <div className="bg-brand-navy/80 backdrop-blur-md rounded-xl p-5 border border-white/10 w-full max-w-sm">
               <div className="flex items-center gap-3 text-white font-medium mb-3">
                 <SafetyCertificateOutlined className="text-brand-orange text-lg" />
-                SECURITY PROTOCOL
+                SECURITY PROTOCOL ACTIVE
               </div>
               <div className="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
-                <div className="bg-brand-orange h-full rounded-full" style={{ width: '66%' }} />
+                <div className="bg-brand-orange h-full rounded-full" style={{ width: '100%' }} />
               </div>
             </div>
           </div>
@@ -115,34 +183,56 @@ export const VerifyOTPPage: React.FC = () => {
               <div className="w-8 h-8 rounded-full bg-brand-orange text-white flex items-center justify-center text-sm font-bold shadow-md shadow-brand-orange/20">
                 ✓
               </div>
-              <span className="text-[10px] text-slate-500 mt-2 tracking-wider uppercase">Step 1</span>
+              <span className="text-[10px] text-slate-500 mt-2 tracking-wider uppercase">Info</span>
             </div>
             <div className="flex-1 h-[1px] bg-brand-orange mx-2 mt-[-18px]" />
             <div className="flex flex-col items-center">
-              <div className="w-8 h-8 rounded-full bg-brand-navy text-white flex items-center justify-center text-xs font-bold shadow-md">
-                2
+              <div className="w-8 h-8 rounded-full bg-brand-orange text-white flex items-center justify-center text-sm font-bold shadow-md shadow-brand-orange/20">
+                ✓
               </div>
-              <span className="text-[10px] text-brand-navy font-bold mt-2 tracking-wider uppercase">Step 2</span>
+              <span className="text-[10px] text-slate-500 mt-2 tracking-wider uppercase">Password</span>
             </div>
-            <div className="flex-1 h-[1px] bg-slate-100 mx-2 mt-[-18px]" />
+            <div className="flex-1 h-[1px] bg-brand-navy mx-2 mt-[-18px]" />
             <div className="flex flex-col items-center">
-              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-xs font-bold">
+              <div className="w-8 h-8 rounded-full bg-brand-navy text-white flex items-center justify-center text-xs font-bold shadow-md">
                 3
               </div>
-              <span className="text-[10px] text-slate-400 mt-2 tracking-wider uppercase">Step 3</span>
+              <span className="text-[10px] text-brand-navy font-bold mt-2 tracking-wider uppercase">Verification</span>
             </div>
           </div>
 
           <h2 className="text-3xl font-bold text-slate-800 mb-4">
-            Verify OTP
+            Verify Email OTP
           </h2>
-          <p className="text-slate-500 text-base mb-10 max-w-xs mx-auto">
+          <p className="text-slate-500 text-base mb-8 max-w-xs mx-auto">
             A 6-digit verification code has been sent to<br/>
-            <span className="font-semibold text-slate-700">{userEmail}</span>
+            <span className="font-bold text-brand-navy">{userEmail || 'your email address'}</span>
           </p>
 
+          {errorMsg && (
+            <Alert
+              message="Verification Error"
+              description={errorMsg}
+              type="error"
+              showIcon
+              closable
+              onClose={() => setErrorMsg(null)}
+              className="mb-6 text-left"
+            />
+          )}
+
+          {devOtp && (
+            <Alert
+              message="Development Test OTP"
+              description={`Verification Code: ${devOtp}`}
+              type="info"
+              showIcon
+              className="mb-6 text-left border-blue-200 bg-blue-50"
+            />
+          )}
+
           {/* OTP Inputs */}
-          <div className="flex justify-center gap-3 sm:gap-4 mb-6">
+          <div className="flex justify-center gap-2 sm:gap-3 mb-6">
             {otp.map((digit, index) => (
               <input
                 key={index}
@@ -153,24 +243,25 @@ export const VerifyOTPPage: React.FC = () => {
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className={`w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl font-bold rounded-lg border-2 outline-none transition-colors ${
+                onPaste={index === 0 ? handlePaste : undefined}
+                className={`w-11 h-14 sm:w-13 sm:h-16 text-center text-2xl font-black rounded-lg border-2 outline-none transition-colors ${
                   digit 
-                    ? 'border-brand-navy text-brand-navy' 
+                    ? 'border-brand-navy text-brand-navy bg-blue-50/30' 
                     : 'border-slate-200 text-slate-800 focus:border-brand-orange'
                 } bg-slate-50 focus:bg-white`}
               />
             ))}
           </div>
 
-          <div className="flex items-center justify-between px-2 mb-10 text-sm">
+          <div className="flex items-center justify-between px-2 mb-8 text-sm">
             <button 
-              className={`font-semibold ${timeLeft > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-brand-orange hover:text-orange-600'}`}
-              disabled={timeLeft > 0}
-              onClick={() => setTimeLeft(60)}
+              className={`font-semibold flex items-center gap-1.5 ${timeLeft > 0 || resending ? 'text-slate-400 cursor-not-allowed' : 'text-brand-orange hover:text-orange-600 cursor-pointer'}`}
+              disabled={timeLeft > 0 || resending}
+              onClick={handleResendOtp}
             >
-              Resend Code
+              <ReloadOutlined spin={resending} /> Resend Code
             </button>
-            <span className="text-slate-500 flex items-center gap-1.5">
+            <span className="text-slate-500 font-mono text-xs font-bold">
               ⏱ {formatTime(timeLeft)}
             </span>
           </div>
@@ -178,21 +269,22 @@ export const VerifyOTPPage: React.FC = () => {
           <Button
             type="primary"
             onClick={handleSubmit}
-            className="w-full !h-14 text-base font-semibold !bg-brand-orange hover:!bg-orange-600 !border-brand-orange hover:!border-orange-600 !rounded-lg shadow-lg shadow-brand-orange/20 mb-8"
+            loading={loading}
+            className="w-full !h-14 text-base font-bold !bg-brand-orange hover:!bg-orange-600 !border-brand-orange !rounded-lg shadow-lg shadow-brand-orange/20 mb-8"
             icon={<ArrowRightOutlined />}
             iconPlacement="end"
             disabled={otp.join('').length !== 6}
           >
-            Verify & Proceed
+            Verify &amp; Activate Account
           </Button>
 
           <Link to="/register" className="inline-flex items-center gap-2 text-brand-navy font-bold text-sm hover:text-brand-orange transition-colors">
-            <ArrowLeftOutlined /> Back to account info
+            <ArrowLeftOutlined /> Back to Registration
           </Link>
 
-          <div className="mt-16 flex items-center justify-center gap-2 text-xs text-slate-400">
+          <div className="mt-12 flex items-center justify-center gap-2 text-xs text-slate-400">
             <LockOutlined />
-            256-bit encrypted connection
+            256-bit encrypted authentication
           </div>
         </div>
       </div>

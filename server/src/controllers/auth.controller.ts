@@ -23,10 +23,17 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user.id;
+    const targetIdentifier = (req as any).user?.id || req.body.userId || req.body.email;
     const { otp } = req.body;
-    if (!otp) { res.status(400).json({ status: 'error', message: 'OTP is required' }); return; }
-    const result = await authService.verifyOtp(userId, otp);
+    if (!targetIdentifier) {
+      res.status(400).json({ status: 'error', message: 'User ID or Email is required' });
+      return;
+    }
+    if (!otp) {
+      res.status(400).json({ status: 'error', message: '6-digit OTP code is required' });
+      return;
+    }
+    const result = await authService.verifyOtp(targetIdentifier, otp);
     res.status(200).json({ status: 'success', ...result });
   } catch (error: any) {
     res.status(400).json({ status: 'error', message: error.message });
@@ -35,8 +42,12 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
 
 export const resendOtp = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user.id;
-    const result = await authService.resendOtp(userId);
+    const targetIdentifier = (req as any).user?.id || req.body.userId || req.body.email;
+    if (!targetIdentifier) {
+      res.status(400).json({ status: 'error', message: 'User ID or Email is required' });
+      return;
+    }
+    const result = await authService.resendOtp(targetIdentifier);
     res.status(200).json({ status: 'success', ...result });
   } catch (error: any) {
     res.status(400).json({ status: 'error', message: error.message });
