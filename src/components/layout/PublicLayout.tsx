@@ -29,8 +29,11 @@ export const PublicLayout: React.FC = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const { settings } = useAppSelector((state) => state.settings);
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  const dashboardPath = user?.role === 'admin' || user?.role === 'warehouse_staff' ? '/admin' : '/customer';
 
   useEffect(() => {
     dispatch(fetchSettings());
@@ -102,23 +105,37 @@ export const PublicLayout: React.FC = () => {
 
           {/* Actions */}
           <div className="hidden md:flex items-center space-x-3">
-            <Link to="/login">
-              <Button
-                type="text"
-                icon={<UserOutlined />}
-                className="text-slate-700 hover:text-brand-navy font-semibold text-sm"
-              >
-                Sign In
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button
-                type="primary"
-                className="!bg-[#C0262D] hover:!bg-[#A01F25] !border-none font-bold text-sm h-10 px-5 rounded-lg shadow-sm"
-              >
-                Create Account
-              </Button>
-            </Link>
+            {isAuthenticated && user ? (
+              <Link to={dashboardPath}>
+                <Button
+                  type="primary"
+                  icon={<UserOutlined />}
+                  className="!bg-[#0A1128] hover:!bg-[#15244f] !border-none font-bold text-sm h-10 px-5 rounded-lg shadow-sm"
+                >
+                  My Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button
+                    type="text"
+                    icon={<UserOutlined />}
+                    className="text-slate-700 hover:text-brand-navy font-semibold text-sm"
+                  >
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button
+                    type="primary"
+                    className="!bg-[#C0262D] hover:!bg-[#A01F25] !border-none font-bold text-sm h-10 px-5 rounded-lg shadow-sm"
+                  >
+                    Create Account
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -152,23 +169,38 @@ export const PublicLayout: React.FC = () => {
               </Link>
             ))}
             <div className="pt-4 border-t border-slate-100 space-y-2">
-              <Link to="/register" className="block w-full">
-                <Button
-                  type="primary"
-                  block
-                  className="!bg-brand-orange hover:!bg-orange-600 !border-brand-orange font-semibold h-10 rounded-lg"
-                >
-                  Get a Quote
-                </Button>
-              </Link>
-              <Link to="/login">
-                <Button
-                  block
-                  className="!text-brand-navy !border-slate-200 hover:!border-brand-navy h-10 rounded-lg font-semibold"
-                >
-                  Sign In
-                </Button>
-              </Link>
+              {isAuthenticated && user ? (
+                <Link to={dashboardPath} className="block w-full">
+                  <Button
+                    type="primary"
+                    block
+                    icon={<UserOutlined />}
+                    className="!bg-[#0A1128] hover:!bg-[#15244f] !border-none font-bold h-10 rounded-lg"
+                  >
+                    Go to My Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link to="/register" className="block w-full">
+                    <Button
+                      type="primary"
+                      block
+                      className="!bg-[#C0262D] hover:!bg-[#A01F25] !border-none font-bold h-10 rounded-lg"
+                    >
+                      Create Account
+                    </Button>
+                  </Link>
+                  <Link to="/login" className="block w-full">
+                    <Button
+                      block
+                      className="!text-brand-navy !border-slate-200 hover:!border-brand-navy h-10 rounded-lg font-semibold"
+                    >
+                      Sign In
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}

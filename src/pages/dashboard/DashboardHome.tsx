@@ -145,12 +145,12 @@ export const DashboardHome: React.FC = () => {
         <h2 className="text-lg font-bold text-[#0A1128] mb-4 flex items-center gap-2">
           <span className="text-brand-orange">⚡</span> Quick Actions
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {/* 1. Track Shipment */}
           <Link to="/track" className="no-underline">
             <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
               <div className="w-11 h-11 rounded-xl bg-orange-50 text-brand-orange flex items-center justify-center text-xl mb-2 group-hover:bg-brand-orange group-hover:text-white transition-colors">
-                📦
+                📍
               </div>
               <h3 className="font-extrabold text-[#0A1128] text-xs m-0 mb-0.5">Track Shipment</h3>
               <p className="text-slate-500 text-[10px] m-0">Live status</p>
@@ -168,29 +168,18 @@ export const DashboardHome: React.FC = () => {
             </div>
           </Link>
 
-          {/* 3. Air Freight */}
-          <Link to="/services" className="no-underline">
+          {/* 3. Consolidation */}
+          <Link to="/customer/consolidation" className="no-underline">
             <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
               <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl mb-2 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                ✈️
+                📦
               </div>
-              <h3 className="font-extrabold text-[#0A1128] text-xs m-0 mb-0.5">Air Freight</h3>
-              <p className="text-slate-500 text-[10px] m-0">3–5 days express</p>
+              <h3 className="font-extrabold text-[#0A1128] text-xs m-0 mb-0.5">Consolidation</h3>
+              <p className="text-slate-500 text-[10px] m-0">Combine packages</p>
             </div>
           </Link>
 
-          {/* 4. Sea Freight */}
-          <Link to="/services" className="no-underline">
-            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
-              <div className="w-11 h-11 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center text-xl mb-2 group-hover:bg-cyan-700 group-hover:text-white transition-colors">
-                🚢
-              </div>
-              <h3 className="font-extrabold text-[#0A1128] text-xs m-0 mb-0.5">Sea Freight</h3>
-              <p className="text-slate-500 text-[10px] m-0">CBM cargo</p>
-            </div>
-          </Link>
-
-          {/* 5. RMB Exchange */}
+          {/* 4. RMB Exchange */}
           <Link to="/customer/exchange" className="no-underline">
             <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
               <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl mb-2 group-hover:bg-purple-600 group-hover:text-white transition-colors">
@@ -201,7 +190,7 @@ export const DashboardHome: React.FC = () => {
             </div>
           </Link>
 
-          {/* 6. Buy For Me */}
+          {/* 5. Buy For Me */}
           <Link to="/customer/buy-for-me" className="no-underline">
             <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
               <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl mb-2 group-hover:bg-amber-600 group-hover:text-white transition-colors">
