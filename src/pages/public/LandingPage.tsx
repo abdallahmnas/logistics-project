@@ -39,7 +39,7 @@ export const LandingPage: React.FC = () => {
         "Direct warehouse dispatch upon arrival",
       ],
       ctaText: "Learn About Air Cargo",
-      ctaLink: "/services#air-freight",
+      ctaLink: "/customer/shipments",
     },
     {
       id: "sea-freight",
@@ -55,7 +55,7 @@ export const LandingPage: React.FC = () => {
         "Port clearance & inland transfer",
       ],
       ctaText: "Calculate CBM Shipping",
-      ctaLink: "/services#sea-freight",
+      ctaLink: "/customer/shipments",
     },
     {
       id: "buy-for-me",

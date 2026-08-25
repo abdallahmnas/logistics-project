@@ -33,7 +33,7 @@ export const ServicesPage: React.FC = () => {
         'SMS & WhatsApp status alerts upon arrival in Kano/Lagos',
       ],
       ctaText: 'Calculate Air Freight Quote',
-      ctaLink: '/get-quote',
+      ctaLink: '/customer/shipments',
     },
     {
       id: 'sea-freight',
@@ -53,7 +53,7 @@ export const ServicesPage: React.FC = () => {
         'Secure container loading with photo logs',
       ],
       ctaText: 'Request Sea Freight Quote',
-      ctaLink: '/get-quote',
+      ctaLink: '/customer/shipments',
     },
     {
       id: 'consolidation',
