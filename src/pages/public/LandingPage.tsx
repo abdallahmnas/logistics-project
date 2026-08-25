@@ -3,12 +3,9 @@ import { Link } from "react-router-dom";
 import { Button, Input, Form } from "antd";
 import {
   SearchOutlined,
-  SafetyCertificateOutlined,
-  ThunderboltOutlined,
-  CustomerServiceOutlined,
+  UserAddOutlined,
   ArrowRightOutlined,
-  EnvironmentOutlined,
-  GlobalOutlined,
+  CheckCircleFilled,
 } from "@ant-design/icons";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { fetchSettings } from "../../store/slices/settingsSlice";
@@ -23,120 +20,248 @@ export const LandingPage: React.FC = () => {
   }, [dispatch]);
 
   const handleTrack = (values: { trackingNumber: string }) => {
-    window.location.href = `/track?id=${values.trackingNumber}`;
+    if (!values.trackingNumber) return;
+    window.location.href = `/track?id=${encodeURIComponent(values.trackingNumber.trim())}`;
   };
 
+  const servicesData = [
+    {
+      id: "air-freight",
+      title: "Express Air Freight",
+      subtitle: "Yiwu & Guangzhou ➔ Kano & Lagos",
+      badge: "3–5 DAYS EXPRESS",
+      badgeBg: "bg-[#C0262D] text-white shadow-lg shadow-red-950/50",
+      image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1200&q=80",
+      desc: "Fast express air cargo dispatch from our Guangzhou and Yiwu receiving hubs directly to Kano & Lagos airports with full customs clearance included.",
+      features: [
+        "Departs 3x weekly from China",
+        "Includes full customs duty clearance",
+        "Direct warehouse dispatch upon arrival",
+      ],
+      ctaText: "Learn About Air Cargo",
+      ctaLink: "/services#air-freight",
+    },
+    {
+      id: "sea-freight",
+      title: "Sea Freight (CBM & FCL)",
+      subtitle: "Bulk Maritime Transport",
+      badge: "COST-EFFECTIVE CBM",
+      badgeBg: "bg-blue-600 text-white shadow-lg shadow-blue-950/50",
+      image: "https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?w=1200&q=80",
+      desc: "High-volume ocean shipping billed per CBM (volume). LCL groupage consolidation and 20ft/40ft full container loading to Lagos ports.",
+      features: [
+        "Flexible CBM volume billing",
+        "Full container & LCL groupage",
+        "Port clearance & inland transfer",
+      ],
+      ctaText: "Calculate CBM Shipping",
+      ctaLink: "/services#sea-freight",
+    },
+    {
+      id: "buy-for-me",
+      title: "Buy For Me / Sourcing",
+      subtitle: "1688, Taobao & Factory Sourcing",
+      badge: "SUPPLIER PROCUREMENT",
+      badgeBg: "bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-950/50",
+      image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1200&q=80",
+      desc: "Can't pay Chinese suppliers? Send product links from 1688 or Taobao. We verify suppliers, negotiate prices, pay in RMB, and procure your items.",
+      features: [
+        "Supplier verification & inspection",
+        "Pay Naira, we pay seller in Yuan 🇨🇳",
+        "Physical item photo proof",
+      ],
+      ctaText: "Submit Sourcing Link",
+      ctaLink: "/customer/buy-for-me",
+    },
+    {
+      id: "rmb-exchange",
+      title: "RMB Currency Exchange",
+      subtitle: "Fast Supplier Payments in Yuan",
+      badge: "SAME-DAY SETTLEMENT",
+      badgeBg: "bg-purple-600 text-white shadow-lg shadow-purple-950/50",
+      image: "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?w=1200&q=80",
+      desc: "Fast, secure Chinese Yuan (RMB) currency exchange. Transfer Naira to pay your Chinese suppliers via Alipay, WeChat Pay, or UnionPay banks.",
+      features: [
+        "Direct Alipay & WeChat transfers",
+        "Transparent daily Yuan rates",
+        "Instant payment proof receipt",
+      ],
+      ctaText: "Exchange RMB Now",
+      ctaLink: "/customer/exchange",
+    },
+    {
+      id: "cargo-consolidation",
+      title: "Cargo Consolidation",
+      subtitle: "Save Up to 40% Shipping Fees",
+      badge: "FREE 30-DAY STORAGE",
+      badgeBg: "bg-indigo-600 text-white shadow-lg shadow-indigo-950/50",
+      image: "https://images.unsplash.com/photo-1553413077-190dd305871c?w=1200&q=80",
+      desc: "Combine parcels from different suppliers into one master shipment. We strip excess packaging, reducing volumetric shipping costs significantly.",
+      features: [
+        "Yiwu & Guangzhou intake logging",
+        "Repackaging & volume minimization",
+        "Unified single tracking ID",
+      ],
+      ctaText: "Start Consolidating",
+      ctaLink: "/customer/consolidation",
+    },
+    {
+      id: "local-delivery",
+      title: "Local Nigeria Delivery",
+      subtitle: "Kano, Lagos & 36 States",
+      badge: "NIGERIA DISPATCH",
+      badgeBg: "bg-emerald-600 text-white shadow-lg shadow-emerald-950/50",
+      image: "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=1200&q=80",
+      desc: "Self-pickup at our Kano (Gwarzo Road) or Lagos hubs, or request door-to-door delivery and waybill dispatch across all 36 states in Nigeria.",
+      features: [
+        "Kano & Lagos central warehouses",
+        "Nationwide interstate dispatch",
+        "Real-time delivery SMS/WhatsApp alerts",
+      ],
+      ctaText: "Request Doorstep Delivery",
+      ctaLink: "/customer/delivery",
+    },
+  ];
+
   return (
-    <div className="flex flex-col">
-      {/* Hero Section matching official Brand Mockup */}
-      <section className="relative min-h-[600px] lg:min-h-[680px] flex items-center overflow-hidden bg-[#0A1B3A]">
+    <div className="flex flex-col font-sans">
+      {/* Hero Section */}
+      <section className="relative py-16 md:py-24 lg:py-28 overflow-hidden bg-[#0A1B3A]">
         {/* Background Overlay */}
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 mix-blend-luminosity"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 transition-opacity duration-700"
           style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=1920&q=80')",
+            backgroundImage: "url('/hero-bg.jpg')",
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0A1B3A] via-[#0A1B3A]/90 to-[#0A1B3A]/60" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A1B3A]/80 via-[#0A1B3A]/90 to-[#0A1B3A]" />
 
-        <div className="container mx-auto px-4 relative z-10 py-16 lg:py-24">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#C0262D]/20 border border-[#C0262D]/40 rounded-full text-[#FF4D4D] text-xs font-extrabold uppercase tracking-wider mb-6">
+        <div className="container mx-auto px-4 relative z-10 text-center">
+          <div className="max-w-4xl mx-auto flex flex-col items-center">
+            {/* Tagline Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#C0262D]/20 border border-[#C0262D]/40 rounded-full text-[#FF4D4D] text-xs font-black uppercase tracking-widest mb-6">
               <span className="w-2 h-2 rounded-full bg-[#FF4D4D] animate-pulse" />
-              HAMZA RMB GLOBAL • OFFICIAL PLATFORM
+              CHINA ➔ NIGERIA DEDICATED FREIGHT &amp; RMB TRADE
             </div>
 
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-[1.05] mb-6 tracking-tight">
-              Bridging China & Nigeria,
+            {/* Main Headline */}
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-[1.08] mb-6 tracking-tight">
+              Bridging China &amp; Nigeria,
               <br />
               <span className="text-[#FF4D4D]">Connecting the World</span>
             </h1>
 
-            <p className="text-slate-200 text-base md:text-lg leading-relaxed max-w-2xl mb-8 font-medium">
-              Fast, Reliable & Secure Logistics Solutions:
-              <br />
-              <span className="text-white font-bold">Air Freight • Sea Freight • RMB Exchange • Buy For Me • Local Delivery</span>
+            {/* Quick Description */}
+            <p className="text-slate-300 text-base md:text-lg leading-relaxed max-w-2xl mx-auto mb-10 font-medium">
+              Your direct logistics bridge between China (Yiwu &amp; Guangzhou) and Nigeria (Kano &amp; Lagos). Express air cargo, ocean CBM freight, supplier procurement on 1688, and instant Yuan currency exchange.
             </p>
 
-            {/* Tracking Search Bar */}
-            <Form form={form} onFinish={handleTrack} className="mb-8">
-              <div className="flex flex-col sm:flex-row items-stretch gap-0 max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden p-1.5">
+            {/* Hero Interactive Image Cards Showcase */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 w-full max-w-5xl mb-10 text-left">
+              {servicesData.map((s) => (
+                <a
+                  key={s.id}
+                  href={`#${s.id}`}
+                  className="group relative rounded-2xl overflow-hidden border border-white/30 h-32 sm:h-36 block shadow-2xl transition-all duration-300 hover:scale-105 hover:border-[#FF4D4D] hover:shadow-red-600/30"
+                >
+                  <div
+                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110 opacity-70"
+                    style={{ backgroundImage: `url('${s.image}')` }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent" />
+                  <div className="absolute bottom-3 left-3 right-3 z-10">
+                    <span className="text-[9px] font-black text-[#FF4D4D] uppercase tracking-wider block mb-0.5 drop-shadow">
+                      {s.badge}
+                    </span>
+                    <h4 className="text-white font-black text-xs sm:text-sm leading-tight m-0 drop-shadow">
+                      {s.title}
+                    </h4>
+                  </div>
+                </a>
+              ))}
+            </div>
+
+            {/* Tracking Search Input Bar */}
+            <Form form={form} onFinish={handleTrack} className="w-full max-w-xl mx-auto mb-12 md:mb-14">
+              <div className="flex flex-col sm:flex-row items-stretch gap-2 bg-white p-2 rounded-2xl shadow-2xl border border-slate-200 m-4">
                 <Form.Item
                   name="trackingNumber"
                   noStyle
-                  rules={[{ required: true, message: "" }]}
+                  rules={[{ required: true, message: "Please enter your tracking number" }]}
                 >
                   <Input
                     size="large"
-                    placeholder="Enter HZ Tracking ID or Chinese Domestic Waybill #..."
-                    prefix={<SearchOutlined className="text-[#C0262D] mr-2 text-lg" />}
-                    className="flex-1 !h-12 !border-0 !rounded-none !bg-transparent text-sm font-semibold"
+                    placeholder="Enter HZ Tracking ID or Chinese Courier Waybill #..."
+                    prefix={<SearchOutlined className="text-[#C0262D] mr-2 text-xl" />}
+                    className="flex-1 !h-12 !border-0 !bg-transparent text-sm font-semibold text-slate-800"
                   />
                 </Form.Item>
                 <Button
                   type="primary"
                   htmlType="submit"
-                  className="!bg-[#C0262D] hover:!bg-[#A01F25] !border-none !h-12 !px-8 font-bold text-sm !rounded-xl shrink-0"
+                  className="!bg-[#C0262D] hover:!bg-[#A01F25] !border-none !h-12 !px-8 font-black text-sm uppercase tracking-wider !rounded-xl shrink-0 shadow-lg"
                 >
                   Track Shipment 📍
                 </Button>
               </div>
             </Form>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-4">
-              <Link to="/track">
+            {/* Hero Action Buttons */}
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <Link to="/services">
                 <Button
                   type="primary"
                   size="large"
-                  className="!bg-[#C0262D] hover:!bg-[#A01F25] !border-none !h-12 !px-8 font-bold text-sm !rounded-xl shadow-lg"
+                  className="!bg-[#C0262D] hover:!bg-[#A01F25] !border-none !h-13 !px-8 font-extrabold text-sm !rounded-xl shadow-xl shadow-red-950/40 flex items-center gap-2"
+                  icon={<ArrowRightOutlined />}
+                  iconPlacement="end"
                 >
-                  Track Shipment
+                  Explore All Services
                 </Button>
               </Link>
               <Link to="/register">
                 <Button
                   size="large"
-                  className="!bg-white/10 hover:!bg-white/20 !text-white !border-white/30 !h-12 !px-8 font-bold text-sm !rounded-xl backdrop-blur-md"
+                  className="!bg-white hover:!bg-slate-100 !text-[#0A1B3A] !border-none !h-13 !px-8 font-extrabold text-sm !rounded-xl shadow-xl flex items-center gap-2"
+                  icon={<UserAddOutlined />}
                 >
-                  Create Account
+                  Create Free Account
                 </Button>
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Bottom Trust Pillars Bar matching mockup */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white/10 backdrop-blur-md border-t border-white/10 hidden md:block">
-          <div className="container mx-auto px-4 py-4">
+        {/* Bottom Trust Pillars Bar */}
+        <div className="mt-16 bg-white/5 backdrop-blur-md border-t border-white/10 hidden md:block">
+          <div className="container mx-auto px-4 py-5">
             <div className="grid grid-cols-4 gap-6 text-white text-xs">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[#C0262D]/30 border border-[#FF4D4D]/40 flex items-center justify-center text-base">🛡️</div>
+                <div className="w-10 h-10 rounded-xl bg-[#C0262D]/30 border border-[#FF4D4D]/40 flex items-center justify-center text-lg">🛡️</div>
                 <div>
-                  <div className="font-extrabold text-white">Safe & Secure</div>
-                  <div className="text-[10px] text-slate-300">Your cargo is in safe hands</div>
+                  <div className="font-extrabold text-white">Safe &amp; Guaranteed</div>
+                  <div className="text-[11px] text-slate-300">Zero-loss cargo handling</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[#C0262D]/30 border border-[#FF4D4D]/40 flex items-center justify-center text-base">📍</div>
+                <div className="w-10 h-10 rounded-xl bg-[#C0262D]/30 border border-[#FF4D4D]/40 flex items-center justify-center text-lg">📍</div>
                 <div>
-                  <div className="font-extrabold text-white">Real-time Tracking</div>
-                  <div className="text-[10px] text-slate-300">Track your shipment anytime</div>
+                  <div className="font-extrabold text-white">8-Stage Live Tracking</div>
+                  <div className="text-[11px] text-slate-300">From China Hub to Doorstep</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[#C0262D]/30 border border-[#FF4D4D]/40 flex items-center justify-center text-base">💰</div>
+                <div className="w-10 h-10 rounded-xl bg-[#C0262D]/30 border border-[#FF4D4D]/40 flex items-center justify-center text-lg">💰</div>
                 <div>
-                  <div className="font-extrabold text-white">Best Rates</div>
-                  <div className="text-[10px] text-slate-300">Competitive pricing always</div>
+                  <div className="font-extrabold text-white">Same-Day RMB Rate</div>
+                  <div className="text-[11px] text-slate-300">Direct Yuan 🇨🇳 settlements</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[#C0262D]/30 border border-[#FF4D4D]/40 flex items-center justify-center text-base">🎧</div>
+                <div className="w-10 h-10 rounded-xl bg-[#C0262D]/30 border border-[#FF4D4D]/40 flex items-center justify-center text-lg">🚚</div>
                 <div>
-                  <div className="font-extrabold text-white">24/7 Support</div>
-                  <div className="text-[10px] text-slate-300">We are here to help</div>
+                  <div className="font-extrabold text-white">36 States Delivery</div>
+                  <div className="text-[11px] text-slate-300">Kano &amp; Lagos Distribution</div>
                 </div>
               </div>
             </div>
@@ -144,18 +269,103 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 8-Stage Real-Time Cargo Pipeline Section */}
-      <section className="py-12 bg-slate-900 text-white border-b border-slate-800">
+      {/* Main Services Showcase Section (Bigger, High-Impact Cards) */}
+      <section className="py-20 lg:py-28 bg-slate-950 text-white">
         <div className="container mx-auto px-4">
-          <div className="text-center max-w-2xl mx-auto mb-8">
-            <span className="text-brand-orange font-bold text-xs uppercase tracking-widest bg-brand-orange/10 px-3.5 py-1 rounded-full border border-brand-orange/20">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="text-xs font-black text-[#FF4D4D] uppercase tracking-widest bg-[#C0262D]/20 px-4 py-1.5 rounded-full border border-[#C0262D]/40 inline-block mb-3">
+              CORE FREIGHT &amp; TRADE SOLUTIONS
+            </span>
+            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+              Everything You Need for China-Nigeria Trade
+            </h2>
+            <p className="text-slate-300 text-base mt-3 max-w-2xl mx-auto">
+              From supplier payment in Yuan to cargo warehousing in Yiwu/Guangzhou and doorstep delivery in Nigeria.
+            </p>
+          </div>
+
+          {/* Large High-Impact Image Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {servicesData.map((service) => (
+              <div
+                key={service.id}
+                id={service.id}
+                className="group relative rounded-3xl overflow-hidden border-2 border-white/20 bg-slate-950 flex flex-col justify-between shadow-2xl transition-all duration-500 hover:border-[#FF4D4D] hover:shadow-red-950/50 hover:-translate-y-2 min-h-[470px]"
+              >
+                {/* Clean High-Res Background Image (No baked text) */}
+                <div
+                  className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110 opacity-50 group-hover:opacity-65"
+                  style={{ backgroundImage: `url('${service.image}')` }}
+                />
+                
+                {/* High Contrast Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/90 to-slate-950/40" />
+
+                {/* Card Content Top Header */}
+                <div className="relative z-10 p-8 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-5">
+                      <span className={`text-xs font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider ${service.badgeBg}`}>
+                        {service.badge}
+                      </span>
+                      <span className="text-xs font-bold text-slate-300 bg-slate-900/80 px-2.5 py-1 rounded-md border border-white/10">
+                        {service.subtitle}
+                      </span>
+                    </div>
+
+                    {/* Loud Bold Title */}
+                    <h3 className="text-2xl sm:text-3xl font-black text-white mb-3 tracking-tight leading-tight group-hover:text-[#FF4D4D] transition-colors drop-shadow-md">
+                      {service.title}
+                    </h3>
+
+                    <p className="text-slate-200 text-xs sm:text-sm leading-relaxed mb-6 font-normal">
+                      {service.desc}
+                    </p>
+                  </div>
+
+                  {/* Bullet Points */}
+                  <div className="space-y-2.5 mb-6 pt-4 border-t border-white/15">
+                    {service.features.map((feat, idx) => (
+                      <div key={idx} className="flex items-center gap-2.5 text-xs sm:text-sm text-slate-100 font-semibold">
+                        <CheckCircleFilled className="text-emerald-400 text-base shrink-0" />
+                        <span>{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Card Footer Button */}
+                <div className="relative z-10 p-8 pt-0">
+                  <Link to={service.ctaLink} className="block w-full">
+                    <Button
+                      block
+                      type="primary"
+                      className="!bg-[#C0262D] hover:!bg-[#A01F25] !border-none font-black h-13 rounded-xl text-xs sm:text-sm uppercase tracking-wider shadow-xl flex items-center justify-center gap-2"
+                      icon={<ArrowRightOutlined />}
+                      iconPlacement="end"
+                    >
+                      {service.ctaText}
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 8-Stage Real-Time Cargo Pipeline Section */}
+      <section className="py-16 bg-[#0A1B3A] text-white border-b border-slate-800">
+        <div className="container mx-auto px-4">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <span className="text-[#FF4D4D] font-bold text-xs uppercase tracking-widest bg-[#C0262D]/20 px-3.5 py-1 rounded-full border border-[#C0262D]/40">
               Live Visibility Pipeline
             </span>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-white mt-2 mb-2">
+            <h2 className="text-2xl md:text-4xl font-black text-white mt-3 mb-2">
               8-Step Real-Time Shipment Journey
             </h2>
-            <p className="text-slate-400 text-sm">
-              Track your goods at every single step from supplier dispatch in China to doorstep delivery in Nigeria without needing to call the office.
+            <p className="text-slate-300 text-sm">
+              Track your cargo at every stage from supplier dispatch in China to doorstep delivery in Nigeria.
             </p>
           </div>
 
@@ -170,8 +380,8 @@ export const LandingPage: React.FC = () => {
               { step: '7', title: 'Ready Delivery', desc: 'Sorted for pickup' },
               { step: '8', title: 'Delivered', desc: 'Received by client' },
             ].map((st, i) => (
-              <div key={i} className="bg-white/5 border border-white/10 p-3.5 rounded-xl text-center hover:border-brand-orange/50 transition-all">
-                <div className="w-7 h-7 rounded-full bg-brand-orange/20 text-brand-orange font-extrabold text-xs flex items-center justify-center mx-auto mb-2 border border-brand-orange/40">
+              <div key={i} className="bg-white/5 border border-white/10 p-4 rounded-xl text-center hover:border-[#FF4D4D] transition-all">
+                <div className="w-8 h-8 rounded-full bg-[#C0262D]/30 text-[#FF4D4D] font-black text-sm flex items-center justify-center mx-auto mb-2 border border-[#FF4D4D]/40">
                   {st.step}
                 </div>
                 <div className="font-extrabold text-xs text-white mb-1">{st.title}</div>
@@ -182,301 +392,37 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Services Grid (7 Core Services) */}
-      <section className="py-20 lg:py-28 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-14">
-            <div>
-              <div className="text-brand-orange font-bold text-xs uppercase tracking-widest mb-1">
-                Integrated Trade & Freight Solutions
-              </div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-brand-navy mb-3">
-                Core Services — HAMZA RMB GLOBAL
-              </h2>
-              <p className="text-slate-500 text-base max-w-2xl">
-                Specialized logistics, currency exchange, and procurement tailored specifically for China to Nigeria commerce.
-              </p>
-            </div>
-            <Link
-              to="/services"
-              className="text-brand-orange font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all"
-            >
-              Explore All Services <ArrowRightOutlined />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Air Freight */}
-            <div className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-brand-orange transition-all duration-300">
-              <div className="text-3xl mb-4">✈️</div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Air Freight</h3>
-              <p className="text-slate-500 text-xs leading-relaxed mb-4">
-                Express air cargo from Yiwu/Guangzhou to Nigeria (3–5 days delivery). Billed per KG.
-              </p>
-              <Link to="/services" className="text-brand-orange text-xs font-bold flex items-center gap-1">
-                View Air Rates &rarr;
-              </Link>
-            </div>
-
-            {/* Sea Freight */}
-            <div className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-brand-orange transition-all duration-300">
-              <div className="text-3xl mb-4">🚢</div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Sea Freight</h3>
-              <p className="text-slate-500 text-xs leading-relaxed mb-4">
-                Cost-effective LCL/FCL ocean shipping billed by CBM volume. Container tracking included.
-              </p>
-              <Link to="/services" className="text-brand-orange text-xs font-bold flex items-center gap-1">
-                Calculate CBM &rarr;
-              </Link>
-            </div>
-
-            {/* Cargo Consolidation */}
-            <div className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-brand-orange transition-all duration-300">
-              <div className="text-3xl mb-4">📦</div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Cargo Consolidation</h3>
-              <p className="text-slate-500 text-xs leading-relaxed mb-4">
-                Combine multiple supplier parcels into a single consolidated master batch to minimize shipping costs.
-              </p>
-              <Link to="/customer/consolidation" className="text-brand-orange text-xs font-bold flex items-center gap-1">
-                Consolidate Packages &rarr;
-              </Link>
-            </div>
-
-            {/* Buy For Me / Sourcing */}
-            <div className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-brand-orange transition-all duration-300">
-              <div className="text-3xl mb-4">🛒</div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Buy For Me / Sourcing</h3>
-              <p className="text-slate-500 text-xs leading-relaxed mb-4">
-                Send us product links from 1688, Taobao, or Alibaba. We handle supplier communication and procurement.
-              </p>
-              <Link to="/customer/buy-for-me" className="text-brand-orange text-xs font-bold flex items-center gap-1">
-                Submit Request &rarr;
-              </Link>
-            </div>
-
-            {/* RMB Exchange */}
-            <div className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-brand-orange transition-all duration-300">
-              <div className="text-3xl mb-4">💱</div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">RMB Exchange</h3>
-              <p className="text-slate-500 text-xs leading-relaxed mb-4">
-                Buy and sell Chinese Yuan (RMB) directly with instant Naira settlements and verified WeChat/Alipay transfers.
-              </p>
-              <Link to="/customer/exchange" className="text-brand-orange text-xs font-bold flex items-center gap-1">
-                Check RMB Rate &rarr;
-              </Link>
-            </div>
-
-            {/* Local Delivery */}
-            <div className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-brand-orange transition-all duration-300">
-              <div className="text-3xl mb-4">🚚</div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Local Delivery</h3>
-              <p className="text-slate-500 text-xs leading-relaxed mb-4">
-                Doorstep dispatch across Kano, Lagos, Abuja, and all 36 states upon customs clearance.
-              </p>
-              <Link to="/customer/delivery" className="text-brand-orange text-xs font-bold flex items-center gap-1">
-                Arrange Dispatch &rarr;
-              </Link>
-            </div>
-
-            {/* Shipment Tracking */}
-            <div className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:border-brand-orange transition-all duration-300 md:col-span-2">
-              <div className="text-3xl mb-4">📍</div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Shipment Tracking</h3>
-              <p className="text-slate-500 text-xs leading-relaxed mb-4">
-                Real-time tracking system supporting both HZ IDs and domestic Chinese courier numbers (SF Express, ZTO, Yunda, STO).
-              </p>
-              <Link to="/track" className="text-brand-orange text-xs font-bold flex items-center gap-1">
-                Track Package Now &rarr;
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Unmatched Global Reach */}
-      <section className="py-20 lg:py-28 bg-brand-navy text-white overflow-hidden">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-3xl lg:text-4xl font-bold mb-6">
-                Unmatched Global Reach
-              </h2>
-              <p className="text-slate-400 text-lg leading-relaxed mb-10 max-w-lg">
-                Operating in over 150 countries with a synchronized network of
-                warehouses, ports, and transport hubs to ensure seamless
-                delivery.
-              </p>
-
-              <div className="grid grid-cols-2 gap-x-8 gap-y-6 mb-10">
-                <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-1">
-                    Operations In
-                  </p>
-                  <p className="text-3xl font-bold text-white">
-                    150+{" "}
-                    <span className="text-base font-normal text-slate-400">
-                      Countries
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-1">
-                    Annual Volume
-                  </p>
-                  <p className="text-3xl font-bold text-white">
-                    2.4M{" "}
-                    <span className="text-base font-normal text-slate-400">
-                      TEUs
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-1">
-                    On-Time Delivery
-                  </p>
-                  <p className="text-3xl font-bold text-white">
-                    99.2%{" "}
-                    <span className="text-base font-normal text-slate-400">
-                      Rate
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-1">
-                    Dedicated Fleet
-                  </p>
-                  <p className="text-3xl font-bold text-white">
-                    4,500{" "}
-                    <span className="text-base font-normal text-slate-400">
-                      Vehicles
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              <Link to="/services">
-                <Button
-                  ghost
-                  size="large"
-                  className="!text-white !border-slate-600 hover:!border-white !h-11 !px-6 !rounded-lg font-medium"
-                >
-                  View Network Map
-                </Button>
-              </Link>
-            </div>
-
-            {/* Map / Visual Placeholder */}
-            <div className="relative">
-              <div className="bg-slate-800/50 border border-slate-700 rounded-2xl aspect-[4/3] flex items-center justify-center overflow-hidden">
-                <div className="text-center">
-                  <GlobalOutlined className="text-5xl text-slate-600 mb-3" />
-                  <p className="text-slate-500 text-sm">
-                    Global Network Visualization
-                  </p>
-                </div>
-                {/* Live indicator */}
-                <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-slate-900/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-slate-700">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse-slow" />
-                  <span className="text-xs text-slate-300 font-medium">
-                    Live Tracking Active
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Engineered for Reliability */}
-      <section className="py-20 lg:py-28 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <h2 className="text-3xl lg:text-4xl font-bold text-brand-navy mb-4">
-              Engineered for Reliability
-            </h2>
-            <p className="text-slate-500 text-lg">
-              We combine cutting-edge technology with decades of operational
-              expertise to de-risk your supply chain.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Secure Handling */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center hover:shadow-lg transition-shadow duration-300">
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6">
-                <SafetyCertificateOutlined className="text-3xl text-brand-orange" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-3">
-                Secure Handling
-              </h3>
-              <p className="text-slate-500 text-sm leading-relaxed">
-                Military-grade protocols and 24/7 surveillance ensure your cargo
-                is protected at every touchpoint.
-              </p>
-            </div>
-
-            {/* Expedited Routing */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center hover:shadow-lg transition-shadow duration-300">
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6">
-                <ThunderboltOutlined className="text-3xl text-brand-orange" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-3">
-                Expedited Routing
-              </h3>
-              <p className="text-slate-500 text-sm leading-relaxed">
-                Proprietary AI algorithms dynamically optimize routes to bypass
-                bottlenecks and reduce transit times.
-              </p>
-            </div>
-
-            {/* Dedicated Support */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center hover:shadow-lg transition-shadow duration-300">
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6">
-                <CustomerServiceOutlined className="text-3xl text-brand-orange" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-3">
-                Dedicated Support
-              </h3>
-              <p className="text-slate-500 text-sm leading-relaxed">
-                Assigned logistics specialists monitor your high-value shipments
-                and provide proactive communication.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Global Offices & Operational Contacts Section */}
-      <section className="py-20 bg-slate-900 text-white relative overflow-hidden">
+      {/* Warehouses & Representatives Section (Strictly China & Nigeria ONLY) */}
+      <section className="py-20 bg-slate-950 text-white relative overflow-hidden">
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-brand-orange font-bold text-xs tracking-wider uppercase bg-brand-orange/10 px-4 py-1.5 rounded-full border border-brand-orange/20">
-              Worldwide Footprint
+            <span className="text-[#FF4D4D] font-bold text-xs tracking-widest uppercase bg-[#C0262D]/20 px-4 py-1.5 rounded-full border border-[#C0262D]/40">
+              OUR OFFICES &amp; WAREHOUSES
             </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold mt-4 mb-4 text-white">
-              Global Air Cargo & Local Distribution Hubs
+            <h2 className="text-3xl md:text-4xl font-black mt-4 mb-4 text-white">
+              China &amp; Nigeria Operational Hubs
             </h2>
-            <p className="text-slate-400 text-base leading-relaxed">
-              Serving trade corridors between China and Nigeria with registered air cargo receiving facilities and dedicated local support teams.
+            <p className="text-slate-300 text-base leading-relaxed">
+              We operate exclusively on the China ➔ Nigeria trade corridor with receiving warehouses in China and distribution facilities in Nigeria.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {/* China Air Hub Card */}
+            {/* China Hub Card */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 font-bold text-xs uppercase mb-4">
-                ✈️ China Air Cargo Hub
+                🇨🇳 China Receiving Hubs
               </div>
               <h3 className="text-xl font-bold text-white mb-2">
-                Yiwu Freight Receiving Center
+                Guangzhou &amp; Yiwu Warehouses
               </h3>
               <p className="text-slate-300 text-sm leading-relaxed mb-4">
-                {settings?.chinaAirCargoAddressEn || 'Room 602, International Trade Mansion, Chouzhou North Road, Yiwu City, Jinhua City, Zhejiang Province, China'}
+                {settings?.chinaAirCargoAddressEn || 'Room 602, International Trade Mansion, Chouzhou North Road, Yiwu City, Zhejiang Province, China'}
               </p>
-              <div className="text-slate-400 text-xs font-mono mb-2">
-                Chinese: {settings?.chinaAirCargoAddressCn || '义乌市稠州北路国贸大厦6楼602'}
+              <div className="text-slate-400 text-xs font-mono mb-3">
+                Address (Chinese): {settings?.chinaAirCargoAddressCn || '义乌市稠州北路国贸大厦6楼602'}
               </div>
-              <div className="text-brand-orange font-bold text-sm">
+              <div className="text-[#FF4D4D] font-bold text-sm">
                 Tel: {settings?.chinaAirCargoPhone || '+86 158 6890 7118'}
               </div>
             </div>
@@ -484,16 +430,16 @@ export const LandingPage: React.FC = () => {
             {/* Nigeria Kano Office Card */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-emerald-500/20 text-emerald-400 font-bold text-xs uppercase mb-4">
-                🇳🇬 Nigeria Office & Distribution
+                🇳🇬 Nigeria Distribution Hubs
               </div>
               <h3 className="text-xl font-bold text-white mb-2">
-                Kano Headquarters
+                Kano &amp; Lagos Distribution Centers
               </h3>
               <p className="text-slate-300 text-sm leading-relaxed mb-6">
                 {settings?.nigeriaOfficeAddress || 'No. 08 Gwarzo Road Beside Shopwell, Gwale Kano State, Nigeria'}
               </p>
               <div className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">
-                Direct Representatives
+                Direct WhatsApp Representatives
               </div>
               <div className="flex flex-wrap gap-2">
                 {(() => {
@@ -522,3 +468,5 @@ export const LandingPage: React.FC = () => {
     </div>
   );
 };
+
+export default LandingPage;

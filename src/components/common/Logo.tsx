@@ -110,10 +110,10 @@ export const Logo: React.FC<LogoProps> = ({
 
   // Height mappings based on size
   const heightClasses = {
-    sm: 'h-8 sm:h-9',
-    md: 'h-10 sm:h-12',
-    lg: 'h-13 sm:h-15',
-    xl: 'h-16 sm:h-20',
+    sm: 'h-9 sm:h-10',
+    md: 'h-12 sm:h-14 md:h-16',
+    lg: 'h-15 sm:h-18',
+    xl: 'h-18 sm:h-22',
   };
 
   const currentHeightClass = heightClasses[size] || 'h-10 sm:h-12';
