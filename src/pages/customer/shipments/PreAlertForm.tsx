@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Card, Form, Input, InputNumber, Select, Button, message } from "antd";
+import { Card, Form, Input, InputNumber, Select, Button, message, Alert } from "antd";
 import type { UploadFile } from "antd";
 import {
   ArrowLeftOutlined,
@@ -9,8 +9,9 @@ import {
   PictureOutlined,
   EnvironmentOutlined,
   CreditCardOutlined,
+  CalculatorOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { createPreAlert } from "../../../store/slices/shipmentSlice";
 import { fetchFacilities } from "../../../store/slices/facilitySlice";
@@ -40,13 +41,39 @@ export const PreAlertForm: React.FC = () => {
   const [form] = Form.useForm();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { facilities, loading: facilitiesLoading } = useAppSelector((state) => state.facilities || { facilities: [], loading: false });
   const [submitting, setSubmitting] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
 
+  // Read params passed from the Get-Quote calculator
+  const qMode = searchParams.get('mode');        // 'air' | 'sea'
+  const qOrigin = searchParams.get('origin');    // 'guangzhou' | 'yiwu'
+  const qDesc = searchParams.get('description');
+  const qEstNgn = searchParams.get('estimatedNgn');
+  const fromCalculator = !!(qMode || qOrigin || qDesc || qEstNgn);
+
   useEffect(() => {
     dispatch(fetchFacilities());
   }, [dispatch]);
+
+  // Pre-fill non-warehouse fields immediately from URL params
+  useEffect(() => {
+    const prefill: Record<string, any> = {};
+    if (qMode) {
+      prefill.shippingMethod = qMode === 'air' ? 'air' : 'sea';
+    }
+    if (qDesc) {
+      prefill.description = qDesc;
+    }
+    if (qEstNgn) {
+      prefill.notes = `Estimated freight cost from calculator: ₦${Number(qEstNgn).toLocaleString()} NGN`;
+    }
+    if (Object.keys(prefill).length > 0) {
+      form.setFieldsValue(prefill);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Purely fetch and map China receiving facilities directly from the database table via API
   const warehouseOptions = useMemo(() => {
@@ -61,11 +88,22 @@ export const PreAlertForm: React.FC = () => {
   }, [facilities]);
 
   // Set default initial value to the first China facility returned from the database
+  // If a specific origin was passed from the calculator, match it
   useEffect(() => {
-    if (warehouseOptions.length > 0 && !form.getFieldValue("originCountry")) {
-      form.setFieldsValue({ originCountry: warehouseOptions[0].value });
+    if (warehouseOptions.length > 0) {
+      if (qOrigin && !form.getFieldValue("originCountry")) {
+        // Try to match guangzhou or yiwu in the facility name
+        const keyword = qOrigin.toLowerCase();
+        const matched = warehouseOptions.find((opt) =>
+          opt.label.toLowerCase().includes(keyword) ||
+          opt.value.toLowerCase().includes(keyword)
+        );
+        form.setFieldsValue({ originCountry: matched?.value ?? warehouseOptions[0].value });
+      } else if (!form.getFieldValue("originCountry")) {
+        form.setFieldsValue({ originCountry: warehouseOptions[0].value });
+      }
     }
-  }, [warehouseOptions, form]);
+  }, [warehouseOptions, form, qOrigin]);
 
   const onFinish = async (values: PreAlertPayload) => {
     const errors = await validateForm(
@@ -124,6 +162,25 @@ export const PreAlertForm: React.FC = () => {
           Let us know a package is coming so we can watch for it at our warehouse facility.
         </p>
       </div>
+
+      {fromCalculator && (
+        <div className="max-w-2xl mx-auto">
+          <Alert
+            type="success"
+            icon={<CalculatorOutlined />}
+            showIcon
+            closable
+            message="Form pre-filled from your quote"
+            description={
+              <span className="text-xs">
+                We've pre-filled the <strong>shipping method</strong>, <strong>cargo description</strong>, and <strong>estimated cost</strong> from the freight calculator.
+                Please review and fill in the remaining required fields before submitting.
+              </span>
+            }
+            className="mb-4 rounded-xl"
+          />
+        </div>
+      )}
 
       <div className="flex justify-center">
         <Card

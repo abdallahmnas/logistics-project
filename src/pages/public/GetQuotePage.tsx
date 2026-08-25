@@ -1,220 +1,369 @@
-import React from 'react';
-import { Form, Input, Button, Card, Select, InputNumber } from 'antd';
-import { 
-  LockOutlined, 
-  CalculatorOutlined,
-  EnvironmentOutlined,
-  GlobalOutlined,
-  MailOutlined
-} from '@ant-design/icons';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Form, Input, Button, Card, Select, InputNumber, Tag, message } from 'antd';
+import { CalculatorOutlined, ArrowRightOutlined, PhoneOutlined } from '@ant-design/icons';
+import { useAppSelector } from '../../store/hooks';
 
 const { Option } = Select;
 
 export const GetQuotePage: React.FC = () => {
   const [form] = Form.useForm();
+  const navigate = useNavigate();
+  const { settings } = useAppSelector((state) => state.settings);
+
+  const [modality, setModality] = useState<'air' | 'sea'>('air');
+  const [weightKg, setWeightKg] = useState<number>(10);
+  const [volumeCbm, setVolumeCbm] = useState<number>(0.5);
+  const [origin, setOrigin] = useState<string>('guangzhou');
+  const [destination, setDestination] = useState<string>('kano');
+
+  // Pull live rates from Admin Settings panel
+  const airRatePerKgUsd = settings?.airFreightRatePerKg ?? 7.50;
+  const seaRatePerCbmUsd = settings?.seaFreightRatePerCbm ?? 240;
+  const usdToNaira = settings?.usdExchangeRate ?? 1550;
+
+  // Calculate NGN estimate
+  let estimatedNaira = 0;
+  let estimatedTransit = '';
+  let estimatedUnit = '';
+
+  if (modality === 'air') {
+    const usd = Math.max(weightKg * airRatePerKgUsd, 25);
+    estimatedNaira = Math.round(usd * usdToNaira);
+    estimatedTransit = '3–5 Business Days';
+    estimatedUnit = `Based on ${weightKg} KG × ₦${(airRatePerKgUsd * usdToNaira).toLocaleString()}/kg`;
+  } else {
+    const usd = Math.max(volumeCbm * seaRatePerCbmUsd, 50);
+    estimatedNaira = Math.round(usd * usdToNaira);
+    estimatedTransit = '30–45 Days';
+    estimatedUnit = `Based on ${volumeCbm} CBM × ₦${(seaRatePerCbmUsd * usdToNaira).toLocaleString()}/CBM`;
+  }
+
+  const destinationLabel = destination === 'kano' ? 'Kano Hub — No. 08 Gwarzo Road' : 'Lagos Central Warehouse';
+  const originLabel = origin === 'guangzhou' ? 'Guangzhou Warehouse Hub' : 'Yiwu International Mansion Hub';
 
   const onFinish = (values: any) => {
-    console.log('Quote Request:', values);
+    const params = new URLSearchParams({
+      mode: modality,
+      origin,
+      destination,
+      weight: String(weightKg),
+      volume: String(volumeCbm),
+      estimatedNgn: String(estimatedNaira),
+      description: values.description || '',
+    });
+    navigate(`/customer/shipments/pre-alert?${params.toString()}`);
   };
 
   return (
-    <div className="min-h-[calc(100vh-80px)] flex flex-col md:flex-row relative">
-      {/* Left Dark Background Strip (Desktop) */}
-      <div className="hidden md:block absolute left-0 top-0 bottom-0 w-1/3 lg:w-[40%] bg-brand-navy z-0" />
-      {/* Right Light Background Strip (Desktop) */}
-      <div className="hidden md:block absolute right-0 top-0 bottom-0 w-2/3 lg:w-[60%] bg-slate-50 z-0" />
+    <div className="min-h-screen font-sans" style={{ background: '#f4f6fb' }}>
 
-      {/* Content Container */}
-      <div className="container mx-auto px-4 md:px-8 py-12 md:py-20 relative z-10 w-full">
-        
-        {/* Header Text (Mobile: bg-brand-navy padding, Desktop: just text on dark bg) */}
-        <div className="md:w-[40%] lg:w-[35%] md:pr-12 text-white mb-10 md:mb-0 md:fixed md:top-40 max-w-sm bg-brand-navy p-6 md:p-0 rounded-2xl md:rounded-none">
-          <div className="flex items-center gap-4 text-brand-orange text-xs font-bold tracking-widest uppercase mb-4">
-            <span className="w-8 h-[1px] bg-brand-orange" />
-            Connect With Us
+      {/* ── Hero Banner ── */}
+      <section className="relative py-14" style={{ background: 'linear-gradient(135deg, #0A1B3A 0%, #14274F 100%)' }}>
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#C0262D_1px,transparent_1px)] [background-size:22px_22px]" />
+        <div className="relative z-10 max-w-3xl mx-auto px-6 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-red-500/40 bg-red-600/20 text-red-400 text-xs font-black uppercase tracking-widest mb-5">
+            <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+            China ➔ Nigeria Freight Calculator
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
-            Precision logistics, tailored to your scale.
+          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight mb-3">
+            Get Your Shipping Quote
           </h1>
-          <p className="text-slate-300 text-base leading-relaxed">
-            Request a comprehensive freight quote or reach out to our global support teams. We engineer supply chain solutions for the world's most demanding industries.
+          <p className="text-slate-300 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
+            Instant estimates for Express Air & Ocean Sea Freight — from our Guangzhou & Yiwu warehouses to Kano and Lagos.
           </p>
-
-          <div className="mt-12 bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4">
-             <div className="w-12 h-12 rounded-lg bg-brand-orange flex items-center justify-center shrink-0">
-               <span className="text-white font-bold">24/7</span>
-             </div>
-             <div>
-               <p className="text-xs text-slate-400 font-semibold mb-1">24/7 Global AOG Desk</p>
-               <p className="text-xl text-white font-bold">+1 800 555-CRIT</p>
-             </div>
-          </div>
         </div>
+      </section>
 
-        {/* Right Content Area */}
-        <div className="md:ml-[40%] lg:ml-[35%] flex flex-col lg:flex-row gap-8">
-          
-          {/* Main Form Card */}
-          <Card className="flex-1 shadow-2xl border-none rounded-2xl overflow-hidden bg-white p-2 sm:p-6">
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
-              <h2 className="text-3xl font-bold text-slate-800 m-0">Request a Quote</h2>
-              <div className="flex items-center gap-2 text-slate-500 font-medium text-sm">
-                <LockOutlined /> Secure Form
+      {/* ── Main Content ── */}
+      <section className="py-12 lg:py-16">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-6xl mx-auto">
+
+            {/* ── Calculator Card (8 cols) ── */}
+            <div className="lg:col-span-8">
+              <div className="bg-white rounded-3xl shadow-xl border border-slate-200 p-8">
+
+                {/* Card Header */}
+                <div className="flex items-center justify-between mb-8 pb-5 border-b border-slate-100">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 m-0">
+                      <CalculatorOutlined className="text-red-600" /> Freight Rate Estimator
+                    </h2>
+                    <p className="text-slate-500 text-xs mt-1 m-0">
+                      Guangzhou & Yiwu → Kano & Lagos
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-black border border-emerald-300 bg-emerald-50 text-emerald-700">
+                    🇨🇳 China → 🇳🇬 Nigeria
+                  </span>
+                </div>
+
+                <Form form={form} layout="vertical" onFinish={onFinish} size="large">
+
+                  {/* Step 1 — Service */}
+                  <div className="mb-8">
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">
+                      1. Select Shipping Service
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+
+                      {/* Air Freight */}
+                      <button
+                        type="button"
+                        onClick={() => setModality('air')}
+                        className={`p-5 rounded-2xl border-2 text-left transition-all flex flex-col gap-3 cursor-pointer ${
+                          modality === 'air'
+                            ? 'border-red-500 bg-red-50 shadow-md'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <span className="text-3xl">✈️</span>
+                        <div>
+                          <div className={`font-black text-base ${modality === 'air' ? 'text-red-700' : 'text-slate-800'}`}>
+                            Express Air Freight
+                          </div>
+                          <div className="text-xs text-slate-500 mt-0.5 font-medium">
+                            Per KG · 3–5 Business Days
+                          </div>
+                        </div>
+                        {modality === 'air' && (
+                          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">✓ Selected</span>
+                        )}
+                      </button>
+
+                      {/* Sea Freight */}
+                      <button
+                        type="button"
+                        onClick={() => setModality('sea')}
+                        className={`p-5 rounded-2xl border-2 text-left transition-all flex flex-col gap-3 cursor-pointer ${
+                          modality === 'sea'
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <span className="text-3xl">🚢</span>
+                        <div>
+                          <div className={`font-black text-base ${modality === 'sea' ? 'text-blue-700' : 'text-slate-800'}`}>
+                            Ocean Sea Freight
+                          </div>
+                          <div className="text-xs text-slate-500 mt-0.5 font-medium">
+                            Per CBM · 30–45 Days
+                          </div>
+                        </div>
+                        {modality === 'sea' && (
+                          <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">✓ Selected</span>
+                        )}
+                      </button>
+
+                    </div>
+                  </div>
+
+                  {/* Step 2 — Route */}
+                  <div className="mb-8">
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">
+                      2. Select Route
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                      <Form.Item
+                        label={<span className="text-sm font-bold text-slate-700">China Receiving Warehouse</span>}
+                        className="mb-0"
+                      >
+                        <Select value={origin} onChange={setOrigin} size="large" className="w-full">
+                          <Option value="guangzhou">🇨🇳 Guangzhou Warehouse</Option>
+                          <Option value="yiwu">🇨🇳 Yiwu — Chouzhou North Rd</Option>
+                        </Select>
+                      </Form.Item>
+
+                      <Form.Item
+                        label={<span className="text-sm font-bold text-slate-700">Nigeria Destination Hub</span>}
+                        className="mb-0"
+                      >
+                        <Select value={destination} onChange={setDestination} size="large" className="w-full">
+                          <Option value="kano">🇳🇬 Kano Hub — Gwarzo Road</Option>
+                          <Option value="lagos">🇳🇬 Lagos Central Warehouse</Option>
+                        </Select>
+                      </Form.Item>
+
+                    </div>
+                  </div>
+
+                  {/* Step 3 — Cargo Specs */}
+                  <div className="mb-8">
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">
+                      3. Cargo Specifications
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                      <Form.Item
+                        label={<span className="text-sm font-bold text-slate-700">Gross Weight (KG)</span>}
+                        className="mb-0"
+                      >
+                        <InputNumber
+                          min={0.1} max={5000}
+                          value={weightKg}
+                          onChange={(v) => setWeightKg(v || 1)}
+                          className="w-full"
+                          addonAfter="KG"
+                        />
+                      </Form.Item>
+
+                      {modality === 'sea' && (
+                        <Form.Item
+                          label={<span className="text-sm font-bold text-slate-700">Volume (CBM)</span>}
+                          className="mb-0"
+                        >
+                          <InputNumber
+                            min={0.01} max={500}
+                            value={volumeCbm}
+                            onChange={(v) => setVolumeCbm(v || 0.1)}
+                            className="w-full"
+                            addonAfter="CBM"
+                          />
+                        </Form.Item>
+                      )}
+
+                    </div>
+                  </div>
+
+                  {/* Cargo Description */}
+                  <Form.Item
+                    label={<span className="text-sm font-bold text-slate-700">Cargo Description (Optional)</span>}
+                    name="description"
+                    className="mb-6"
+                  >
+                    <Input.TextArea
+                      rows={2}
+                      placeholder="e.g. Shoes, clothing, electronics, solar panels..."
+                      className="rounded-xl"
+                    />
+                  </Form.Item>
+
+                  {/* ── Estimate Result Card ── */}
+                  <div
+                    className="rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6"
+                    style={{
+                      background: modality === 'air'
+                        ? 'linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%)'
+                        : 'linear-gradient(135deg, #eff8ff 0%, #dbeafe 100%)',
+                      border: modality === 'air' ? '2px solid #fca5a5' : '2px solid #93c5fd',
+                    }}
+                  >
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-widest mb-1"
+                        style={{ color: modality === 'air' ? '#b91c1c' : '#1d4ed8' }}>
+                        Estimated Freight Cost
+                      </p>
+                      <div className="text-4xl font-black text-slate-900">
+                        ₦{estimatedNaira.toLocaleString()}
+                        <span className="text-lg font-bold text-slate-500 ml-2">NGN</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1.5 font-medium">{estimatedUnit}</p>
+                      <p className="text-xs font-bold mt-1" style={{ color: modality === 'air' ? '#dc2626' : '#2563eb' }}>
+                        ⏱ Estimated Transit: {estimatedTransit}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        * Estimate only. Final rate confirmed after cargo inspection.
+                      </p>
+                    </div>
+
+                    <div className="w-full sm:w-auto shrink-0">
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        size="large"
+                        icon={<ArrowRightOutlined />}
+                        className="w-full sm:w-auto !bg-[#C0262D] hover:!bg-[#a01f25] !border-none font-black !px-8 !rounded-xl shadow-lg"
+                      >
+                        Create Pre-Alert Shipment
+                      </Button>
+                    </div>
+                  </div>
+
+                </Form>
               </div>
             </div>
 
-            <Form form={form} layout="vertical" onFinish={onFinish} size="large">
-              
-              {/* Step 1 */}
-              <div className="mb-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">1</div>
-                  <h3 className="text-lg font-semibold text-slate-700 m-0">Freight Modality</h3>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Selectable Cards (Simulated with Radio style or just standard buttons/divs) */}
-                  <label className="cursor-pointer">
-                    <input type="radio" name="modality" value="ocean" className="peer sr-only" defaultChecked />
-                    <div className="border-2 border-slate-200 rounded-xl p-4 peer-checked:border-brand-orange peer-checked:bg-orange-50 transition-all relative">
-                      <div className="w-4 h-4 rounded-full border-2 border-slate-300 absolute top-4 right-4 peer-checked:border-brand-orange flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-brand-orange opacity-0 peer-checked:opacity-100" />
-                      </div>
-                      <GlobalOutlined className="text-2xl text-slate-700 mb-2 block" />
-                      <p className="font-bold text-slate-800 m-0">Ocean Freight</p>
-                      <p className="text-xs text-slate-500 m-0">FCL / LCL Shipping</p>
-                    </div>
-                  </label>
+            {/* ── Right Sidebar (4 cols) ── */}
+            <div className="lg:col-span-4 flex flex-col gap-5">
 
-                  <label className="cursor-pointer">
-                    <input type="radio" name="modality" value="air" className="peer sr-only" />
-                    <div className="border-2 border-slate-200 rounded-xl p-4 peer-checked:border-brand-orange peer-checked:bg-orange-50 transition-all relative">
-                      <div className="w-4 h-4 rounded-full border-2 border-slate-300 absolute top-4 right-4 peer-checked:border-brand-orange flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-brand-orange opacity-0 peer-checked:opacity-100" />
-                      </div>
-                      <span className="text-2xl text-slate-700 mb-2 block">✈️</span>
-                      <p className="font-bold text-slate-800 m-0">Air Freight</p>
-                      <p className="text-xs text-slate-500 m-0">Express / Priority</p>
-                    </div>
-                  </label>
-
-                  <label className="cursor-pointer">
-                    <input type="radio" name="modality" value="land" className="peer sr-only" />
-                    <div className="border-2 border-slate-200 rounded-xl p-4 peer-checked:border-brand-orange peer-checked:bg-orange-50 transition-all relative">
-                      <div className="w-4 h-4 rounded-full border-2 border-slate-300 absolute top-4 right-4 peer-checked:border-brand-orange flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-brand-orange opacity-0 peer-checked:opacity-100" />
-                      </div>
-                      <span className="text-2xl text-slate-700 mb-2 block">🚚</span>
-                      <p className="font-bold text-slate-800 m-0">Land Transit</p>
-                      <p className="text-xs text-slate-500 m-0">FTL / LTL Haulage</p>
-                    </div>
-                  </label>
+              {/* China Card */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <span className="inline-block px-3 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-black uppercase tracking-wider border border-blue-200 mb-4">
+                  🇨🇳 China Receiving Hubs
+                </span>
+                <h3 className="text-base font-black text-slate-900 mb-2">Yiwu & Guangzhou Warehouses</h3>
+                <p className="text-slate-600 text-sm leading-relaxed mb-3">
+                  {settings?.chinaAirCargoAddressEn || 'Room 602, International Trade Mansion, Chouzhou North Road, Yiwu City, Zhejiang Province, China'}
+                </p>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 font-mono text-xs text-slate-600">
+                  中文地址：<br />
+                  <span className="text-slate-800 font-semibold">{settings?.chinaAirCargoAddressCn || '义乌市稠州北路国贸大厦6楼602'}</span>
                 </div>
+                <a
+                  href={`tel:${settings?.chinaAirCargoPhone || '+8615868907118'}`}
+                  className="inline-flex items-center gap-2 text-red-600 font-bold text-sm hover:underline"
+                >
+                  <PhoneOutlined /> {settings?.chinaAirCargoPhone || '+86 158 6890 7118'}
+                </a>
               </div>
 
-              {/* Step 2 */}
-              <div className="mb-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">2</div>
-                  <h3 className="text-lg font-semibold text-slate-700 m-0">Routing Details</h3>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row items-center gap-4 relative">
-                  <Form.Item name="origin" label={<span className="text-xs font-bold text-slate-500">Origin (City, Port, or Zip)</span>} className="w-full mb-0">
-                    <Input prefix={<EnvironmentOutlined className="text-slate-400" />} placeholder="e.g. Shanghai, CN" className="!h-12 !rounded-lg" />
-                  </Form.Item>
-                  
-                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 z-10 sm:mt-6 border-2 border-white text-slate-400">
-                    &rarr;
-                  </div>
+              {/* Nigeria Card */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <span className="inline-block px-3 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-wider border border-emerald-200 mb-4">
+                  🇳🇬 Nigeria Distribution Hubs
+                </span>
+                <h3 className="text-base font-black text-slate-900 mb-2">Kano & Lagos Warehouses</h3>
+                <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                  {settings?.nigeriaOfficeAddress || 'No. 08 Gwarzo Road, Beside Shopwell, Gwale, Kano State, Nigeria'}
+                </p>
 
-                  <Form.Item name="destination" label={<span className="text-xs font-bold text-slate-500">Destination (City, Port, or Zip)</span>} className="w-full mb-0">
-                    <Input prefix={<EnvironmentOutlined className="text-slate-400" />} placeholder="e.g. Rotterdam, NL" className="!h-12 !rounded-lg" />
-                  </Form.Item>
-                </div>
-              </div>
-
-              {/* Step 3 */}
-              <div className="mb-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">3</div>
-                  <h3 className="text-lg font-semibold text-slate-700 m-0">Cargo Specifications</h3>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <Form.Item name="weight" label={<span className="text-xs font-bold text-slate-500">Total Weight</span>} className="mb-0">
-                     <div className="flex">
-                       <InputNumber min={0} className="w-full !rounded-l-lg !rounded-r-none !h-12" placeholder="0.00" />
-                       <Select defaultValue="KG" className="w-24 border-l-0 !h-12" popupMatchSelectWidth={false}>
-                         <Option value="KG">KG</Option>
-                         <Option value="LBS">LBS</Option>
-                       </Select>
-                     </div>
-                  </Form.Item>
-                  <Form.Item name="volume" label={<span className="text-xs font-bold text-slate-500">Total Volume (Optional)</span>} className="mb-0">
-                     <div className="flex">
-                       <InputNumber min={0} className="w-full !rounded-l-lg !rounded-r-none !h-12" placeholder="0.00" />
-                       <Select defaultValue="CBM" className="w-24 border-l-0 !h-12" popupMatchSelectWidth={false}>
-                         <Option value="CBM">CBM</Option>
-                         <Option value="CFT">CFT</Option>
-                       </Select>
-                     </div>
-                  </Form.Item>
-                </div>
-              </div>
-
-              <Button type="primary" htmlType="submit" className="!bg-brand-orange hover:!bg-orange-600 !border-brand-orange !h-12 !px-8 font-bold !rounded-lg shadow-lg shadow-brand-orange/20 mt-4" icon={<CalculatorOutlined />}>
-                Calculate Rate Estimate
-              </Button>
-            </Form>
-          </Card>
-
-          {/* Sidebar */}
-          <div className="lg:w-80 flex flex-col gap-6">
-            
-            {/* Headquarters Card */}
-            <Card className="shadow-lg border-none rounded-2xl overflow-hidden bg-white p-0">
-              <h3 className="text-xl font-bold text-slate-800 p-5 pb-4 border-b border-slate-100 m-0">Global Headquarters</h3>
-              
-              <div className="h-40 bg-cover bg-center" style={{backgroundImage: "url('https://maps.googleapis.com/maps/api/staticmap?center=New+York,NY&zoom=12&size=400x200&maptype=roadmap&markers=color:orange%7Clabel:HQ%7CNew+York,NY&key=YOUR_API_KEY') "}}>
-                {/* Fallback pattern if no map key */}
-                <div className="w-full h-full bg-slate-200/50 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
-              </div>
-
-              <div className="p-5 flex gap-3">
-                <EnvironmentOutlined className="text-slate-400 mt-1" />
-                <div>
-                  <p className="font-bold text-slate-800 text-sm mb-1">Americas Hub</p>
-                  <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                    One World Trade Center<br/>
-                    Suite 4500<br/>
-                    New York, NY 10007
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3">
+                    WhatsApp Representatives
                   </p>
-                  <a href="mailto:na@globallogistics.com" className="text-brand-orange text-xs font-semibold flex items-center gap-2">
-                    <MailOutlined /> na@globallogistics.com
-                  </a>
+                  <div className="flex flex-col gap-2">
+                    {(() => {
+                      try {
+                        const list = settings?.companyContacts ? JSON.parse(settings.companyContacts) : [];
+                        return list.slice(0, 4).map((c: any, i: number) => (
+                          <a
+                            key={i}
+                            href={`https://wa.me/${c.phone.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors"
+                          >
+                            <span className="font-bold text-slate-800">{c.name}</span>
+                            <span className="font-mono text-slate-500">{c.phone}</span>
+                          </a>
+                        ));
+                      } catch {
+                        return (
+                          <a
+                            href="https://wa.me/8615868907118"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between bg-slate-50 hover:bg-emerald-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-700"
+                          >
+                            <span className="font-bold">Logistics Desk</span>
+                            <span className="font-mono text-slate-500">+86 158 6890 7118</span>
+                          </a>
+                        );
+                      }
+                    })()}
+                  </div>
                 </div>
               </div>
-            </Card>
 
-            {/* Regional Offices */}
-            <Card className="shadow-lg border-none rounded-2xl bg-white p-0">
-              <h3 className="text-lg font-bold text-slate-800 p-5 pb-4 flex items-center gap-2 m-0 border-b border-slate-100">
-                <GlobalOutlined /> Regional Offices
-              </h3>
-              <div className="flex flex-col">
-                <button className="px-5 py-4 text-left font-semibold text-slate-700 text-sm border-b border-slate-100 flex justify-between items-center hover:bg-slate-50 transition-colors">
-                  Europe & Africa <span>⌄</span>
-                </button>
-                <button className="px-5 py-4 text-left font-semibold text-slate-700 text-sm flex justify-between items-center hover:bg-slate-50 transition-colors">
-                  Asia Pacific <span>⌄</span>
-                </button>
-              </div>
-            </Card>
+            </div>
 
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };
+
+export default GetQuotePage;
