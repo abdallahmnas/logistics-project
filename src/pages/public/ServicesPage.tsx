@@ -32,8 +32,8 @@ export const ServicesPage: React.FC = () => {
         'Automated weight-based billing with competitive rates',
         'SMS & WhatsApp status alerts upon arrival in Kano/Lagos',
       ],
-      ctaText: 'Calculate Air Freight Quote',
-      ctaLink: '/customer/shipments',
+      ctaText: 'Calculate',
+      ctaLink: '/get-quote',
     },
     {
       id: 'sea-freight',
@@ -52,8 +52,8 @@ export const ServicesPage: React.FC = () => {
         'Complete port clearance and transport to inland depots',
         'Secure container loading with photo logs',
       ],
-      ctaText: 'Request Sea Freight Quote',
-      ctaLink: '/customer/shipments',
+      ctaText: 'Calculate',
+      ctaLink: '/get-quote',
     },
     {
       id: 'consolidation',

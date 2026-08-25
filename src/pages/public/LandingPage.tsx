@@ -38,8 +38,8 @@ export const LandingPage: React.FC = () => {
         "Includes full customs duty clearance",
         "Direct warehouse dispatch upon arrival",
       ],
-      ctaText: "Learn About Air Cargo",
-      ctaLink: "/customer/shipments",
+      ctaText: "Calculate Air Freight Quote",
+      ctaLink: "/get-quote",
     },
     {
       id: "sea-freight",
@@ -54,8 +54,8 @@ export const LandingPage: React.FC = () => {
         "Full container & LCL groupage",
         "Port clearance & inland transfer",
       ],
-      ctaText: "Calculate CBM Shipping",
-      ctaLink: "/customer/shipments",
+      ctaText: "Calculate Sea Freight Quote",
+      ctaLink: "/get-quote",
     },
     {
       id: "buy-for-me",
