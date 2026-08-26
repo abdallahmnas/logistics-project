@@ -312,14 +312,27 @@ export const AdminLayout: React.FC = () => {
           notifications.slice(0, 8).map((n) => (
             <div
               key={n.id}
-              onClick={() => dispatch(markAsRead(n.id))}
+              onClick={() => {
+                dispatch(markAsRead(n.id));
+                if (n.type === 'support') {
+                  navigate(n.referenceId ? `/admin/support/${n.referenceId}` : '/admin/support');
+                } else if (n.type === 'shipment') {
+                  navigate('/admin/warehouse/inbound');
+                } else if (n.type === 'procurement') {
+                  navigate('/admin/procurement');
+                } else if (n.type === 'exchange') {
+                  navigate('/admin/exchange');
+                } else if (n.type === 'delivery') {
+                  navigate('/admin/delivery');
+                }
+              }}
               className={`p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
-                n.isRead ? "bg-white border-slate-100 text-slate-500" : "bg-orange-50/50 border-orange-100 text-slate-800 font-medium"
+                n.isRead ? "bg-white border-slate-100 text-slate-500 hover:bg-slate-50" : "bg-orange-50/60 border-orange-200 text-slate-800 font-medium hover:bg-orange-100/50"
               }`}
             >
               <div className="flex justify-between items-start mb-1">
                 <span className="font-bold text-slate-800 text-xs">{n.title}</span>
-                {!n.isRead && <span className="w-2 h-2 rounded-full bg-brand-orange"></span>}
+                {!n.isRead && <span className="w-2 h-2 rounded-full bg-brand-orange shrink-0 mt-0.5"></span>}
               </div>
               <p className="m-0 text-slate-600 leading-snug">{n.message}</p>
               {n.createdAt && (

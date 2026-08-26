@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Card, Button, Empty } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import {
   InboxOutlined,
   ShoppingCartOutlined,
@@ -8,6 +9,7 @@ import {
   WalletOutlined,
   SettingOutlined,
   CheckOutlined,
+  CustomerServiceOutlined,
 } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchNotifications, markAllAsRead, markAsRead, type NotificationItem } from '../../../store/slices/notificationSlice';
@@ -20,6 +22,7 @@ const typeIcon: Record<NotificationItem['type'], React.ReactNode> = {
   delivery: <CarOutlined />,
   wallet: <WalletOutlined />,
   system: <SettingOutlined />,
+  support: <CustomerServiceOutlined />,
 };
 
 const typeColor: Record<NotificationItem['type'], string> = {
@@ -29,6 +32,7 @@ const typeColor: Record<NotificationItem['type'], string> = {
   delivery: 'bg-orange-100 text-orange-600',
   wallet: 'bg-amber-100 text-amber-600',
   system: 'bg-slate-100 text-slate-600',
+  support: 'bg-indigo-100 text-indigo-600',
 };
 
 const groupByDate = (notifications: NotificationItem[]) => {
@@ -43,6 +47,7 @@ const groupByDate = (notifications: NotificationItem[]) => {
 
 export const NotificationsPage: React.FC = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { notifications, unreadCount, loading } = useAppSelector((state) => state.notifications);
 
   useEffect(() => {
@@ -80,11 +85,24 @@ export const NotificationsPage: React.FC = () => {
                   {items.map((notif) => (
                     <div
                       key={notif.id}
-                      onClick={() => !notif.isRead && dispatch(markAsRead(notif.id))}
+                      onClick={() => {
+                        dispatch(markAsRead(notif.id));
+                        if (notif.type === 'support') {
+                          navigate(notif.referenceId ? `/customer/support/${notif.referenceId}` : '/customer/support');
+                        } else if (notif.type === 'shipment') {
+                          navigate('/customer/shipments');
+                        } else if (notif.type === 'procurement') {
+                          navigate('/customer/buy-for-me');
+                        } else if (notif.type === 'exchange') {
+                          navigate('/customer/exchange');
+                        } else if (notif.type === 'delivery') {
+                          navigate('/customer/delivery');
+                        }
+                      }}
                       className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${
                         notif.isRead
                           ? 'bg-white border-slate-100 hover:bg-slate-50'
-                          : 'bg-brand-blue-light border-brand-blue/20 border-l-4 border-l-brand-blue hover:bg-blue-50'
+                          : 'bg-blue-50/60 border-blue-200 border-l-4 border-l-brand-orange hover:bg-blue-100/50'
                       }`}
                     >
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${typeColor[notif.type] || typeColor.system}`}>

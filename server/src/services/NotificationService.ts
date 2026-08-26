@@ -49,8 +49,12 @@ export class NotificationService {
     roles?: string[];
   }) {
     try {
-      const targetRoles = params.roles || ['super_admin', 'admin', 'warehouse_cn', 'warehouse_ng', 'clearance_agent', 'procurement', 'finance', 'customer_service'];
-      const staffUsers = await User.findAll({ where: { role: { [Op.in]: targetRoles } } });
+      const validStaffRoles = ['super_admin', 'admin', 'warehouse_cn', 'warehouse_ng', 'clearance_agent', 'procurement', 'finance'];
+      const targetRoles = params.roles
+        ? params.roles.filter((r) => validStaffRoles.includes(r))
+        : validStaffRoles;
+      
+      const staffUsers = await User.findAll({ where: { role: { [Op.in]: targetRoles.length ? targetRoles : validStaffRoles } } });
       
       const notifRecords = staffUsers.map((staff) => ({
         userId: staff.id,
@@ -83,7 +87,7 @@ export class NotificationService {
     newStatus?: string;
   }) {
     try {
-      const isStaff = ['super_admin', 'admin', 'customer_service', 'clearance_agent', 'warehouse_cn', 'warehouse_ng', 'procurement', 'finance'].includes(params.senderRole);
+      const isStaff = ['super_admin', 'admin', 'clearance_agent', 'warehouse_cn', 'warehouse_ng', 'procurement', 'finance'].includes(params.senderRole);
       
       if (isStaff || params.action === 'status_changed') {
         // Staff responded or status updated -> Notify Customer
@@ -139,7 +143,7 @@ export class NotificationService {
           message,
           type: 'support',
           referenceId: params.ticketId,
-          roles: ['super_admin', 'admin', 'customer_service'],
+          roles: ['super_admin', 'admin'],
         });
       }
     } catch (err: any) {

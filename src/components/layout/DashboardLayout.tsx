@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { Button, Input, Dropdown, Badge } from "antd";
+import { Button, Input, Dropdown, Badge, Popover } from "antd";
 import {
   AppstoreOutlined,
   InboxOutlined,
@@ -22,7 +22,8 @@ import { Logo } from "../common/Logo";
 import { SidebarNav, type SidebarNavSection } from "./SidebarNav";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { logoutUser } from "../../store/slices/authSlice";
-import { fetchNotifications } from "../../store/slices/notificationSlice";
+import { fetchNotifications, markAsRead, markAllAsRead } from "../../store/slices/notificationSlice";
+import { formatDate } from "../../utils/formatters";
 
 export const DashboardLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -133,6 +134,73 @@ export const DashboardLayout: React.FC = () => {
     },
   ];
 
+  // Notification Popover Content
+  const notificationContent = (
+    <div className="w-80 max-h-96 flex flex-col">
+      <div className="flex justify-between items-center pb-3 mb-2 border-b border-slate-100 px-1">
+        <span className="font-bold text-slate-800 text-sm">Notifications</span>
+        {unreadCount > 0 && (
+          <Button
+            type="link"
+            size="small"
+            className="p-0 text-xs text-brand-orange font-bold hover:underline"
+            onClick={() => dispatch(markAllAsRead())}
+          >
+            Mark all read
+          </Button>
+        )}
+      </div>
+
+      <div className="overflow-y-auto space-y-2 flex-1 pr-1">
+        {notifications.length > 0 ? (
+          notifications.slice(0, 8).map((n) => (
+            <div
+              key={n.id}
+              onClick={() => {
+                dispatch(markAsRead(n.id));
+                if (n.type === 'support') {
+                  navigate(n.referenceId ? `/customer/support/${n.referenceId}` : '/customer/support');
+                } else if (n.type === 'shipment') {
+                  navigate('/customer/shipments');
+                } else if (n.type === 'procurement') {
+                  navigate('/customer/buy-for-me');
+                } else if (n.type === 'exchange') {
+                  navigate('/customer/exchange');
+                } else if (n.type === 'delivery') {
+                  navigate('/customer/delivery');
+                }
+              }}
+              className={`p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
+                n.isRead ? "bg-white border-slate-100 text-slate-500 hover:bg-slate-50" : "bg-blue-50/60 border-blue-200 text-slate-800 font-medium hover:bg-blue-100/50"
+              }`}
+            >
+              <div className="flex justify-between items-start mb-1">
+                <span className="font-bold text-slate-800 text-xs">{n.title}</span>
+                {!n.isRead && <span className="w-2 h-2 rounded-full bg-brand-orange shrink-0 mt-0.5"></span>}
+              </div>
+              <p className="m-0 text-slate-600 leading-snug">{n.message}</p>
+              {n.createdAt && (
+                <div className="text-[10px] text-slate-400 mt-1 text-right">
+                  {formatDate(n.createdAt)}
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div className="py-8 text-center text-slate-400 text-xs">
+            No notifications yet
+          </div>
+        )}
+      </div>
+      
+      <div className="pt-2 border-t border-slate-100 text-center">
+        <Link to="/customer/notifications" className="text-xs font-bold text-brand-navy hover:text-brand-orange">
+          View all notifications →
+        </Link>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen flex bg-slate-50">
       {mobileOpen && (
@@ -142,30 +210,34 @@ export const DashboardLayout: React.FC = () => {
         />
       )}
 
+      {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 h-screen z-40 border-r border-slate-200 transition-all duration-200 ${
-          collapsed ? "w-20" : "w-[264px]"
-        } ${mobileOpen ? "left-0" : "-left-72 lg:left-0"}`}
+        className={`fixed lg:sticky top-0 h-screen z-40 transition-all duration-200 ${
+          collapsed ? "w-20" : "w-64"
+        } ${mobileOpen ? "left-0" : "-left-64 lg:left-0"} bg-white border-r border-slate-200`}
       >
-        <div className="h-16 flex items-center px-4 border-b border-slate-100">
-          <Logo withText={!collapsed} />
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200">
+          <Logo withText={!collapsed} size="sm" />
         </div>
-        <div className="h-[calc(100%-4rem)]">
+        <div className="h-[calc(100%-64px)]">
           <SidebarNav
             sections={sections}
             collapsed={collapsed}
             variant="light"
             userName={
-              user ? `${user.firstName} ${user.lastName}` : "Customer"
+              `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
+              "Customer"
             }
-            userSubtitle={user?.customerId || "HZ-Customer"}
-            userInitial={user?.firstName?.[0] || "C"}
+            userSubtitle={user?.customerId || ""}
+            userInitial={user?.firstName?.charAt(0) || "C"}
             onSignOut={handleLogout}
           />
         </div>
       </aside>
 
+      {/* Main Content Area */}
       <div className="flex-1 min-w-0 flex flex-col">
+        {/* Header */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
           <div className="flex items-center gap-3 w-full max-w-2xl">
             <Button
@@ -183,15 +255,13 @@ export const DashboardLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-6">
-            <Badge count={unreadCount} overflowCount={99} size="small" offset={[-2, 4]} color="#C0262D">
-              <Button
-                type="text"
-                shape="circle"
-                icon={<BellOutlined className="text-lg text-slate-600" />}
-                onClick={() => navigate("/customer/notifications")}
-                className="hover:bg-slate-50"
-              />
-            </Badge>
+            <Popover content={notificationContent} trigger="click" placement="bottomRight">
+              <div className="relative cursor-pointer text-slate-600 hover:text-brand-navy flex items-center">
+                <Badge count={unreadCount} overflowCount={99} size="small" offset={[2, -2]}>
+                  <BellOutlined className="text-xl text-slate-600 hover:text-brand-navy" />
+                </Badge>
+              </div>
+            </Popover>
 
             <Dropdown
               menu={{ items: userMenuItems }}

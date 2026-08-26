@@ -40,12 +40,12 @@ const notificationSlice = createSlice({
       }
     },
     markAsRead: (state, action) => {
-      const notif = state.notifications.find((n) => n.id === action.payload);
-      if (notif && !notif.isRead) {
-        notif.isRead = true;
-        state.unreadCount = Math.max(0, state.unreadCount - 1);
-        apiClient.patch(`/notifications/${action.payload}/read`).catch(() => {});
-      }
+      const targetId = action.payload;
+      state.notifications = state.notifications.map((n) =>
+        n.id === targetId ? { ...n, isRead: true } : n
+      );
+      state.unreadCount = state.notifications.filter((n) => !n.isRead).length;
+      apiClient.patch(`/notifications/${targetId}/read`).catch(() => {});
     },
     markAllAsRead: (state) => {
       state.notifications.forEach((n) => { n.isRead = true; });
