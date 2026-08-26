@@ -78,7 +78,7 @@ export const AdminLayout: React.FC = () => {
     dispatch(fetchNotifications());
     const interval = setInterval(() => {
       dispatch(fetchNotifications());
-    }, 10000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [dispatch]);
 

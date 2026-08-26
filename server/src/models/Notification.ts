@@ -6,7 +6,7 @@ export interface NotificationAttributes {
   userId: string;
   title: string;
   message: string;
-  type: 'shipment' | 'procurement' | 'exchange' | 'delivery' | 'wallet' | 'system';
+  type: 'shipment' | 'procurement' | 'exchange' | 'delivery' | 'wallet' | 'system' | 'support';
   isRead: boolean;
   referenceId?: string;
   createdAt?: Date;
@@ -20,7 +20,7 @@ export class Notification extends Model<NotificationAttributes, NotificationCrea
   public declare userId: string;
   public declare title: string;
   public declare message: string;
-  public declare type: 'shipment' | 'procurement' | 'exchange' | 'delivery' | 'wallet' | 'system';
+  public declare type: 'shipment' | 'procurement' | 'exchange' | 'delivery' | 'wallet' | 'system' | 'support';
   public declare isRead: boolean;
   public declare referenceId?: string;
   public declare readonly createdAt: Date;
@@ -47,7 +47,7 @@ Notification.init(
       allowNull: false,
     },
     type: {
-      type: DataTypes.ENUM('shipment', 'procurement', 'exchange', 'delivery', 'wallet', 'system'),
+      type: DataTypes.STRING,
       defaultValue: 'system',
     },
     isRead: {

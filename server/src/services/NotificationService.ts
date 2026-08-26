@@ -26,7 +26,7 @@ export class NotificationService {
     userId: string;
     title: string;
     message: string;
-    type: 'shipment' | 'procurement' | 'exchange' | 'delivery' | 'wallet' | 'system';
+    type: 'shipment' | 'procurement' | 'exchange' | 'delivery' | 'wallet' | 'system' | 'support';
     referenceId?: string;
   }) {
     return Notification.create({
@@ -49,7 +49,7 @@ export class NotificationService {
     roles?: string[];
   }) {
     try {
-      const targetRoles = params.roles || ['super_admin', 'admin', 'warehouse_cn', 'warehouse_ng', 'clearance_agent', 'procurement', 'finance'];
+      const targetRoles = params.roles || ['super_admin', 'admin', 'warehouse_cn', 'warehouse_ng', 'clearance_agent', 'procurement', 'finance', 'customer_service'];
       const staffUsers = await User.findAll({ where: { role: { [Op.in]: targetRoles } } });
       
       const notifRecords = staffUsers.map((staff) => ({
@@ -65,6 +65,85 @@ export class NotificationService {
       }
     } catch (err: any) {
       console.error('[NotificationService] Error in notifyAdmins:', err.message);
+    }
+  }
+
+  /**
+   * Real-time Support Ticket Notification Engine (In-App DB + Email + Push)
+   * Triggers badge counters for Admins when ticket raised/replied, and for Customer when staff responds/closes
+   */
+  public static async sendTicketNotification(params: {
+    ticketId: string;
+    subject: string;
+    senderId: string;
+    senderRole: string;
+    senderName: string;
+    customerId: string;
+    action: 'created' | 'replied' | 'status_changed';
+    newStatus?: string;
+  }) {
+    try {
+      const isStaff = ['super_admin', 'admin', 'customer_service', 'clearance_agent', 'warehouse_cn', 'warehouse_ng', 'procurement', 'finance'].includes(params.senderRole);
+      
+      if (isStaff || params.action === 'status_changed') {
+        // Staff responded or status updated -> Notify Customer
+        const customerUser = await User.findOne({ where: { customerId: params.customerId } });
+        if (customerUser) {
+          const title = params.action === 'status_changed'
+            ? `Ticket Status: ${params.newStatus?.toUpperCase()}`
+            : `Support Reply from ${params.senderName}`;
+          const message = params.action === 'status_changed'
+            ? `Your support ticket "${params.subject}" status is now ${params.newStatus?.replace(/_/g, ' ')}.`
+            : `New response on ticket "${params.subject}"`;
+
+          // 1. In-App Notification for Customer
+          await Notification.create({
+            userId: customerUser.id,
+            title,
+            message,
+            type: 'support',
+            referenceId: params.ticketId,
+          });
+
+          // 2. Email Notification to Customer
+          sendEmail(
+            customerUser.email,
+            `[Hamza RMB Global] Support Ticket Update: #${params.ticketId.slice(0, 8)}`,
+            orderStatusEmailTemplate({
+              recipientName: `${customerUser.firstName} ${customerUser.lastName}`,
+              orderType: 'Shipment',
+              orderId: `#${params.ticketId.slice(0, 8)}`,
+              newStatus: params.newStatus || 'Replied',
+              statusDescription: message,
+              actionUrl: `http://localhost:5173/customer/support/${params.ticketId}`,
+            })
+          ).catch((e) => console.error('[NotificationService] Ticket email failed:', e.message));
+
+          // 3. Push Notification to Customer
+          sendPushNotification({
+            pushToken: customerUser.pushToken,
+            title,
+            message,
+            data: { ticketId: params.ticketId, type: 'support' },
+          }).catch((e) => console.error('[NotificationService] Ticket push failed:', e.message));
+        }
+      } else {
+        // Customer raised ticket or replied -> Notify Admins/Staff
+        const title = params.action === 'created'
+          ? `New Support Ticket Raised`
+          : `New Ticket Reply from ${params.senderName}`;
+        const message = `Ticket #${params.ticketId.slice(0, 8)} (${params.subject}) by ${params.senderName}`;
+
+        await this.notifyAdmins({
+          title,
+          message,
+          type: 'support',
+          referenceId: params.ticketId,
+          roles: ['super_admin', 'admin', 'customer_service'],
+        });
+      }
+    } catch (err: any) {
+      console.error('[NotificationService] Error in sendTicketNotification:', err.message);
     }
   }
 
@@ -112,7 +191,7 @@ export class NotificationService {
       // 2. Dispatch Email Notification (Non-blocking)
       sendEmail(
         user.email,
-        `[Logicore] ${params.orderType} Update: ${params.orderId}`,
+        `[Hamza RMB Global] ${params.orderType} Update: ${params.orderId}`,
         orderStatusEmailTemplate({
           recipientName: `${user.firstName} ${user.lastName}`,
           orderType: params.orderType,

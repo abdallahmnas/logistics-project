@@ -1,4 +1,5 @@
 import { SupportTicket, TicketMessage, User } from '../models';
+import { NotificationService } from './NotificationService';
 
 export class SupportService {
   // ─── Create Ticket ────────────────────────────────────────────────────────
@@ -33,12 +34,23 @@ export class SupportService {
       attachments: payload.attachments || [],
     });
 
+    // Trigger Notification for Admin Team
+    NotificationService.sendTicketNotification({
+      ticketId: ticket.id,
+      subject: ticket.subject,
+      senderId: userId,
+      senderRole: user.role,
+      senderName: `${user.firstName} ${user.lastName}`,
+      customerId: user.customerId,
+      action: 'created',
+    }).catch((err) => console.error('[SupportService] Ticket created notification error:', err.message));
+
     return this.getTicketById(ticket.id);
   }
 
   // ─── Get All Tickets ──────────────────────────────────────────────────────
   public static async getTickets(userId: string, userRole: string, userCustomerId: string) {
-    const isAdmin = ['super_admin', 'admin', 'finance', 'procurement'].includes(userRole);
+    const isAdmin = ['super_admin', 'admin', 'finance', 'procurement', 'customer_service'].includes(userRole);
 
     const where = isAdmin ? {} : { customerId: userCustomerId };
     return SupportTicket.findAll({
@@ -54,7 +66,7 @@ export class SupportService {
       include: [{ model: TicketMessage, as: 'messages', order: [['createdAt', 'ASC']] }],
     });
     if (!ticket) throw new Error('Ticket not found');
-    const staffRoles = ['super_admin', 'admin', 'finance', 'procurement'];
+    const staffRoles = ['super_admin', 'admin', 'finance', 'procurement', 'customer_service', 'clearance_agent', 'warehouse_cn', 'warehouse_ng'];
     if (customerId && !staffRoles.includes(userRole || '') && ticket.customerId !== customerId) {
       throw new Error('You cannot access another customer\'s ticket');
     }
@@ -68,7 +80,7 @@ export class SupportService {
 
     const ticket = await SupportTicket.findByPk(ticketId);
     if (!ticket) throw new Error('Ticket not found');
-    const staffRoles = ['super_admin', 'admin', 'finance', 'procurement'];
+    const staffRoles = ['super_admin', 'admin', 'finance', 'procurement', 'customer_service', 'clearance_agent', 'warehouse_cn', 'warehouse_ng'];
     if (!staffRoles.includes(user.role) && ticket.customerId !== user.customerId) {
       throw new Error('You cannot reply to another customer\'s ticket');
     }
@@ -83,10 +95,21 @@ export class SupportService {
     });
 
     // Auto-update ticket status
-    if (['super_admin', 'admin'].includes(user.role) && ticket.status === 'open') {
+    if (['super_admin', 'admin', 'customer_service'].includes(user.role) && ticket.status === 'open') {
       (ticket as any).status = 'in_progress';
       await ticket.save();
     }
+
+    // Trigger Notification for Admin (if Customer replied) or Customer (if Staff replied)
+    NotificationService.sendTicketNotification({
+      ticketId: ticket.id,
+      subject: ticket.subject,
+      senderId: userId,
+      senderRole: user.role,
+      senderName: `${user.firstName} ${user.lastName}`,
+      customerId: ticket.customerId,
+      action: 'replied',
+    }).catch((err) => console.error('[SupportService] Ticket reply notification error:', err.message));
 
     return this.getTicketById(ticketId, user.customerId, user.role);
   }
@@ -101,6 +124,19 @@ export class SupportService {
 
     (ticket as any).status = status;
     await ticket.save();
+
+    // Trigger Status Update Notification to Customer
+    NotificationService.sendTicketNotification({
+      ticketId: ticket.id,
+      subject: ticket.subject,
+      senderId: 'system',
+      senderRole: 'admin',
+      senderName: 'Support Team',
+      customerId: ticket.customerId,
+      action: 'status_changed',
+      newStatus: status,
+    }).catch((err) => console.error('[SupportService] Ticket status update notification error:', err.message));
+
     return ticket;
   }
 }
