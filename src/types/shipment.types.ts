@@ -1,19 +1,19 @@
 import type { ShippingMethod, DestinationWarehouse, PaymentMethod } from './common.types';
 
 export type ShipmentStatus =
+  | 'order_created'
   | 'pre_alerted'
   | 'received_cn'
-  | 'ready_to_pack'
-  | 'under_packing'
+  | 'measured'
   | 'consolidating'
-  | 'shipping_exported'
+  | 'packed'
+  | 'shipped'
   | 'arrived_ng'
-  | 'ready_for_pickup'
+  | 'customs_clearance'
+  | 'ready_for_delivery'
   | 'delivered'
   | 'cancelled'
-  | 'held_customs'
-  | 'received_at_warehouse'
-  | 'at_china_warehouse';
+  | 'held_customs';
 
 export interface Package {
   id: string;

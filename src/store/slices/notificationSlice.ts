@@ -6,7 +6,7 @@ export interface NotificationItem {
   userId: string;
   title: string;
   message: string;
-  type: 'shipment' | 'procurement' | 'exchange' | 'delivery' | 'wallet' | 'system';
+  type: 'shipment' | 'procurement' | 'exchange' | 'delivery' | 'wallet' | 'system' | 'support';
   isRead: boolean;
   referenceId?: string;
   createdAt?: string;
@@ -33,6 +33,12 @@ const notificationSlice = createSlice({
   name: 'notifications',
   initialState,
   reducers: {
+    addNotification: (state, action) => {
+      state.notifications.unshift(action.payload);
+      if (!action.payload.isRead) {
+        state.unreadCount += 1;
+      }
+    },
     markAsRead: (state, action) => {
       const notif = state.notifications.find((n) => n.id === action.payload);
       if (notif && !notif.isRead) {
@@ -59,5 +65,5 @@ const notificationSlice = createSlice({
   },
 });
 
-export const { markAsRead, markAllAsRead } = notificationSlice.actions;
+export const { addNotification, markAsRead, markAllAsRead } = notificationSlice.actions;
 export default notificationSlice.reducer;

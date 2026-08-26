@@ -4,8 +4,6 @@ import {
   LockOutlined,
   ArrowRightOutlined,
   MailOutlined,
-  GoogleOutlined,
-  AppleOutlined,
 } from "@ant-design/icons";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
@@ -197,24 +195,7 @@ const LoginPage: React.FC = () => {
               </Button>
             </Form.Item>
 
-            <div className="relative flex items-center py-6">
-              <div className="flex-grow border-t border-slate-200"></div>
-              <span className="flex-shrink-0 mx-4 text-slate-400 text-[10px] font-bold tracking-widest uppercase">
-                Or Continue With
-              </span>
-              <div className="flex-grow border-t border-slate-200"></div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <Button className="!h-12 !bg-slate-50 hover:!bg-slate-100 !border-none !rounded-lg font-bold text-slate-700 text-sm shadow-sm flex items-center justify-center gap-2">
-                <GoogleOutlined className="text-red-500" /> Google
-              </Button>
-              <Button className="!h-12 !bg-slate-50 hover:!bg-slate-100 !border-none !rounded-lg font-bold text-slate-700 text-sm shadow-sm flex items-center justify-center gap-2">
-                <AppleOutlined /> Apple
-              </Button>
-            </div>
-
-            <div className="text-center pt-2">
+            <div className="text-center pt-6">
               <span className="text-slate-500 text-sm">
                 Don't have access?{" "}
               </span>

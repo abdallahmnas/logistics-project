@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { Notification, User } from '../models';
 import { sendEmail, sendPushNotification, orderStatusEmailTemplate } from '../config/email';
 
@@ -38,6 +39,36 @@ export class NotificationService {
   }
 
   /**
+   * Send notification to all admin/staff members with matching roles
+   */
+  public static async notifyAdmins(params: {
+    title: string;
+    message: string;
+    type: 'shipment' | 'procurement' | 'exchange' | 'delivery' | 'wallet' | 'system' | 'support';
+    referenceId?: string;
+    roles?: string[];
+  }) {
+    try {
+      const targetRoles = params.roles || ['super_admin', 'admin', 'warehouse_cn', 'warehouse_ng', 'clearance_agent', 'procurement', 'finance'];
+      const staffUsers = await User.findAll({ where: { role: { [Op.in]: targetRoles } } });
+      
+      const notifRecords = staffUsers.map((staff) => ({
+        userId: staff.id,
+        title: params.title,
+        message: params.message,
+        type: params.type,
+        referenceId: params.referenceId,
+      }));
+
+      if (notifRecords.length > 0) {
+        await Notification.bulkCreate(notifRecords);
+      }
+    } catch (err: any) {
+      console.error('[NotificationService] Error in notifyAdmins:', err.message);
+    }
+  }
+
+  /**
    * Multi-Channel Notification Engine (In-App DB + Email + Push Notification)
    * Triggered automatically on every order status update across Shipments, Procurement, Exchange, & Delivery
    */
@@ -50,11 +81,15 @@ export class NotificationService {
     actionUrl?: string;
   }) {
     try {
-      // Lookup user by primary key OR customerId
-      let user = await User.findByPk(params.userIdOrCustomerId);
-      if (!user) {
-        user = await User.findOne({ where: { customerId: params.userIdOrCustomerId } });
-      }
+      // Lookup user by primary key OR customerId flexibly
+      const user = await User.findOne({
+        where: {
+          [Op.or]: [
+            { id: params.userIdOrCustomerId },
+            { customerId: params.userIdOrCustomerId },
+          ],
+        },
+      });
 
       if (!user) {
         console.warn(`[NotificationService] Target user ${params.userIdOrCustomerId} not found – skipping notification.`);
@@ -65,7 +100,7 @@ export class NotificationService {
       const message = `Order ${params.orderId} is now ${params.newStatus.replace(/_/g, ' ')}. ${params.statusDescription}`;
       const notifType = params.orderType.toLowerCase() as any;
 
-      // 1. Save In-App Notification in DB
+      // 1. Save In-App Notification in DB for Customer
       await Notification.create({
         userId: user.id,
         title,

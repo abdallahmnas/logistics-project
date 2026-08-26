@@ -9,6 +9,7 @@ import {
   verifyOtp,
   resendOtp,
   forgotPassword,
+  verifyResetOtp,
   resetPassword,
   updateProfile,
   updatePushToken,
@@ -33,6 +34,7 @@ router.post('/check-availability', checkAvailability);
 router.post('/verify-otp', optionalAuth, verifyOtp);
 router.post('/resend-otp', optionalAuth, resendOtp);
 router.post('/forgot-password', forgotPassword);
+router.post('/verify-reset-otp', verifyResetOtp);
 router.post('/reset-password', resetPassword);
 
 // Authenticated Routes

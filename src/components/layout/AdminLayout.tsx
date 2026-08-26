@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigate, Link } from "react-router-dom";
 import {
   Button,
@@ -76,6 +76,10 @@ export const AdminLayout: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchNotifications());
+    const interval = setInterval(() => {
+      dispatch(fetchNotifications());
+    }, 10000);
+    return () => clearInterval(interval);
   }, [dispatch]);
 
   const handleLogout = async () => {
@@ -130,6 +134,16 @@ export const AdminLayout: React.FC = () => {
     }
   };
 
+  const unreadByCategory = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (notifications || []).forEach((n) => {
+      if (!n.isRead) {
+        counts[n.type] = (counts[n.type] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [notifications]);
+
   const sections: SidebarNavSection[] = [
     {
       title: "Overview",
@@ -141,75 +155,92 @@ export const AdminLayout: React.FC = () => {
 
   if (
     role === "super_admin" ||
+    role === "admin" ||
     role === "warehouse_cn" ||
-    role === "warehouse_ng"
+    role === "warehouse_ng" ||
+    role === "clearance_agent"
   ) {
+    const whItems = [
+      {
+        key: "/admin/warehouse/inbound",
+        icon: <InboxOutlined />,
+        label: role === "clearance_agent" ? "Customs Clearance" : "Packages",
+        badge: unreadByCategory["shipment"],
+      },
+      {
+        key: "/admin/warehouse/batches",
+        icon: <BlockOutlined />,
+        label: "Master Batches",
+      },
+    ];
+
+    if (role !== "clearance_agent") {
+      whItems.unshift({
+        key: "/admin/warehouse/facilities",
+        icon: <DashboardOutlined />,
+        label: "Facilities",
+        badge: undefined,
+      });
+      whItems.splice(2, 0, {
+        key: "/admin/warehouse/consolidations",
+        icon: <AppstoreAddOutlined />,
+        label: "Consolidations",
+        badge: undefined,
+      });
+    }
+
     sections.push({
-      title: "Warehouse Ops",
-      items: [
-        {
-          key: "/admin/warehouse/facilities",
-          icon: <DashboardOutlined />,
-          label: "Facilities",
-        },
-        {
-          key: "/admin/warehouse/inbound",
-          icon: <InboxOutlined />,
-          label: "Packages",
-        },
-        {
-          key: "/admin/warehouse/consolidations",
-          icon: <AppstoreAddOutlined />,
-          label: "Consolidations",
-        },
-        {
-          key: "/admin/warehouse/batches",
-          icon: <BlockOutlined />,
-          label: "Master Batches",
-        },
-      ],
+      title: role === "clearance_agent" ? "Customs Clearance" : "Warehouse Ops",
+      items: whItems,
     });
   }
 
   const opsItems = [];
-  if (role === "super_admin" || role === "procurement") {
+  if (role === "super_admin" || role === "admin" || role === "procurement") {
     opsItems.push({
       key: "/admin/procurement",
       icon: <ShoppingCartOutlined />,
       label: "Procurements / Buy For Me",
+      badge: unreadByCategory["procurement"],
     });
   }
-  if (role === "super_admin" || role === "finance") {
+  if (role === "super_admin" || role === "admin" || role === "finance") {
     opsItems.push({
       key: "/admin/exchange",
       icon: <SwapOutlined />,
       label: "RMB Exchange & Payments",
+      badge: unreadByCategory["exchange"],
     });
   }
-  if (role === "super_admin" || role === "warehouse_ng" || role === "warehouse_cn") {
+  if (role === "super_admin" || role === "admin" || role === "warehouse_ng" || role === "warehouse_cn") {
     opsItems.push({
       key: "/admin/delivery",
       icon: <CarOutlined />,
       label: "Local Dispatch",
+      badge: unreadByCategory["delivery"],
     });
   }
   if (opsItems.length) sections.push({ title: "Operations", items: opsItems });
 
-  if (role === "super_admin" || role === "customer_service") {
+  if (role === "super_admin" || role === "admin" || role === "customer_service" || role === "clearance_agent") {
     const manageItems = [
       {
         key: "/admin/support",
         icon: <CustomerServiceOutlined />,
         label: "Support Tickets",
-      },
-      {
-        key: "/admin/customers",
-        icon: <UsergroupAddOutlined />,
-        label: "Customers",
+        badge: unreadByCategory["support"],
       },
     ];
 
-    if (role === "super_admin") {
+    if (role !== "clearance_agent") {
+      manageItems.push({
+        key: "/admin/customers",
+        icon: <UsergroupAddOutlined />,
+        label: "Customers",
+      });
+    }
+
+    if (role === "super_admin" || role === "admin") {
       manageItems.push(
         { key: "/admin/staff", icon: <TeamOutlined />, label: "Staff Members" },
         {

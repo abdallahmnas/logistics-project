@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchAllBatches } from '../../../store/slices/adminSlice';
 import { addPackagesToBatch, fetchConsolidations, updateBatchStatus } from '../../../store/slices/shipmentSlice';
+import { fetchNotifications } from '../../../store/slices/notificationSlice';
 import { fetchFacilities } from '../../../store/slices/facilitySlice';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { formatWeight, formatCbm, formatDate } from '../../../utils/formatters';
@@ -147,6 +148,7 @@ export const ViewBatchPage: React.FC = () => {
       await dispatch(updateBatchStatus({ id: batch.id, status: pendingStatus })).unwrap();
       dispatch(fetchAllBatches());
       dispatch(fetchConsolidations());
+      dispatch(fetchNotifications());
       message.success(`Batch status updated to ${pendingStatus}`);
     } catch (err: any) {
       message.error(err?.message || 'Failed to update batch status');
@@ -170,6 +172,7 @@ export const ViewBatchPage: React.FC = () => {
       })).unwrap();
       dispatch(fetchAllBatches());
       dispatch(fetchConsolidations());
+      dispatch(fetchNotifications());
       message.success(`Master Batch updated: Arrived at ${selectedNgWarehouse}`);
       setArrivedModalOpen(false);
     } catch (err: any) {

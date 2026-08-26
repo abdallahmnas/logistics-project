@@ -65,11 +65,23 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
   }
 };
 
+export const verifyResetOtp = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) { res.status(400).json({ status: 'error', message: 'Email and 6-digit OTP code are required' }); return; }
+    const result = await authService.verifyResetOtp(email, otp);
+    res.status(200).json({ status: 'success', ...result });
+  } catch (error: any) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
+
 export const resetPassword = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { token, password } = req.body;
-    if (!token || !password) { res.status(400).json({ status: 'error', message: 'Token and password are required' }); return; }
-    const result = await authService.resetPassword(token, password);
+    const { email, otp, token, password, newPassword } = req.body;
+    const targetPassword = password || newPassword;
+    if (!targetPassword) { res.status(400).json({ status: 'error', message: 'New password is required' }); return; }
+    const result = await authService.resetPassword(req.body, targetPassword);
     res.status(200).json({ status: 'success', ...result });
   } catch (error: any) {
     res.status(400).json({ status: 'error', message: error.message });

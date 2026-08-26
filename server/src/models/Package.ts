@@ -7,7 +7,20 @@ export interface PackageAttributes {
   chineseTrackingNo: string;
   customerId: string;
   customerName: string;
-  status: 'pre_alerted' | 'received_cn' | 'ready_to_pack' | 'under_packing' | 'consolidating' | 'shipping_exported' | 'arrived_ng' | 'ready_for_pickup' | 'delivered' | 'cancelled';
+  status:
+    | 'order_created'
+    | 'pre_alerted'
+    | 'received_cn'
+    | 'measured'
+    | 'consolidating'
+    | 'packed'
+    | 'shipped'
+    | 'arrived_ng'
+    | 'customs_clearance'
+    | 'ready_for_delivery'
+    | 'delivered'
+    | 'cancelled'
+    | 'held_customs';
   description: string;
   weightKg: number;
   cbm: number;
@@ -30,13 +43,27 @@ export interface PackageAttributes {
 
 export type PackageCreationAttributes = Optional<PackageAttributes, 'id' | 'paymentStatus' | 'weightKg' | 'cbm'>;
 
-export class Package extends Model<PackageAttributes, PackageCreationAttributes> implements PackageAttributes {
+export class Package extends Model<PackageAttributes, PackageCreationAttributes>
+ implements PackageAttributes {
   public declare id: string;
   public declare trackingId: string;
   public declare chineseTrackingNo: string;
   public declare customerId: string;
   public declare customerName: string;
-  public declare status: 'pre_alerted' | 'received_cn' | 'ready_to_pack' | 'under_packing' | 'consolidating' | 'shipping_exported' | 'arrived_ng' | 'ready_for_pickup' | 'delivered' | 'cancelled';
+  public declare status:
+    | 'order_created'
+    | 'pre_alerted'
+    | 'received_cn'
+    | 'measured'
+    | 'consolidating'
+    | 'packed'
+    | 'shipped'
+    | 'arrived_ng'
+    | 'customs_clearance'
+    | 'ready_for_delivery'
+    | 'delivered'
+    | 'cancelled'
+    | 'held_customs';
   public declare description: string;
   public declare weightKg: number;
   public declare cbm: number;
@@ -83,18 +110,21 @@ Package.init(
     },
     status: {
       type: DataTypes.ENUM(
+        'order_created',
         'pre_alerted',
         'received_cn',
-        'ready_to_pack',
-        'under_packing',
+        'measured',
         'consolidating',
-        'shipping_exported',
+        'packed',
+        'shipped',
         'arrived_ng',
-        'ready_for_pickup',
+        'customs_clearance',
+        'ready_for_delivery',
         'delivered',
-        'cancelled'
+        'cancelled',
+        'held_customs'
       ),
-      defaultValue: 'pre_alerted',
+      defaultValue: 'order_created',
     },
     description: {
       type: DataTypes.STRING,

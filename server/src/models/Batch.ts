@@ -8,7 +8,21 @@ export interface BatchAttributes {
   flightVoyageNo: string;
   containerNo?: string;
   shippingType: 'air' | 'sea';
-  status: 'pre_alerted' | 'received_cn' | 'ready_to_pack' | 'under_packing' | 'consolidating' | 'shipping_exported' | 'arrived_ng' | 'ready_for_pickup' | 'delivered' | 'cancelled';
+  status:
+    | 'order_created'
+    | 'pre_alerted'
+    | 'received_cn'
+    | 'measured'
+    | 'consolidating'
+    | 'packed'
+    | 'shipped'
+    | 'shipping_exported'
+    | 'arrived_ng'
+    | 'customs_clearance'
+    | 'ready_for_delivery'
+    | 'delivered'
+    | 'cancelled'
+    | 'held_customs';
   consolidationIds?: string[];
   packageIds?: string[];
   consolidationCount?: number;
@@ -31,7 +45,21 @@ export class Batch extends Model<BatchAttributes, BatchCreationAttributes> imple
   public declare flightVoyageNo: string;
   public declare containerNo?: string;
   public declare shippingType: 'air' | 'sea';
-  public declare status: 'pre_alerted' | 'received_cn' | 'ready_to_pack' | 'under_packing' | 'consolidating' | 'shipping_exported' | 'arrived_ng' | 'ready_for_pickup' | 'delivered' | 'cancelled';
+  public declare status:
+    | 'order_created'
+    | 'pre_alerted'
+    | 'received_cn'
+    | 'measured'
+    | 'consolidating'
+    | 'packed'
+    | 'shipped'
+    | 'shipping_exported'
+    | 'arrived_ng'
+    | 'customs_clearance'
+    | 'ready_for_delivery'
+    | 'delivered'
+    | 'cancelled'
+    | 'held_customs';
   public declare consolidationIds?: string[];
   public declare packageIds?: string[];
   public declare consolidationCount?: number;
@@ -75,18 +103,22 @@ Batch.init(
     },
     status: {
       type: DataTypes.ENUM(
+        'order_created',
         'pre_alerted',
         'received_cn',
-        'ready_to_pack',
-        'under_packing',
+        'measured',
         'consolidating',
+        'packed',
+        'shipped',
         'shipping_exported',
         'arrived_ng',
-        'ready_for_pickup',
+        'customs_clearance',
+        'ready_for_delivery',
         'delivered',
-        'cancelled'
+        'cancelled',
+        'held_customs'
       ),
-      defaultValue: 'shipping_exported',
+      defaultValue: 'shipped',
     },
     consolidationIds: {
       type: DataTypes.JSONB,

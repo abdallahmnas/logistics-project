@@ -35,6 +35,24 @@ export class ShipmentService {
       paymentStatus: 'unpaid',
       preAlertDate: new Date(),
     });
+
+    // 1. Notify Customer
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: user.id,
+      orderType: 'Shipment',
+      orderId: pkg.trackingId,
+      newStatus: 'pre_alerted',
+      statusDescription: `Pre-alert created successfully for "${payload.description}". China tracking: ${payload.chineseTrackingNo}.`,
+    });
+
+    // 2. Notify Admins & Warehouse Staff
+    NotificationService.notifyAdmins({
+      title: 'New Package Pre-Alert',
+      message: `Customer ${user.firstName} ${user.lastName} pre-alerted package ${pkg.trackingId} (${payload.chineseTrackingNo}).`,
+      type: 'shipment',
+      referenceId: pkg.trackingId,
+    });
+
     return pkg;
   }
 
@@ -556,22 +574,42 @@ export class ShipmentService {
     const packageIds = batch.packageIds || [];
     const targetDestWh = extra.destinationWarehouse || batch.destinationWarehouse || 'Lagos Main Hub';
 
-    if (status === 'arrived_ng') {
-      if (consolidationIds.length > 0) {
-        await Consolidation.update(
-          { status: 'arrived_destination', destinationWarehouse: targetDestWh },
-          { where: { id: consolidationIds } }
-        );
-      }
-      if (packageIds.length > 0) {
-        await Package.update({ status: 'arrived_destination', arrivedDate: new Date() }, { where: { id: packageIds } });
-      }
-    } else if (status === 'delivered') {
-      if (consolidationIds.length > 0) {
-        await Consolidation.update({ status: 'delivered' }, { where: { id: consolidationIds } });
-      }
-      if (packageIds.length > 0) {
-        await Package.update({ status: 'delivered', deliveredDate: new Date() }, { where: { id: packageIds } });
+    // Propagate status to all attached consolidations and packages
+    if (consolidationIds.length > 0) {
+      await Consolidation.update(
+        { status: status as any, destinationWarehouse: targetDestWh },
+        { where: { id: consolidationIds } }
+      );
+    }
+    if (packageIds.length > 0) {
+      const updateData: any = { status };
+      if (status === 'arrived_ng') updateData.arrivedDate = new Date();
+      if (status === 'delivered') updateData.deliveredDate = new Date();
+      await Package.update(updateData, { where: { id: packageIds } });
+    }
+
+    // Send notifications to all customers in the batch
+    if (consolidationIds.length > 0) {
+      const consolidations = await Consolidation.findAll({ where: { id: consolidationIds } });
+      const statusDescriptions: Record<string, string> = {
+        shipped: `Master Batch ${batch.masterTrackingId} has departed China and is in transit to Nigeria.`,
+        shipping_exported: `Master Batch ${batch.masterTrackingId} has departed China and is in transit to Nigeria.`,
+        arrived_ng: `Master Batch ${batch.masterTrackingId} has arrived in Nigeria at ${targetDestWh}.`,
+        customs_clearance: `Master Batch ${batch.masterTrackingId} is currently undergoing customs clearance.`,
+        ready_for_delivery: `Master Batch ${batch.masterTrackingId} has cleared customs and is ready for delivery / pickup!`,
+        delivered: `Master Batch ${batch.masterTrackingId} packages have been delivered.`,
+        held_customs: `Master Batch ${batch.masterTrackingId} has been temporarily held at customs for inspection.`,
+      };
+      const desc = statusDescriptions[status] || `Master Batch ${batch.masterTrackingId} status updated to ${status}.`;
+
+      for (const c of consolidations) {
+        NotificationService.sendOrderStatusNotification({
+          userIdOrCustomerId: c.customerId,
+          orderType: 'Shipment',
+          orderId: c.consolidationId,
+          newStatus: status,
+          statusDescription: desc,
+        });
       }
     }
 
@@ -597,7 +635,7 @@ export class ShipmentService {
 
     pkg.status = status;
     if (status === 'received_cn') pkg.receivedDate = new Date();
-    if (status === 'shipping_exported') pkg.shippedDate = new Date();
+    if (status === 'shipped' || status === 'shipping_exported') pkg.shippedDate = new Date();
     if (status === 'arrived_ng') pkg.arrivedDate = new Date();
     if (status === 'delivered') pkg.deliveredDate = new Date();
     if (extra?.weightKg !== undefined) pkg.weightKg = extra.weightKg;
@@ -605,6 +643,33 @@ export class ShipmentService {
     if (extra?.photos !== undefined) pkg.photos = extra.photos;
 
     await pkg.save();
+
+    const descriptions: Record<string, string> = {
+      order_created: 'Shipment order created and tracking registered.',
+      pre_alerted: 'Package pre-alert tracking details recorded.',
+      received_cn: 'Package physically received at China warehouse facility.',
+      measured: `Package weight (${pkg.weightKg}kg) and CBM (${pkg.cbm} m³) measured.`,
+      consolidating: 'Package queued for consolidation.',
+      packed: 'Package securely packed for export shipment.',
+      shipped: 'Package dispatched from China, in transit to Nigeria.',
+      arrived_ng: 'Package landed in Nigeria and received at distribution hub.',
+      customs_clearance: 'Package is undergoing customs inspection and duty clearance.',
+      ready_for_delivery: 'Package has cleared customs and is ready for local delivery / hub pickup!',
+      delivered: 'Package successfully delivered to customer.',
+      held_customs: 'Package temporarily held at customs for inspection.',
+      cancelled: 'Package shipment order has been cancelled.',
+    };
+
+    const statusDescription = descriptions[status] || `Package status updated to ${status}.`;
+
+    NotificationService.sendOrderStatusNotification({
+      userIdOrCustomerId: pkg.customerId,
+      orderType: 'Shipment',
+      orderId: pkg.trackingId || pkg.id,
+      newStatus: status,
+      statusDescription,
+    });
+
     return pkg;
   }
 }

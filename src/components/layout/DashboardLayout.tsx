@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { Button, Input, Dropdown, Badge } from "antd";
 import {
@@ -22,6 +22,7 @@ import { Logo } from "../common/Logo";
 import { SidebarNav, type SidebarNavSection } from "./SidebarNav";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { logoutUser } from "../../store/slices/authSlice";
+import { fetchNotifications } from "../../store/slices/notificationSlice";
 
 export const DashboardLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -29,7 +30,25 @@ export const DashboardLayout: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const { unreadCount } = useAppSelector((state) => state.notifications);
+  const { notifications, unreadCount } = useAppSelector((state) => state.notifications);
+
+  useEffect(() => {
+    dispatch(fetchNotifications());
+    const interval = setInterval(() => {
+      dispatch(fetchNotifications());
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [dispatch]);
+
+  const unreadByCategory = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (notifications || []).forEach((n) => {
+      if (!n.isRead) {
+        counts[n.type] = (counts[n.type] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [notifications]);
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
@@ -45,8 +64,8 @@ export const DashboardLayout: React.FC = () => {
           key: "/customer/shipments",
           icon: <InboxOutlined />,
           label: "My Shipments",
+          badge: unreadByCategory["shipment"],
         },
-        // { key: '/customer/shipments/pre-alert', icon: <FileAddOutlined />, label: 'Pre-Alerts' },
         {
           key: "/customer/consolidation",
           icon: <AppstoreOutlined />,
@@ -61,16 +80,19 @@ export const DashboardLayout: React.FC = () => {
           key: "/customer/buy-for-me",
           icon: <ShoppingCartOutlined />,
           label: "Buy For Me",
+          badge: unreadByCategory["procurement"],
         },
         {
           key: "/customer/exchange",
           icon: <SwapOutlined />,
           label: "Currency Exchange",
+          badge: unreadByCategory["exchange"],
         },
         {
           key: "/customer/delivery",
           icon: <CarOutlined />,
           label: "Local Delivery",
+          badge: unreadByCategory["delivery"],
         },
       ],
     },
@@ -78,11 +100,17 @@ export const DashboardLayout: React.FC = () => {
       title: "Account",
       items: [
         { key: "/customer/profile", icon: <UserOutlined />, label: "Profile" },
-        { key: "/customer/wallet", icon: <WalletOutlined />, label: "Wallet" },
+        {
+          key: "/customer/wallet",
+          icon: <WalletOutlined />,
+          label: "Wallet",
+          badge: unreadByCategory["wallet"],
+        },
         {
           key: "/customer/support",
           icon: <CustomerServiceOutlined />,
           label: "Support Tickets",
+          badge: unreadByCategory["support"],
         },
       ],
     },
@@ -128,11 +156,10 @@ export const DashboardLayout: React.FC = () => {
             collapsed={collapsed}
             variant="light"
             userName={
-              `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
-              "Customer"
+              user ? `${user.firstName} ${user.lastName}` : "Customer"
             }
-            userSubtitle={user?.customerId || ""}
-            userInitial={user?.firstName?.charAt(0) || "U"}
+            userSubtitle={user?.customerId || "HZ-Customer"}
+            userInitial={user?.firstName?.[0] || "C"}
             onSignOut={handleLogout}
           />
         </div>
@@ -156,7 +183,7 @@ export const DashboardLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-6">
-            <Badge dot={unreadCount > 0} offset={[-2, 4]} color="#f97316">
+            <Badge count={unreadCount} overflowCount={99} size="small" offset={[-2, 4]} color="#C0262D">
               <Button
                 type="text"
                 shape="circle"

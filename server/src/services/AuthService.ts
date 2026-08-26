@@ -150,39 +150,83 @@ export class AuthService {
   // ─── Forgot Password ──────────────────────────────────────────────────────
   public async forgotPassword(email: string) {
     const user = await this.userRepository.findByEmail(email);
-    // Always return success to prevent email enumeration
-    if (!user) return { message: 'If that email exists, a reset link has been sent' };
+    if (!user) {
+      throw new Error('This email address is not registered in our system. Please check the email or sign up for a new account.');
+    }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    (user as any).resetToken = resetToken;
-    (user as any).resetTokenExpiry = resetTokenExpiry;
+    (user as any).otpCode = otp;
+    (user as any).otpExpiry = otpExpiry;
     await (user as any).save();
 
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
-    console.log(`[Password Reset] Token for ${email}: ${resetToken}`);
+    console.log(`[Password Reset OTP] Code for ${email}: ${otp}`);
 
     sendEmail(
       email,
-      'Reset your Logicore password',
-      resetPasswordEmailTemplate(resetUrl, user.firstName)
-    ).catch((e) => console.error('[Email] Reset email failed:', e.message));
+      'Your Hamza RMB Global Password Reset Code',
+      resetPasswordEmailTemplate(otp, user.firstName)
+    ).catch((e) => console.error('[Email] Reset OTP email failed:', e.message));
 
-    return { message: 'If that email exists, a reset link has been sent' };
+    return { message: 'A 6-digit OTP code has been sent to your email.' };
+  }
+
+  // ─── Verify Reset OTP ─────────────────────────────────────────────────────
+  public async verifyResetOtp(email: string, otp: string) {
+    const { User } = await import('../models');
+    const user = await User.findOne({ where: { email } });
+    if (!user) throw new Error('User account not found');
+    if (!user.otpCode || user.otpCode !== otp) {
+      throw new Error('Invalid 6-digit OTP verification code');
+    }
+    if (user.otpExpiry && new Date() > user.otpExpiry) {
+      throw new Error('OTP code has expired. Please click resend to get a new code.');
+    }
+    return { message: 'OTP verified successfully.' };
   }
 
   // ─── Reset Password ───────────────────────────────────────────────────────
-  public async resetPassword(token: string, newPassword: string) {
+  public async resetPassword(dataOrToken: any, newPasswordParam?: string) {
+    let email = typeof dataOrToken === 'object' ? dataOrToken.email : undefined;
+    let otp = typeof dataOrToken === 'object' ? dataOrToken.otp || dataOrToken.otpCode : undefined;
+    let newPassword = typeof dataOrToken === 'object' ? dataOrToken.password || dataOrToken.newPassword : newPasswordParam;
+    let token = typeof dataOrToken === 'string' ? dataOrToken : dataOrToken?.token;
+
     const { User } = await import('../models');
-    const user = await User.findOne({ where: { resetToken: token } });
-    if (!user) throw new Error('Invalid or expired reset token');
-    if (user.resetTokenExpiry && new Date() > user.resetTokenExpiry) {
-      throw new Error('Reset token has expired');
+    let user = null;
+
+    if (email) {
+      user = await User.findOne({ where: { email } });
+    } else if (token) {
+      user = await User.findOne({ where: { resetToken: token } });
+    }
+
+    if (!user) throw new Error('User account not found');
+
+    if (otp) {
+      if (!user.otpCode || user.otpCode !== otp) {
+        throw new Error('Invalid 6-digit OTP verification code');
+      }
+      if (user.otpExpiry && new Date() > user.otpExpiry) {
+        throw new Error('OTP code has expired. Please click resend to get a new code.');
+      }
+    } else if (token) {
+      if (user.resetTokenExpiry && new Date() > user.resetTokenExpiry) {
+        throw new Error('Reset token has expired');
+      }
+    } else {
+      throw new Error('OTP verification code is required');
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters long');
     }
 
     const salt = await bcrypt.genSalt(10);
     (user as any).passwordHash = await bcrypt.hash(newPassword, salt);
+    (user as any).otpCode = null;
+    (user as any).otpExpiry = null;
     (user as any).resetToken = null;
     (user as any).resetTokenExpiry = null;
     await user.save();

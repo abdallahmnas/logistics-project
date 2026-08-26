@@ -129,6 +129,9 @@ export class ProcurementService {
     if (proc.customerId !== customerId) throw new Error('You cannot approve another customer\'s request');
     if (proc.status !== 'quoted') throw new Error('Only quoted requests can be approved');
 
+    const user = await User.findOne({ where: { customerId } });
+    if (!user) throw new Error('Customer user account not found');
+
     // Deduct totalCostNaira from customer's platform wallet
     const wallet = await Wallet.findOne({ where: { userId: user.id } });
     const currentBalance = wallet ? wallet.balance : 0;

@@ -15,6 +15,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchAllPackages, fetchAllUsers } from '../../../store/slices/adminSlice';
 import { scanPackage, createInboundPackage } from '../../../store/slices/shipmentSlice';
+import { fetchNotifications } from '../../../store/slices/notificationSlice';
 import { uploadSingleFile } from '../../../services/uploadService';
 import type { UploadFile } from 'antd';
 
@@ -203,6 +204,7 @@ export const PackageScanPage: React.FC = () => {
 
       message.success(`Package ${scannedTracking} intake confirmed & updated in database!`);
       dispatch(fetchAllPackages());
+      dispatch(fetchNotifications());
       setSubmitting(false);
       form.resetFields();
       setScannedTracking('');

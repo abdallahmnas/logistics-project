@@ -14,53 +14,65 @@ interface StatusConfig {
 
 // Shipment Status Mappings
 export const shipmentStatusMap: Record<ShipmentStatus, StatusConfig> = {
+  order_created: {
+    label: 'Order Created',
+    color: '#64748B',
+    badgeStatus: 'default',
+    description: 'Shipment order initiated',
+  },
   pre_alerted: {
     label: 'Pre-Alerted',
     color: '#8B5CF6',
     badgeStatus: 'default',
-    description: 'Tracking number submitted, awaiting warehouse arrival',
+    description: 'Tracking details provided by customer',
   },
   received_cn: {
-    label: 'Received at China WH',
+    label: 'Received in China Warehouse',
     color: '#3B82F6',
     badgeStatus: 'processing',
-    description: 'Package received and measured at Guangzhou hub',
+    description: 'Package received at China facility',
   },
-  ready_to_pack: {
-    label: 'Ready to Pack',
+  measured: {
+    label: 'Measured',
     color: '#06B6D4',
     badgeStatus: 'processing',
-    description: 'Available for consolidation selection',
-  },
-  under_packing: {
-    label: 'Under Packing',
-    color: '#F59E0B',
-    badgeStatus: 'warning',
-    description: 'Being consolidated and packed for shipment',
+    description: 'Weight and CBM dimensions recorded',
   },
   consolidating: {
-    label: 'Consolidating',
+    label: 'Consolidated',
     color: '#F97316',
     badgeStatus: 'warning',
-    description: 'Bound to a master shipment batch',
+    description: 'Combined with other items into shipment batch',
   },
-  shipping_exported: {
-    label: 'Shipped / In Transit',
+  packed: {
+    label: 'Packed',
+    color: '#F59E0B',
+    badgeStatus: 'warning',
+    description: 'Securely packaged for export',
+  },
+  shipped: {
+    label: 'Shipped',
     color: '#6366F1',
     badgeStatus: 'processing',
-    description: 'Batch has departed China',
+    description: 'Dispatched and in transit to Nigeria',
   },
   arrived_ng: {
-    label: 'Arrived in Nigeria',
+    label: 'Arrived Nigeria',
     color: '#10B981',
     badgeStatus: 'success',
-    description: 'Cleared customs and arrived at destination warehouse',
+    description: 'Landed at Nigerian port / hub facility',
   },
-  ready_for_pickup: {
-    label: 'Ready for Pickup',
+  customs_clearance: {
+    label: 'Customs',
+    color: '#EC4899',
+    badgeStatus: 'processing',
+    description: 'Undergoing customs inspection and duty processing',
+  },
+  ready_for_delivery: {
+    label: 'Ready for Delivery',
     color: '#22C55E',
     badgeStatus: 'success',
-    description: 'Sorted and awaiting customer collection or delivery',
+    description: 'Cleared customs and ready for doorstep delivery / hub pickup',
   },
   delivered: {
     label: 'Delivered',
@@ -72,27 +84,28 @@ export const shipmentStatusMap: Record<ShipmentStatus, StatusConfig> = {
     label: 'Cancelled',
     color: '#EF4444',
     badgeStatus: 'error',
-    description: 'Shipment has been cancelled',
+    description: 'Shipment order cancelled',
   },
   held_customs: {
-    label: 'Held in Customs',
-    color: '#EF4444',
+    label: 'Held at Customs',
+    color: '#DC2626',
     badgeStatus: 'error',
-    description: 'Package held for customs inspection',
-  },
-  received_at_warehouse: {
-    label: 'Received at Warehouse',
-    color: '#3B82F6',
-    badgeStatus: 'processing',
-    description: 'Package received at warehouse',
-  },
-  at_china_warehouse: {
-    label: 'At China Warehouse',
-    color: '#3B82F6',
-    badgeStatus: 'processing',
-    description: 'Package located at China hub',
+    description: 'Held for additional documentation or inspection',
   },
 };
+
+export const SHIPMENT_STATUS_STEPS: { key: ShipmentStatus; title: string }[] = [
+  { key: 'order_created', title: 'Order Created' },
+  { key: 'received_cn', title: 'Received in China WH' },
+  { key: 'measured', title: 'Measured' },
+  { key: 'consolidating', title: 'Consolidated' },
+  { key: 'packed', title: 'Packed' },
+  { key: 'shipped', title: 'Shipped' },
+  { key: 'arrived_ng', title: 'Arrived Nigeria' },
+  { key: 'customs_clearance', title: 'Customs' },
+  { key: 'ready_for_delivery', title: 'Ready for Delivery' },
+  { key: 'delivered', title: 'Delivered' },
+];
 
 // Procurement Status Mappings
 export const procurementStatusMap: Record<ProcurementStatus, StatusConfig> = {

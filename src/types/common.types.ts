@@ -3,9 +3,11 @@
 export type UserRole =
   | 'customer'
   | 'super_admin'
+  | 'admin'
   | 'warehouse_cn'
   | 'warehouse_ng'
   | 'procurement'
+  | 'clearance_agent'
   | 'driver';
 
 export type ShippingMethod = 'air' | 'sea';

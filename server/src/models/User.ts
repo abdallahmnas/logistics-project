@@ -8,7 +8,7 @@ export interface UserAttributes {
   lastName: string;
   email: string;
   phone: string;
-  role: 'super_admin' | 'admin' | 'customer' | 'warehouse_cn' | 'warehouse_ng' | 'finance' | 'procurement' | 'driver';
+  role: 'super_admin' | 'admin' | 'customer' | 'warehouse_cn' | 'warehouse_ng' | 'finance' | 'procurement' | 'clearance_agent' | 'driver';
   passwordHash?: string;
   isVerified: boolean;
   otpCode?: string;
@@ -33,7 +33,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public declare lastName: string;
   public declare email: string;
   public declare phone: string;
-  public declare role: 'super_admin' | 'admin' | 'customer' | 'warehouse_cn' | 'warehouse_ng' | 'finance' | 'procurement' | 'driver';
+  public declare role: 'super_admin' | 'admin' | 'customer' | 'warehouse_cn' | 'warehouse_ng' | 'finance' | 'procurement' | 'clearance_agent' | 'driver';
   public declare passwordHash?: string;
   public declare isVerified: boolean;
   public declare otpCode?: string;
@@ -80,7 +80,7 @@ User.init(
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM('super_admin', 'admin', 'customer', 'warehouse_cn', 'warehouse_ng', 'finance', 'procurement', 'driver'),
+      type: DataTypes.ENUM('super_admin', 'admin', 'customer', 'warehouse_cn', 'warehouse_ng', 'finance', 'procurement', 'clearance_agent', 'driver'),
       defaultValue: 'customer',
     },
     passwordHash: {
