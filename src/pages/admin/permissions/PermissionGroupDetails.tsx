@@ -1,68 +1,167 @@
-import React, { useState } from 'react';
-import { Button, Input, Select, Checkbox, Card } from 'antd';
-import { TeamOutlined, AppstoreOutlined, SafetyCertificateOutlined, HistoryOutlined, SearchOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Button, Input, Select, Checkbox, Card, message, Tag, Spin } from 'antd';
+import { TeamOutlined, AppstoreOutlined, SafetyCertificateOutlined, HistoryOutlined, SearchOutlined, ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
+import { useNavigate, useParams } from 'react-router-dom';
+import apiClient from '../../../api/axios';
+import { formatDate } from '../../../utils/formatters';
 
 export const PermissionGroupDetails: React.FC = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const [group, setGroup] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [searchText, setSearchText] = useState('');
 
   const modules = [
-    { key: 'shipments', label: 'Shipments', desc: 'Manage global freight', icon: <span className="text-slate-400 font-bold mr-2 text-lg">🚚</span> },
-    { key: 'warehouse', label: 'Warehouse', desc: 'Inventory control', icon: <span className="text-slate-400 font-bold mr-2 text-lg">🏢</span> },
-    { key: 'financials', label: 'Financials', desc: 'Invoices & billing', icon: <span className="text-slate-400 font-bold mr-2 text-lg">💸</span> },
-    { key: 'staff', label: 'Staff Members', desc: 'User management', icon: <span className="text-slate-400 font-bold mr-2 text-lg">👥</span> },
+    { key: 'shipments', label: 'Shipments & Freight', desc: 'Manage global cargo', icon: '🚚' },
+    { key: 'warehouse', label: 'Warehouse & Inventory', desc: 'Inbound scanning & batching', icon: '🏢' },
+    { key: 'procurement', label: 'Procurement / Buy For Me', desc: 'Review 1688 quotes & sourcing', icon: '🛒' },
+    { key: 'exchange', label: 'RMB Exchange & Payments', desc: 'Verify Naira & release RMB', icon: '🔄' },
+    { key: 'delivery', label: 'Local Dispatch & Delivery', desc: 'Driver task assignment & PINs', icon: '🚛' },
+    { key: 'staff', label: 'Staff Members', desc: 'Onboard & manage staff users', icon: '👥' },
+    { key: 'support', label: 'Support Tickets', desc: 'Customer support helpdesk', icon: '🎧' },
+    { key: 'facility', label: 'Warehouse Facilities', desc: 'Manage hub addresses & capacity', icon: '🏭' },
+    { key: 'settings', label: 'System Settings', desc: 'Configure exchange rates & pricing', icon: '⚙️' },
   ];
-
-  // Based on the Operations Manager mockup
-  const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>({
-    shipments: { create: true, read: true, update: true, delete: false, approve: true, reject: true },
-    warehouse: { create: true, read: true, update: true, delete: false, approve: false, reject: false },
-    financials: { create: false, read: true, update: false, delete: false, approve: false, reject: false },
-    staff: { create: false, read: true, update: false, delete: false, approve: false, reject: false },
-  });
 
   const columns = ['CREATE', 'READ', 'UPDATE', 'DELETE', 'APPROVE', 'REJECT'];
 
+  const initialPermissions: Record<string, Record<string, boolean>> = {};
+  modules.forEach((m) => {
+    initialPermissions[m.key] = { create: false, read: false, update: false, delete: false, approve: false, reject: false };
+  });
+
+  const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>(initialPermissions);
+
+  const fetchGroupDetails = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const res = await apiClient.get(`/permissions/permission-groups/${id}`);
+      const data = res.data.data;
+      setGroup(data);
+
+      const matrix = { ...initialPermissions };
+      if (data.permissionRules && data.permissionRules.length > 0) {
+        data.permissionRules.forEach((rule: any) => {
+          const modKey = rule.entity.toLowerCase();
+          const actKey = rule.action.toLowerCase();
+          if (!matrix[modKey]) {
+            matrix[modKey] = { create: false, read: false, update: false, delete: false, approve: false, reject: false };
+          }
+          matrix[modKey][actKey] = rule.status === 'active';
+        });
+      } else if (data.permissions) {
+        Object.entries(data.permissions).forEach(([modKey, actions]: [string, any]) => {
+          if (!matrix[modKey]) {
+            matrix[modKey] = { create: false, read: false, update: false, delete: false, approve: false, reject: false };
+          }
+          Object.entries(actions).forEach(([actKey, val]) => {
+            matrix[modKey][actKey] = Boolean(val);
+          });
+        });
+      }
+
+      setPermissions(matrix);
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Failed to load permission group details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGroupDetails();
+  }, [id]);
+
+  const togglePermission = (mod: string, col: string) => {
+    const key = col.toLowerCase();
+    setPermissions((prev) => ({
+      ...prev,
+      [mod]: { ...prev[mod], [key]: !prev[mod]?.[key] },
+    }));
+  };
+
+  const handleSaveMatrix = async () => {
+    if (!id) return;
+    try {
+      setSaving(true);
+      await apiClient.patch(`/permissions/permission-groups/${id}`, {
+        permissions,
+      });
+      message.success('Permission Matrix rules saved successfully!');
+      fetchGroupDetails();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Failed to save permission matrix');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredModules = modules.filter((m) =>
+    m.label.toLowerCase().includes(searchText.toLowerCase()) || m.desc.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const activeRulesCount = Object.values(permissions).reduce((acc, mod) => {
+    return acc + Object.values(mod).filter(Boolean).length;
+  }, 0);
+
+  if (loading) {
+    return (
+      <div className="py-20 text-center">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  const memberCount = group?.members ? group.members.length : 0;
+  const isActive = group?.status === 'active' || group?.isActive !== false;
+
   return (
-    <div className="animate-fade-in-up max-w-[1000px] mx-auto py-8">
+    <div className="animate-fade-in-up max-w-[1000px] mx-auto py-8 space-y-6 pb-24">
+      {/* Back Link */}
+      <Button
+        type="link"
+        icon={<ArrowLeftOutlined />}
+        className="p-0 text-slate-500 hover:text-brand-navy font-bold text-xs"
+        onClick={() => navigate('/admin/permissions')}
+      >
+        Back to Permission Groups
+      </Button>
+
       {/* Header Info */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-4xl font-extrabold text-[#0A1128] m-0 tracking-tight">Operations Manager</h1>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Active
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-3xl font-extrabold text-[#0A1128] m-0 tracking-tight">{group?.title || group?.name}</h1>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span> {isActive ? 'Active' : 'Inactive'}
             </span>
           </div>
-          <p className="text-slate-500 text-sm m-0 max-w-2xl leading-relaxed">
-            Manage operational activities across the platform. This group grants comprehensive access to warehouse management, shipment routing, and staff coordination.
-          </p>
+          <p className="text-slate-500 text-sm m-0 max-w-2xl">{group?.description || 'Operational permission group'}</p>
         </div>
-        <div className="flex gap-3">
-          <Button 
-            className="border-brand-orange text-brand-orange font-bold hover:bg-orange-50 px-6"
-          >
-            Edit Group
-          </Button>
-          <Button 
-            className="bg-red-50 text-red-500 border-none hover:bg-red-100 font-bold px-6"
-          >
-            Deactivate
-          </Button>
-        </div>
+        <Button
+          type="primary"
+          icon={<SaveOutlined />}
+          loading={saving}
+          onClick={handleSaveMatrix}
+          className="bg-[#0A1128] hover:bg-[#1a2542] border-none font-bold px-6"
+        >
+          Save Matrix Rules
+        </Button>
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-2">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">MEMBERS</span>
             <TeamOutlined className="text-brand-orange text-lg" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-[#0A1128]">8</span>
-            <span className="text-xs text-slate-500">Active users</span>
+            <span className="text-3xl font-extrabold text-[#0A1128]">{memberCount}</span>
+            <span className="text-xs text-slate-500">Assigned staff</span>
           </div>
         </div>
         <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
@@ -71,17 +170,17 @@ export const PermissionGroupDetails: React.FC = () => {
             <AppstoreOutlined className="text-[#0A1128] text-lg" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-[#0A1128]">8</span>
-            <span className="text-xs text-slate-500">Accessible</span>
+            <span className="text-3xl font-extrabold text-[#0A1128]">{modules.length}</span>
+            <span className="text-xs text-slate-500">System modules</span>
           </div>
         </div>
         <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PERMISSIONS</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">ACTIVE RULES</span>
             <SafetyCertificateOutlined className="text-blue-500 text-lg" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-[#0A1128]">18</span>
+            <span className="text-3xl font-extrabold text-[#0A1128]">{activeRulesCount}</span>
             <span className="text-xs text-slate-500">Enabled</span>
           </div>
         </div>
@@ -91,45 +190,49 @@ export const PermissionGroupDetails: React.FC = () => {
             <HistoryOutlined className="text-slate-400 text-lg" />
           </div>
           <div>
-            <div className="text-lg font-bold text-[#0A1128]">Aug 8, 2026</div>
-            <div className="text-xs text-slate-500">by Admin System</div>
+            <div className="text-base font-bold text-[#0A1128]">{formatDate(group?.updatedAt)}</div>
+            <div className="text-xs text-slate-400">System Record</div>
           </div>
         </div>
       </div>
 
-      {/* Permission Matrix */}
-      <Card 
-        bordered={false} 
-        className="shadow-sm border border-slate-100 rounded-xl"
-        bodyStyle={{ padding: 0 }}
-      >
-        <div className="p-4 px-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50 rounded-t-xl">
+      {/* Permission Matrix Table */}
+      <Card bordered={false} className="shadow-sm border border-slate-100 rounded-xl overflow-hidden" bodyStyle={{ padding: 0 }}>
+        <div className="p-4 px-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50">
           <Input
             placeholder="Search permissions..."
             prefix={<SearchOutlined className="text-slate-400" />}
-            className="max-w-xs h-10 border-white hover:border-slate-300"
+            className="max-w-xs h-10 border-slate-200"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-medium">Show:</span>
-            <Select
-              defaultValue="all"
-              className="w-40"
-              options={[
-                { value: 'all', label: 'All Modules' },
-                { value: 'enabled', label: 'Enabled Only' },
-              ]}
-            />
-          </div>
-        </div>
-
-        <div className="p-6 pb-0 flex justify-between items-end border-b border-slate-100">
-          <h2 className="text-xl font-bold text-[#0A1128] m-0 mb-4">Permission Matrix</h2>
-          <div className="flex gap-2 mb-4">
-            <Button size="small" className="text-xs font-bold text-slate-600 bg-slate-100 border-none">Select All</Button>
-            <Button size="small" className="text-xs font-bold text-slate-600 bg-slate-100 border-none">Clear All</Button>
-            <Button size="small" className="text-xs font-bold text-brand-orange bg-orange-50 border-none">All Read</Button>
+          <div className="flex gap-2">
+            <Button
+              size="small"
+              className="text-xs font-bold text-slate-600 bg-white border-slate-200"
+              onClick={() => {
+                const allOn: any = {};
+                modules.forEach((m) => {
+                  allOn[m.key] = { create: true, read: true, update: true, delete: true, approve: true, reject: true };
+                });
+                setPermissions(allOn);
+              }}
+            >
+              Select All
+            </Button>
+            <Button
+              size="small"
+              className="text-xs font-bold text-slate-600 bg-white border-slate-200"
+              onClick={() => {
+                const allOff: any = {};
+                modules.forEach((m) => {
+                  allOff[m.key] = { create: false, read: false, update: false, delete: false, approve: false, reject: false };
+                });
+                setPermissions(allOff);
+              }}
+            >
+              Clear All
+            </Button>
           </div>
         </div>
 
@@ -140,30 +243,31 @@ export const PermissionGroupDetails: React.FC = () => {
                 <th className="py-4 px-6 font-bold text-slate-500 text-xs tracking-wider uppercase border-b border-slate-100 bg-slate-50 sticky left-0 z-10 w-1/3">
                   MODULE
                 </th>
-                {columns.map(col => (
+                {columns.map((col) => (
                   <th key={col} className="py-4 px-2 text-center border-b border-slate-100 bg-slate-50 font-bold text-slate-700 text-xs tracking-wider">
-                    {col} {col === 'UPDATE' || col === 'DELETE' ? <InfoCircleOutlined className="text-slate-400 text-[10px] text-red-500" style={{color: col === 'DELETE' ? '#ef4444' : undefined}} /> : null}
+                    {col}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {modules.map(mod => (
+              {filteredModules.map((mod) => (
                 <tr key={mod.key} className="hover:bg-slate-50 transition-colors">
                   <td className="py-4 px-6 border-b border-slate-100 bg-white sticky left-0 z-10">
-                    <div className="flex items-center gap-1">
-                      {mod.icon}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{mod.icon}</span>
                       <div>
                         <div className="font-bold text-[#0A1128] text-sm">{mod.label}</div>
-                        <div className="text-xs text-slate-500">{mod.desc}</div>
+                        <div className="text-xs text-slate-400">{mod.desc}</div>
                       </div>
                     </div>
                   </td>
-                  {columns.map(col => (
+                  {columns.map((col) => (
                     <td key={`${mod.key}-${col}`} className="py-4 px-2 text-center border-b border-slate-100">
-                      <Checkbox 
-                        checked={permissions[mod.key][col.toLowerCase()]}
-                        className={`scale-110 ${permissions[mod.key][col.toLowerCase()] ? '[&_.ant-checkbox-inner]:bg-[#0A1128] [&_.ant-checkbox-inner]:border-[#0A1128]' : ''}`}
+                      <Checkbox
+                        checked={Boolean(permissions[mod.key]?.[col.toLowerCase()])}
+                        onChange={() => togglePermission(mod.key, col)}
+                        className={`scale-125 ${permissions[mod.key]?.[col.toLowerCase()] ? '[&_.ant-checkbox-inner]:bg-[#0A1128] [&_.ant-checkbox-inner]:border-[#0A1128]' : ''}`}
                       />
                     </td>
                   ))}
@@ -173,9 +277,11 @@ export const PermissionGroupDetails: React.FC = () => {
           </table>
         </div>
         <div className="p-4 bg-slate-50 text-center text-xs text-slate-400 rounded-b-xl border-t border-slate-100">
-          Changes are auto-saved for review. Click Save below to apply.
+          Click "Save Matrix Rules" above to persist changes to the database.
         </div>
       </Card>
     </div>
   );
 };
+
+export default PermissionGroupDetails;

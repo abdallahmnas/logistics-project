@@ -46,7 +46,7 @@ const LoginPage: React.FC = () => {
 
     if (loginUser.fulfilled.match(resultAction)) {
       const role = resultAction.payload.user.role as string;
-      if (role === "super_admin" || role === "admin") {
+      if (role !== "customer") {
         navigate("/admin", { replace: true });
       } else {
         navigate("/customer", { replace: true });
@@ -140,7 +140,7 @@ const LoginPage: React.FC = () => {
             >
               <Input
                 prefix={<MailOutlined className="text-slate-400 mr-1" />}
-                placeholder="operator@globallogistics.com"
+                placeholder="admin@mailinator.com"
                 className="!h-12 !rounded-lg !bg-slate-50 !border-slate-200 focus:!bg-white"
               />
             </Form.Item>
@@ -195,7 +195,51 @@ const LoginPage: React.FC = () => {
               </Button>
             </Form.Item>
 
-            <div className="text-center pt-6">
+            {/* Quick Demo Login Assistant */}
+            <div className="mt-8 pt-6 border-t border-slate-100 space-y-2.5">
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 text-center">
+                Quick Demo Sign-In (@mailinator.com)
+              </div>
+              <div className="flex flex-wrap gap-1.5 justify-center">
+                <button
+                  type="button"
+                  onClick={() => form.setFieldsValue({ email: 'admin@mailinator.com', password: '12345678' })}
+                  className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-brand-navy hover:text-white text-slate-700 rounded-md transition-colors border-none cursor-pointer"
+                >
+                  🏢 Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => form.setFieldsValue({ email: 'superadmin@mailinator.com', password: '12345678' })}
+                  className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-brand-navy hover:text-white text-slate-700 rounded-md transition-colors border-none cursor-pointer"
+                >
+                  👑 Super Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => form.setFieldsValue({ email: 'ss@mailinator.com', password: '12345678' })}
+                  className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-brand-navy hover:text-white text-slate-700 rounded-md transition-colors border-none cursor-pointer"
+                >
+                  🚚 Driver (Sani)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => form.setFieldsValue({ email: 'finance@mailinator.com', password: '12345678' })}
+                  className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-brand-navy hover:text-white text-slate-700 rounded-md transition-colors border-none cursor-pointer"
+                >
+                  🔄 Finance
+                </button>
+                <button
+                  type="button"
+                  onClick={() => form.setFieldsValue({ email: 'adebayo@mailinator.com', password: '12345678' })}
+                  className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-brand-navy hover:text-white text-slate-700 rounded-md transition-colors border-none cursor-pointer"
+                >
+                  👤 Customer
+                </button>
+              </div>
+            </div>
+
+            <div className="text-center pt-4">
               <span className="text-slate-500 text-sm">
                 Don't have access?{" "}
               </span>

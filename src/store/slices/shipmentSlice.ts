@@ -45,8 +45,8 @@ export const submitConsolidation = createAsyncThunk(
 
 export const updateConsolidation = createAsyncThunk(
   'shipments/updateConsolidation',
-  async ({ id, packageIds }: { id: string; packageIds: string[] }) => {
-    const res = await apiClient.put(`/shipments/consolidations/${id}`, { packageIds });
+  async ({ id, packageIds, status }: { id: string; packageIds?: string[]; status?: string }) => {
+    const res = await apiClient.put(`/shipments/consolidations/${id}`, { packageIds, status });
     return res.data.data;
   }
 );

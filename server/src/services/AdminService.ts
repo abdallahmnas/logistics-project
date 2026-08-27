@@ -51,6 +51,7 @@ export class AdminService {
     email: string;
     phone: string;
     role: string;
+    permissionGroupId?: string;
     password?: string;
   }) {
     const bcrypt = await import('bcryptjs');
@@ -67,6 +68,7 @@ export class AdminService {
       email: data.email,
       phone: data.phone,
       role: data.role as any,
+      permissionGroupId: data.permissionGroupId || undefined,
       passwordHash: hashedPassword,
       isVerified: true,
       customerId,
@@ -93,6 +95,7 @@ export class AdminService {
     firstName?: string;
     lastName?: string;
     phone?: string;
+    permissionGroupId?: string;
   }) {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('User not found');
@@ -102,6 +105,7 @@ export class AdminService {
     if (data.firstName) user.firstName = data.firstName;
     if (data.lastName) user.lastName = data.lastName;
     if (data.phone) user.phone = data.phone;
+    if (data.permissionGroupId !== undefined) user.permissionGroupId = data.permissionGroupId || undefined;
 
     await user.save();
     const { passwordHash, otpCode, ...safeUser } = user.toJSON() as any;
@@ -117,32 +121,34 @@ export class AdminService {
   }
 
   public static async getPermissionGroups() {
-    return PermissionGroup.findAll({ include: [{ model: User, as: 'members', attributes: ['id'] }], order: [['name', 'ASC']] });
+    const { PermissionGroupService } = await import('./PermissionGroupService');
+    return PermissionGroupService.getAll();
   }
 
-  public static async createPermissionGroup(data: { name: string; description?: string; permissions: PermissionMatrix; isActive?: boolean }) {
-    if (!data.name?.trim()) throw new Error('Permission group name is required');
-    if (!data.permissions || typeof data.permissions !== 'object') throw new Error('A permission matrix is required');
-    return PermissionGroup.create({ name: data.name.trim(), description: data.description?.trim(), permissions: data.permissions, isActive: data.isActive ?? true });
+  public static async createPermissionGroup(data: { name?: string; title?: string; description?: string; permissions?: PermissionMatrix; isActive?: boolean; status?: 'active' | 'inactive' }) {
+    const { PermissionGroupService } = await import('./PermissionGroupService');
+    return PermissionGroupService.create({
+      name: data.name || data.title || '',
+      title: data.title || data.name || '',
+      description: data.description,
+      status: data.status || (data.isActive === false ? 'inactive' : 'active'),
+      permissions: data.permissions,
+    });
   }
 
-  public static async updatePermissionGroup(id: string, data: Partial<{ name: string; description: string; permissions: PermissionMatrix; isActive: boolean }>) {
-    const group = await PermissionGroup.findByPk(id);
-    if (!group) throw new Error('Permission group not found');
-    if (data.name !== undefined) group.name = data.name.trim();
-    if (data.description !== undefined) group.description = data.description.trim();
-    if (data.permissions !== undefined) group.permissions = data.permissions;
-    if (data.isActive !== undefined) group.isActive = data.isActive;
-    await group.save();
-    return group;
+  public static async updatePermissionGroup(id: string, data: Partial<{ name: string; title: string; description: string; permissions: PermissionMatrix; isActive: boolean; status: 'active' | 'inactive' }>) {
+    const { PermissionGroupService } = await import('./PermissionGroupService');
+    return PermissionGroupService.update(id, {
+      name: data.name || data.title,
+      title: data.title || data.name,
+      description: data.description,
+      status: data.status || (data.isActive === false ? 'inactive' : 'active'),
+      permissions: data.permissions,
+    });
   }
 
   public static async deletePermissionGroup(id: string) {
-    const group = await PermissionGroup.findByPk(id);
-    if (!group) throw new Error('Permission group not found');
-    const members = await User.count({ where: { permissionGroupId: id } });
-    if (members) throw new Error('Reassign staff before deleting this permission group');
-    await group.destroy();
-    return { deleted: true };
+    const { PermissionGroupService } = await import('./PermissionGroupService');
+    return PermissionGroupService.delete(id);
   }
 }

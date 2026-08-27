@@ -144,6 +144,15 @@ export class AuthService {
 
     const token = generateToken({ id: user.id, role: user.role });
     const { passwordHash, otpCode, ...safeUser } = user.toJSON() as any;
+
+    // Inject permission rules for staff user
+    try {
+      const { PermissionService } = await import('./PermissionService');
+      safeUser.permissions = await PermissionService.getUserPermissionsList(user.permissionGroupId);
+    } catch {
+      safeUser.permissions = [];
+    }
+
     return { user: safeUser, token };
   }
 
@@ -257,7 +266,14 @@ export class AuthService {
       include: ['wallet'],
     });
     if (!user) throw new Error('User not found');
-    return user;
+    const safeUser = user.toJSON() as any;
+    try {
+      const { PermissionService } = await import('./PermissionService');
+      safeUser.permissions = await PermissionService.getUserPermissionsList(user.permissionGroupId);
+    } catch {
+      safeUser.permissions = [];
+    }
+    return safeUser;
   }
 
   // ─── Update Profile ───────────────────────────────────────────────────────

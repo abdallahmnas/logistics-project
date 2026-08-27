@@ -18,8 +18,8 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
 \`\`\`
 `,
       contact: {
-        name: 'Logicore Engineering',
-        email: 'devs@logicore.com',
+        name: 'Hamza RMB Engineering',
+        email: 'devs@mailinatorr.com',
       },
     },
     servers: [

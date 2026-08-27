@@ -53,6 +53,7 @@ import {
 import { fetchAllPackages } from "../../store/slices/adminSlice";
 import { createInboundPackage } from "../../store/slices/shipmentSlice";
 import { formatDate } from "../../utils/formatters";
+import { AIChatbotWidget } from "../chat/AIChatbotWidget";
 
 const { Option } = Select;
 
@@ -144,6 +145,18 @@ export const AdminLayout: React.FC = () => {
     return counts;
   }, [notifications]);
 
+  const hasPermission = (entityName: string) => {
+    if (role === "super_admin" || role === "admin") return true;
+    if (!user || !user.permissions || !Array.isArray(user.permissions)) return false;
+    return user.permissions.some(
+      (p: any) =>
+        p.entity === entityName ||
+        p.entity === `${entityName}s` ||
+        p.entity === entityName.replace(/s$/, '') ||
+        p[entityName] === true
+    );
+  };
+
   const sections: SidebarNavSection[] = [
     {
       title: "Overview",
@@ -158,7 +171,10 @@ export const AdminLayout: React.FC = () => {
     role === "admin" ||
     role === "warehouse_cn" ||
     role === "warehouse_ng" ||
-    role === "clearance_agent"
+    role === "clearance_agent" ||
+    hasPermission("warehouse") ||
+    hasPermission("shipments") ||
+    hasPermission("facility")
   ) {
     const whItems = [
       {
@@ -196,7 +212,7 @@ export const AdminLayout: React.FC = () => {
   }
 
   const opsItems = [];
-  if (role === "super_admin" || role === "admin" || role === "procurement") {
+  if (role === "super_admin" || role === "admin" || role === "procurement" || hasPermission("procurement")) {
     opsItems.push({
       key: "/admin/procurement",
       icon: <ShoppingCartOutlined />,
@@ -204,7 +220,7 @@ export const AdminLayout: React.FC = () => {
       badge: unreadByCategory["procurement"],
     });
   }
-  if (role === "super_admin" || role === "admin" || role === "finance") {
+  if (role === "super_admin" || role === "admin" || role === "finance" || hasPermission("exchange")) {
     opsItems.push({
       key: "/admin/exchange",
       icon: <SwapOutlined />,
@@ -212,7 +228,7 @@ export const AdminLayout: React.FC = () => {
       badge: unreadByCategory["exchange"],
     });
   }
-  if (role === "super_admin" || role === "admin" || role === "warehouse_ng" || role === "warehouse_cn") {
+  if (role === "super_admin" || role === "admin" || role === "warehouse_ng" || role === "warehouse_cn" || role === "driver" || hasPermission("delivery")) {
     opsItems.push({
       key: "/admin/delivery",
       icon: <CarOutlined />,
@@ -222,16 +238,17 @@ export const AdminLayout: React.FC = () => {
   }
   if (opsItems.length) sections.push({ title: "Operations", items: opsItems });
 
-  if (role === "super_admin" || role === "admin" || role === "customer_service" || role === "clearance_agent") {
-    const manageItems = [
-      {
-        key: "/admin/support",
-        icon: <CustomerServiceOutlined />,
-        label: "Support Tickets",
-        badge: unreadByCategory["support"],
-      },
-    ];
+  const manageItems = [];
+  if (role === "super_admin" || role === "admin" || role === "customer_service" || role === "clearance_agent" || hasPermission("support")) {
+    manageItems.push({
+      key: "/admin/support",
+      icon: <CustomerServiceOutlined />,
+      label: "Support Tickets",
+      badge: unreadByCategory["support"],
+    });
+  }
 
+  if (role === "super_admin" || role === "admin" || hasPermission("staff") || hasPermission("users")) {
     if (role !== "clearance_agent") {
       manageItems.push({
         key: "/admin/customers",
@@ -239,33 +256,36 @@ export const AdminLayout: React.FC = () => {
         label: "Customers",
       });
     }
+  }
 
-    if (role === "super_admin" || role === "admin") {
-      manageItems.push(
-        { key: "/admin/staff", icon: <TeamOutlined />, label: "Staff Members" },
-        {
-          key: "/admin/permissions",
-          icon: <SafetyCertificateOutlined />,
-          label: "Permissions & RBAC",
-        },
-        {
-          key: "/admin/activity-trail",
-          icon: <HistoryOutlined />,
-          label: "Activity Trail",
-        },
-        {
-          key: "/admin/settings",
-          icon: <SettingOutlined />,
-          label: "System Settings & Rates",
-        }
-      );
-    }
+  if (role === "super_admin" || role === "admin" || hasPermission("staff")) {
+    manageItems.push(
+      {
+        key: "/admin/staff", icon: <TeamOutlined />, label: "Staff Members",
+        badge: 0
+      },
+      {
+        key: "/admin/permissions",
+        icon: <SafetyCertificateOutlined />,
+        label: "Permissions & RBAC",
+      },
+      {
+        key: "/admin/activity-trail",
+        icon: <HistoryOutlined />,
+        label: "Activity Trail",
+      }
+    );
+  }
 
-    sections.push({
-      title: "Management",
-      items: manageItems,
+  if (role === "super_admin" || role === "admin" || hasPermission("settings")) {
+    manageItems.push({
+      key: "/admin/settings",
+      icon: <SettingOutlined />,
+      label: "System Settings & Rates",
     });
   }
+
+  if (manageItems.length) sections.push({ title: "Management", items: manageItems });
 
   const userMenuItems = [
     {
@@ -514,8 +534,8 @@ export const AdminLayout: React.FC = () => {
           <Divider />
 
           <div className="flex justify-between items-center text-xs text-slate-500">
-            <span>Support Email: <a href="mailto:support@logicore.com" className="font-bold text-brand-navy">support@logicore.com</a></span>
-            <span>Hotline: <span className="font-bold text-slate-700">+234 800 LOGICORE</span></span>
+            <span>Support Email: <a href="mailto:[EMAIL_ADDRESS]" className="font-bold text-brand-navy">[EMAIL_ADDRESS]</a></span>
+            <span>Hotline: <span className="font-bold text-slate-700">+234 810 285 9703</span></span>
           </div>
         </div>
       </Modal>
@@ -590,6 +610,11 @@ export const AdminLayout: React.FC = () => {
           </div>
         </Form>
       </Modal>
+
+      {/* Floating Multilingual AI Chatbot Assistant */}
+      <AIChatbotWidget />
     </div>
   );
 };
+
+export default AdminLayout;

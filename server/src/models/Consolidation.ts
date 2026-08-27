@@ -14,7 +14,7 @@ export interface ConsolidationAttributes {
   totalCbm: number;
   shippingFee: number;
   originCountry?: string;
-  status: 'pending_packing' | 'ready_to_batch' | 'batched';
+  status: 'requested' | 'pending_packing' | 'packaging' | 'packaged' | 'ready_to_batch' | 'batched';
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -34,7 +34,7 @@ export class Consolidation extends Model<ConsolidationAttributes, ConsolidationC
   public declare totalCbm: number;
   public declare shippingFee: number;
   public declare originCountry?: string;
-  public declare status: 'pending_packing' | 'ready_to_batch' | 'batched';
+  public declare status: 'requested' | 'pending_packing' | 'packaging' | 'packaged' | 'ready_to_batch' | 'batched';
   public declare readonly createdAt: Date;
   public declare readonly updatedAt: Date;
 }

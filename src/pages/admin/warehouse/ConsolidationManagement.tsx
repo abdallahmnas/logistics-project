@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Card, Button, Table, Tag, Input, Select, Drawer, Descriptions, Divider, Image } from 'antd';
-import { SearchOutlined, EyeOutlined, BoxPlotOutlined, RocketOutlined, DollarOutlined, EnvironmentOutlined, UserOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Card, Button, Table, Tag, Input, Select, Drawer, Descriptions, Divider, Image, Tooltip, message, Steps, Modal } from 'antd';
+import { SearchOutlined, EyeOutlined, BoxPlotOutlined, RocketOutlined, DollarOutlined, EnvironmentOutlined, UserOutlined, CalendarOutlined, CheckCircleOutlined, SyncOutlined, ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchConsolidations, fetchPackages, updateConsolidation } from '../../../store/slices/shipmentSlice';
+import { fetchConsolidations, fetchPackages, fetchBatches, updateConsolidation, addPackagesToBatch } from '../../../store/slices/shipmentSlice';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { formatWeight, formatCbm, formatRmb, formatDate } from '../../../utils/formatters';
 import { useNavigate } from 'react-router-dom';
@@ -10,21 +10,104 @@ import type { Consolidation } from '../../../types/shipment.types';
 
 const { Option } = Select;
 
+const STAGE_ORDER = ['requested', 'pending_packing', 'packaging', 'packaged', 'ready_to_batch', 'batched'];
+
+const getNextStageConfig = (currentStatus: string) => {
+  switch (currentStatus) {
+    case 'requested':
+      return { nextStatus: 'pending_packing', label: 'Queue for Packaging', icon: <BoxPlotOutlined /> };
+    case 'pending_packing':
+      return { nextStatus: 'packaging', label: 'Start Packaging', icon: <SyncOutlined /> };
+    case 'packaging':
+      return { nextStatus: 'packaged', label: 'Mark Packaged & Sealed', icon: <CheckCircleOutlined /> };
+    case 'packaged':
+      return { nextStatus: 'ready_to_batch', label: 'Mark Ready for Batching', icon: <RocketOutlined /> };
+    default:
+      return null;
+  }
+};
+
 export const ConsolidationManagement: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { consolidations, packages, loading } = useAppSelector((state) => state.shipments);
+  const { consolidations, packages, batches, loading } = useAppSelector((state) => state.shipments);
 
   const [search, setSearch] = useState('');
   const [methodFilter, setMethodFilter] = useState<string>('all');
   const [selectedConsolidation, setSelectedConsolidation] = useState<Consolidation | null>(null);
   const [selectedAddPkgId, setSelectedAddPkgId] = useState<string>('');
   const [updatingBox, setUpdatingBox] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  // Batch Assignment Modal States
+  const [batchModalVisible, setBatchModalVisible] = useState(false);
+  const [targetConsolidation, setTargetConsolidation] = useState<Consolidation | null>(null);
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+  const [attachingBatch, setAttachingBatch] = useState(false);
 
   useEffect(() => {
     dispatch(fetchConsolidations());
     dispatch(fetchPackages());
+    dispatch(fetchBatches());
   }, [dispatch]);
+
+  const handleOpenBatchModal = (consolidation: Consolidation) => {
+    setTargetConsolidation(consolidation);
+    const matchingBatches = batches.filter(
+      (b) => b.shippingType === consolidation.shippingMethod && !['delivered', 'cancelled'].includes(b.status)
+    );
+    if (matchingBatches.length > 0) {
+      setSelectedBatchId(matchingBatches[0].id);
+    } else {
+      setSelectedBatchId('');
+    }
+    setBatchModalVisible(true);
+  };
+
+  const handleAttachToExistingBatch = async () => {
+    if (!targetConsolidation || !selectedBatchId) {
+      message.warning('Please select an existing master batch.');
+      return;
+    }
+    try {
+      setAttachingBatch(true);
+      await dispatch(
+        addPackagesToBatch({
+          batchId: selectedBatchId,
+          packageIds: [targetConsolidation.id],
+        })
+      ).unwrap();
+
+      dispatch(fetchConsolidations());
+      dispatch(fetchBatches());
+      message.success(`Consolidation ${targetConsolidation.consolidationId} added to Master Batch!`);
+      setBatchModalVisible(false);
+      setSelectedConsolidation(null);
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to attach to batch';
+      message.error(msg);
+    } finally {
+      setAttachingBatch(false);
+    }
+  };
+
+  const handleUpdateStatus = async (newStatus: string) => {
+    if (!selectedConsolidation) return;
+    try {
+      setUpdatingStatus(true);
+      const updated = await dispatch(
+        updateConsolidation({ id: selectedConsolidation.id, status: newStatus as any })
+      ).unwrap();
+      setSelectedConsolidation(updated);
+      dispatch(fetchConsolidations());
+      message.success(`Consolidation stage updated to ${newStatus.toUpperCase()}`);
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to update consolidation stage';
+      message.error(msg);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   const handleRemovePackageFromBox = async (pkgId: string) => {
     if (!selectedConsolidation) return;
@@ -256,24 +339,91 @@ export const ConsolidationManagement: React.FC = () => {
       >
         {selectedConsolidation && (
           <div className="space-y-6">
-            {/* Header Status Bar */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-between items-center">
-              <div>
-                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-1">Status</span>
+            {/* Interactive Stage Progress Bar & Quick Action Button */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] text-slate-400 font-extrabold uppercase tracking-wider">
+                  Packaging Process Timeline (Click any step to jump stage)
+                </span>
                 <StatusBadge module="shipment" status={selectedConsolidation.status} />
               </div>
-              <Button
-                type="primary"
-                icon={<RocketOutlined />}
-                className="bg-brand-navy font-bold"
-                onClick={() => {
-                  const cid = selectedConsolidation.id;
-                  setSelectedConsolidation(null);
-                  navigate(`/admin/warehouse/batches/new?consolidationId=${cid}`);
+
+              <Steps
+                current={STAGE_ORDER.indexOf(selectedConsolidation.status)}
+                onChange={(currentStep) => {
+                  const targetStatus = STAGE_ORDER[currentStep];
+                  if (targetStatus && targetStatus !== selectedConsolidation.status) {
+                    handleUpdateStatus(targetStatus);
+                  }
                 }}
-              >
-                Assign to Batch
-              </Button>
+                size="small"
+                items={[
+                  { title: 'Requested', description: 'Customer request' },
+                  { title: 'Pending', description: 'In Queue' },
+                  { title: 'Packaging', description: 'Re-packing' },
+                  { title: 'Packaged', description: 'Sealed & Weighed' },
+                  { title: 'Ready', description: 'Ready for Batch' },
+                ]}
+              />
+
+              {/* Action Buttons & Dropdown Controls */}
+              <div className="pt-2 border-t border-slate-200/60 flex flex-wrap justify-between items-center gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(() => {
+                    const nextConfig = getNextStageConfig(selectedConsolidation.status);
+                    if (nextConfig) {
+                      return (
+                        <Button
+                          type="primary"
+                          icon={nextConfig.icon}
+                          loading={updatingStatus}
+                          className="bg-emerald-600 hover:bg-emerald-700 font-bold border-none"
+                          onClick={() => handleUpdateStatus(nextConfig.nextStatus)}
+                        >
+                          {nextConfig.label} <ArrowRightOutlined className="ml-1 text-xs" />
+                        </Button>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  <span className="text-xs text-slate-400 font-medium hidden sm:inline">Or override:</span>
+
+                  <Select
+                    value={selectedConsolidation.status}
+                    onChange={handleUpdateStatus}
+                    loading={updatingStatus}
+                    size="middle"
+                    className="w-48 font-bold"
+                  >
+                    <Option value="requested">📥 Requested</Option>
+                    <Option value="pending_packing">📦 Pending Packaging</Option>
+                    <Option value="packaging">⚙️ In Packaging</Option>
+                    <Option value="packaged">✅ Packaged & Sealed</Option>
+                    <Option value="ready_to_batch">🚀 Ready for Batching</Option>
+                    <Option value="batched">🔒 Batched</Option>
+                  </Select>
+                </div>
+
+                <Tooltip
+                  title={
+                    selectedConsolidation.status !== 'ready_to_batch'
+                      ? "Must update stage to 'Ready for Batching' before assigning to container/flight batch"
+                      : ""
+                  }
+                >
+                  <Button
+                    type="primary"
+                    size="middle"
+                    icon={<RocketOutlined />}
+                    disabled={selectedConsolidation.status !== 'ready_to_batch'}
+                    className="bg-brand-navy font-bold disabled:opacity-40 shrink-0"
+                    onClick={() => handleOpenBatchModal(selectedConsolidation)}
+                  >
+                    Assign to Batch
+                  </Button>
+                </Tooltip>
+              </div>
             </div>
 
             {/* Consolidation Specifications */}
@@ -419,6 +569,130 @@ export const ConsolidationManagement: React.FC = () => {
           </div>
         )}
       </Drawer>
+
+      {/* Assign Consolidation to Master Batch Modal */}
+      <Modal
+        open={batchModalVisible}
+        onCancel={() => setBatchModalVisible(false)}
+        footer={null}
+        width={620}
+        title={
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+            <RocketOutlined className="text-brand-navy text-xl" />
+            <span className="font-extrabold text-slate-800 text-lg">
+              Assign Consolidation to Master Batch
+            </span>
+          </div>
+        }
+      >
+        {targetConsolidation && (
+          <div className="space-y-6 pt-3">
+            {/* Target Consolidation Summary Card */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center">
+              <div>
+                <span className="text-[11px] text-slate-400 font-extrabold uppercase tracking-wider block">
+                  Consolidation Request
+                </span>
+                <span className="text-base font-extrabold text-slate-800 font-mono">
+                  {targetConsolidation.consolidationId}
+                </span>
+                <span className="text-xs text-slate-500 block font-medium mt-0.5">
+                  {targetConsolidation.customerName} • {targetConsolidation.totalWeightKg || 0} kg • {targetConsolidation.totalCbm || 0} CBM
+                </span>
+              </div>
+              <Tag color={targetConsolidation.shippingMethod === 'air' ? 'blue' : 'cyan'} className="uppercase font-bold text-xs px-3 py-1 m-0">
+                {targetConsolidation.shippingMethod} FREIGHT
+              </Tag>
+            </div>
+
+            {/* OPTION 1: PRIMARY ACTION - Add to Existing Batch */}
+            <div className="border-2 border-brand-navy/30 bg-brand-navy/[0.02] p-5 rounded-2xl space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-2 m-0">
+                  <span className="bg-brand-navy text-white text-xs w-5 h-5 rounded-full inline-flex items-center justify-center font-bold">1</span>
+                  Include in an Existing Master Batch
+                </h4>
+                <Tag color="green" className="font-extrabold text-[10px] uppercase tracking-wider">RECOMMENDED / PRIMARY</Tag>
+              </div>
+
+              <p className="text-xs text-slate-500 leading-relaxed m-0">
+                Select an active open {targetConsolidation.shippingMethod?.toUpperCase()} freight container or flight manifest to attach this consolidation box.
+              </p>
+
+              {(() => {
+                const matchingBatches = batches.filter(
+                  (b) => b.shippingType === targetConsolidation.shippingMethod && !['delivered', 'cancelled'].includes(b.status)
+                );
+
+                if (matchingBatches.length === 0) {
+                  return (
+                    <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-medium">
+                      ⚠️ No active open {targetConsolidation.shippingMethod?.toUpperCase()} batches found. Please create a new batch using Option 2 below.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    <Select
+                      value={selectedBatchId}
+                      onChange={setSelectedBatchId}
+                      size="large"
+                      className="w-full font-bold"
+                      placeholder="Select an existing master batch..."
+                    >
+                      {matchingBatches.map((b) => (
+                        <Option key={b.id} value={b.id}>
+                          📦 {b.masterTrackingId} — {b.carrierName} ({b.flightVoyageNo}) [{b.packageCount || 0} parcels]
+                        </Option>
+                      ))}
+                    </Select>
+
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<RocketOutlined />}
+                      loading={attachingBatch}
+                      disabled={!selectedBatchId}
+                      onClick={handleAttachToExistingBatch}
+                      className="w-full bg-brand-navy hover:bg-slate-800 font-bold h-12 text-sm rounded-xl border-none shadow-md shadow-slate-300/40"
+                    >
+                      ⚡ Attach to Selected Master Batch
+                    </Button>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <Divider className="my-2 text-xs text-slate-400 font-bold uppercase tracking-widest">OR</Divider>
+
+            {/* OPTION 2: SECONDARY ACTION - Create New Batch */}
+            <div className="border border-slate-200 p-4.5 rounded-xl flex items-center justify-between gap-4 bg-slate-50/50">
+              <div>
+                <h5 className="font-bold text-slate-800 text-xs mb-1">Option 2: Create a New Master Batch</h5>
+                <p className="text-[11px] text-slate-500 m-0">
+                  Initialize a brand new container or flight manifest if no existing batch fits.
+                </p>
+              </div>
+
+              <Button
+                type="default"
+                size="middle"
+                icon={<PlusOutlined />}
+                className="font-bold text-slate-700 border-slate-300 hover:border-brand-navy hover:text-brand-navy shrink-0 bg-white"
+                onClick={() => {
+                  const cid = targetConsolidation.id;
+                  setBatchModalVisible(false);
+                  setSelectedConsolidation(null);
+                  navigate(`/admin/warehouse/batches/new?consolidationId=${cid}`);
+                }}
+              >
+                Create New Batch
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

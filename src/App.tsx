@@ -144,9 +144,13 @@ function App() {
                 <RoleGuard
                   allowedRoles={[
                     "super_admin",
+                    "admin",
                     "warehouse_cn",
                     "warehouse_ng",
                     "procurement",
+                    "finance",
+                    "clearance_agent",
+                    "driver",
                   ]}
                 >
                   <AdminLayout />

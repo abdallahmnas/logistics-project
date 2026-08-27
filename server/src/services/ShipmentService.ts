@@ -356,27 +356,31 @@ export class ShipmentService {
 
   public static async updateConsolidationPackages(
     consolidationId: string,
-    payload: { packageIds: string[] },
+    payload: { packageIds?: string[]; status?: string },
     adminUser?: { id: string; name: string; role: string }
   ) {
     const consolidation = await Consolidation.findByPk(consolidationId);
     if (!consolidation) throw new Error('Consolidation request not found');
 
-    if (consolidation.status !== 'ready_to_batch') {
-      throw new Error('Cannot modify consolidation after it has been assigned to a batch or shipped');
+    if (consolidation.status === 'batched') {
+      throw new Error('Cannot modify consolidation after it has been assigned to a master batch');
     }
 
-    const newPackageIds = payload.packageIds || [];
+    if (payload.status) {
+      consolidation.status = payload.status as any;
+    }
+
+    const currentPackageIds = consolidation.packageIds || [];
+    const newPackageIds = payload.packageIds !== undefined ? payload.packageIds : currentPackageIds;
+
     if (newPackageIds.length === 0) {
       throw new Error('Consolidation must contain at least one package');
     }
 
-    const currentPackageIds = consolidation.packageIds || [];
-
     // Removed packages
-    const removedIds = currentPackageIds.filter(id => !newPackageIds.includes(id));
+    const removedIds = currentPackageIds.filter((id) => !newPackageIds.includes(id));
     // Added packages
-    const addedIds = newPackageIds.filter(id => !currentPackageIds.includes(id));
+    const addedIds = newPackageIds.filter((id) => !currentPackageIds.includes(id));
 
     // Update removed packages status back to received_cn
     if (removedIds.length > 0) {
@@ -390,24 +394,26 @@ export class ShipmentService {
 
     // Recalculate metrics & verify single warehouse facility
     const packages = await Package.findAll({ where: { id: newPackageIds } });
-    const warehouseSet = new Set(
-      packages.map((pkg) => (pkg.originCountry || 'Guangzhou Hub').toLowerCase().trim())
-    );
-    if (warehouseSet.size > 1) {
-      throw new Error(
-        'Cannot add package from a different warehouse into this consolidation box. All packages in a consolidation must be at the same warehouse facility.'
+    if (packages.length > 0) {
+      const warehouseSet = new Set(
+        packages.map((pkg) => (pkg.originCountry || 'Guangzhou Hub').toLowerCase().trim())
       );
+      if (warehouseSet.size > 1) {
+        throw new Error(
+          'Cannot add package from a different warehouse into this consolidation box. All packages in a consolidation must be at the same warehouse facility.'
+        );
+      }
+
+      const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);
+      const totalCbm = packages.reduce((acc, p) => acc + (p.cbm || 0), 0);
+      const ratePerKg = consolidation.shippingMethod === 'air' ? 10 : 2;
+      const shippingFee = totalWeightKg * ratePerKg;
+
+      (consolidation as any).packageIds = newPackageIds;
+      (consolidation as any).totalWeightKg = totalWeightKg;
+      (consolidation as any).totalCbm = totalCbm;
+      (consolidation as any).shippingFee = shippingFee;
     }
-
-    const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);
-    const totalCbm = packages.reduce((acc, p) => acc + (p.cbm || 0), 0);
-    const ratePerKg = consolidation.shippingMethod === 'air' ? 10 : 2;
-    const shippingFee = totalWeightKg * ratePerKg;
-
-    (consolidation as any).packageIds = newPackageIds;
-    (consolidation as any).totalWeightKg = totalWeightKg;
-    (consolidation as any).totalCbm = totalCbm;
-    (consolidation as any).shippingFee = shippingFee;
     await consolidation.save();
 
     if (adminUser) {

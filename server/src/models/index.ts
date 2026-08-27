@@ -13,6 +13,7 @@ import { Notification } from './Notification';
 import { SupportTicket } from './SupportTicket';
 import { TicketMessage } from './TicketMessage';
 import { PermissionGroup } from './PermissionGroup';
+import { Permission } from './Permission';
 import { ActivityLog } from './ActivityLog';
 import { Facility } from './Facility';
 import { SavedAccount } from './SavedAccount';
@@ -27,8 +28,12 @@ SavedAccount.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 SupportTicket.hasMany(TicketMessage, { foreignKey: 'ticketId', as: 'messages' });
 TicketMessage.belongsTo(SupportTicket, { foreignKey: 'ticketId', as: 'ticket' });
+
 PermissionGroup.hasMany(User, { foreignKey: 'permissionGroupId', as: 'members' });
 User.belongsTo(PermissionGroup, { foreignKey: 'permissionGroupId', as: 'permissionGroup' });
+
+PermissionGroup.hasMany(Permission, { foreignKey: 'permissionGroupId', as: 'permissionRules' });
+Permission.belongsTo(PermissionGroup, { foreignKey: 'permissionGroupId', as: 'group' });
 
 export {
   sequelize,
@@ -46,6 +51,7 @@ export {
   SupportTicket,
   TicketMessage,
   PermissionGroup,
+  Permission,
   ActivityLog,
   Facility,
   SavedAccount,

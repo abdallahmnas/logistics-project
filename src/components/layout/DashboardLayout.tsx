@@ -24,6 +24,7 @@ import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { logoutUser } from "../../store/slices/authSlice";
 import { fetchNotifications, markAsRead, markAllAsRead } from "../../store/slices/notificationSlice";
 import { formatDate } from "../../utils/formatters";
+import { AIChatbotWidget } from "../chat/AIChatbotWidget";
 
 export const DashboardLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -314,7 +315,12 @@ export const DashboardLayout: React.FC = () => {
             Profile
           </Link>
         </nav>
+
+        {/* Floating Multilingual AI Chatbot Assistant */}
+        <AIChatbotWidget />
       </div>
     </div>
   );
 };
+
+export default DashboardLayout;

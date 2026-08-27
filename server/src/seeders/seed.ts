@@ -28,6 +28,8 @@ import {
   seedNotifications,
 } from './seedData';
 
+import { SeedPermissionService } from '../services/SeedPermissionService';
+
 dotenv.config();
 
 async function seed() {
@@ -38,11 +40,21 @@ async function seed() {
     await sequelize.sync({ force: true });
     console.log('✅ Database schema synchronized.');
 
+    // 0. Seed Permission Groups & Operational Rules
+    await SeedPermissionService.seedDefaultGroups();
+    const { PermissionGroup } = await import('../models/index');
+
     // 1. Seed Users & Wallets
     const salt = await bcrypt.genSalt(10);
-    const defaultPasswordHash = await bcrypt.hash('password123', salt);
+    const defaultPasswordHash = await bcrypt.hash('12345678', salt);
 
     for (const u of seedUsers) {
+      let permissionGroupId: string | undefined = undefined;
+      if (u.groupName) {
+        const group = await PermissionGroup.findOne({ where: { title: u.groupName } }) || await PermissionGroup.findOne({ where: { name: u.groupName } });
+        if (group) permissionGroupId = group.id;
+      }
+
       const user = await User.create({
         id: u.id,
         customerId: u.customerId,
@@ -53,6 +65,7 @@ async function seed() {
         role: u.role as any,
         passwordHash: defaultPasswordHash,
         isVerified: u.isVerified,
+        permissionGroupId,
       });
 
       if (u.role === 'customer' && u.id === seedWallet.customerId) {
@@ -75,7 +88,7 @@ async function seed() {
         });
       }
     }
-    console.log(`✅ Seeded ${seedUsers.length} Users and default Wallets.`);
+    console.log(`✅ Seeded ${seedUsers.length} Users with RBAC Groups and default Wallets.`);
 
     // 2. Seed Wallet Transactions
     for (const txn of seedTransactions) {
@@ -113,7 +126,7 @@ async function seed() {
         invoiceAmount: pkg.invoiceAmount,
         paymentMethod: pkg.paymentMethod as any,
         paymentStatus: pkg.paymentStatus as any,
-        preAlertDate: new Date(pkg.preAlertDate),
+        preAlertDate: pkg.preAlertDate ? new Date(pkg.preAlertDate) : new Date(),
         receivedDate: pkg.receivedDate ? new Date(pkg.receivedDate) : undefined,
         shippedDate: pkg.shippedDate ? new Date(pkg.shippedDate) : undefined,
         arrivedDate: pkg.arrivedDate ? new Date(pkg.arrivedDate) : undefined,
@@ -168,7 +181,7 @@ async function seed() {
         id: proc.id,
         customerId: proc.customerId,
         customerName: proc.customerName,
-        productUrl: proc.productUrl,
+        productUrl: proc.productUrl || (proc as any).supplierUrl || 'https://detail.1688.com/offer/674829102.html',
         productPhotos: proc.productPhotos || [],
         quantity: proc.quantity,
         specifications: proc.specifications,
@@ -196,10 +209,10 @@ async function seed() {
     // 7. Seed Exchange Rate & Exchange Requests
     await ExchangeRate.create({
       id: seedExchangeRate.id,
-      buyRate: seedExchangeRate.buyRate,
-      sellRate: seedExchangeRate.sellRate,
-      platformRate: seedExchangeRate.platformRate,
-      effectiveFrom: new Date(seedExchangeRate.effectiveFrom),
+      buyRate: seedExchangeRate.buyRate || 215.0,
+      sellRate: seedExchangeRate.sellRate || 225.0,
+      platformRate: seedExchangeRate.platformRate || 220.0,
+      effectiveFrom: (seedExchangeRate as any).effectiveFrom ? new Date((seedExchangeRate as any).effectiveFrom) : new Date(),
       isActive: seedExchangeRate.isActive,
     });
 
@@ -210,24 +223,24 @@ async function seed() {
         customerName: exch.customerName,
         amountNaira: exch.amountNaira,
         amountRmb: exch.amountRmb,
-        exchangeRate: exch.exchangeRate,
-        platformFee: exch.platformFee,
-        totalNaira: exch.totalNaira,
+        exchangeRate: (exch as any).exchangeRate || (exch as any).exchangeRateUsed || 220,
+        platformFee: (exch as any).platformFee || 2500,
+        totalNaira: (exch as any).totalNaira || exch.amountNaira,
         status: exch.status as any,
-        escrowBankName: exch.escrowBankName,
-        escrowAccountNo: exch.escrowAccountNo,
-        escrowAccountName: exch.escrowAccountName,
-        nairaReceiptUrl: exch.nairaReceiptUrl,
-        rmbDestType: exch.rmbDestType as any,
-        rmbDestAccount: exch.rmbDestAccount,
-        rmbDestName: exch.rmbDestName,
-        rmbDestQrCode: exch.rmbDestQrCode,
-        rmbReceiptUrl: exch.rmbReceiptUrl,
-        requestedAt: new Date(exch.requestedAt),
-        nairaConfirmedAt: exch.nairaConfirmedAt ? new Date(exch.nairaConfirmedAt) : undefined,
-        rmbReleasedAt: exch.rmbReleasedAt ? new Date(exch.rmbReleasedAt) : undefined,
-        completedAt: exch.completedAt ? new Date(exch.completedAt) : undefined,
-        expiresAt: new Date(exch.expiresAt),
+        escrowBankName: (exch as any).escrowBankName || 'Guaranty Trust Bank',
+        escrowAccountNo: (exch as any).escrowAccountNo || '0123456789',
+        escrowAccountName: (exch as any).escrowAccountName || 'Hamza RMB Global Escrow',
+        nairaReceiptUrl: (exch as any).nairaReceiptUrl,
+        rmbDestType: (exch as any).rmbDestType || 'alipay',
+        rmbDestAccount: (exch as any).rmbDestAccount || 'supplier@alipay.cn',
+        rmbDestName: (exch as any).rmbDestName || 'Guangzhou Supplier',
+        rmbDestQrCode: (exch as any).rmbDestQrCode,
+        rmbReceiptUrl: (exch as any).rmbReceiptUrl,
+        requestedAt: (exch as any).requestedAt ? new Date((exch as any).requestedAt) : new Date(),
+        nairaConfirmedAt: (exch as any).nairaConfirmedAt ? new Date((exch as any).nairaConfirmedAt) : undefined,
+        rmbReleasedAt: (exch as any).rmbReleasedAt ? new Date((exch as any).rmbReleasedAt) : undefined,
+        completedAt: (exch as any).completedAt ? new Date((exch as any).completedAt) : undefined,
+        expiresAt: (exch as any).expiresAt ? new Date((exch as any).expiresAt) : new Date(Date.now() + 86400000),
       });
     }
     console.log(`✅ Seeded Exchange Rate and ${seedExchanges.length} Exchange Requests.`);

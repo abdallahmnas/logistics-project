@@ -21,7 +21,7 @@ export class FacilityService {
           address: 'No. 88 Baiyun Cargo Road, Guangzhou, China',
           contactName: 'Chen Wei',
           contactPhone: '+86 20 8888 9999',
-          contactEmail: 'guangzhou@logicore.com',
+          contactEmail: 'guangzhou@hamzarmb.com',
           imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop',
         },
         {
@@ -37,7 +37,7 @@ export class FacilityService {
           address: '12 Commercial Avenue, Ikeja, Lagos, Nigeria',
           contactName: 'Emeka Nwosu',
           contactPhone: '+234 802 123 4567',
-          contactEmail: 'lagos@logicore.com',
+          contactEmail: 'lagos@hamzarmb.com',
           imageUrl: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=2074&auto=format&fit=crop',
         },
         {
@@ -53,7 +53,7 @@ export class FacilityService {
           address: 'Plot 402 Central Business District, Abuja, Nigeria',
           contactName: 'Aisha Bello',
           contactPhone: '+234 803 987 6543',
-          contactEmail: 'abuja@logicore.com',
+          contactEmail: 'abuja@hamzarmb.com',
           imageUrl: 'https://images.unsplash.com/photo-1580674684081-776d3f27f292?q=80&w=2070&auto=format&fit=crop',
         },
       ]);

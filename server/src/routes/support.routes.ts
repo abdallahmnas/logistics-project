@@ -3,7 +3,12 @@ import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { createTicket, getTickets, getTicket, replyToTicket, updateTicketStatus } from '../controllers/support.controller';
 import { uploadMiddleware } from '../controllers/upload.controller';
 
+import { handleChatMessage } from '../controllers/chatbot.controller';
+
 const router = Router();
+
+// Public / Authenticated Chatbot endpoint
+router.post('/chat', handleChatMessage);
 
 router.use(authenticate);
 

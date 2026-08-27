@@ -92,6 +92,42 @@ export const shipmentStatusMap: Record<ShipmentStatus, StatusConfig> = {
     badgeStatus: 'error',
     description: 'Held for additional documentation or inspection',
   },
+  requested: {
+    label: 'Request Pending',
+    color: '#8B5CF6',
+    badgeStatus: 'default',
+    description: 'Customer consolidation request received',
+  },
+  pending_packing: {
+    label: 'Pending Packaging',
+    color: '#F97316',
+    badgeStatus: 'warning',
+    description: 'Awaiting warehouse packaging',
+  },
+  packaging: {
+    label: 'In Packaging',
+    color: '#3B82F6',
+    badgeStatus: 'processing',
+    description: 'Currently opening & re-packing into master box',
+  },
+  packaged: {
+    label: 'Packaged & Sealed',
+    color: '#06B6D4',
+    badgeStatus: 'processing',
+    description: 'Re-packed into single box & re-weighed',
+  },
+  ready_to_batch: {
+    label: 'Ready for Batching',
+    color: '#10B981',
+    badgeStatus: 'success',
+    description: 'Quality inspection passed; ready for master batch',
+  },
+  batched: {
+    label: 'Batched',
+    color: '#059669',
+    badgeStatus: 'success',
+    description: 'Assigned to Master Flight/Container Batch',
+  },
 };
 
 export const SHIPMENT_STATUS_STEPS: { key: ShipmentStatus; title: string }[] = [

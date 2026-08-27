@@ -62,7 +62,7 @@ export interface Consolidation {
   totalWeightKg: number;
   totalCbm: number;
   shippingFee: number;
-  status: 'pending_packing' | 'ready_to_batch' | 'batched';
+  status: 'requested' | 'pending_packing' | 'packaging' | 'packaged' | 'ready_to_batch' | 'batched';
   createdAt: string;
   updatedAt: string;
 }

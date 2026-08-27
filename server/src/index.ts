@@ -32,6 +32,7 @@ import supportRoutes from './routes/support.routes';
 import uploadRoutes from './routes/upload.routes';
 import facilityRoutes from './routes/facility.routes';
 import settingsRoutes from './routes/settings.routes';
+import permissionRoutes from './routes/permission.routes';
 
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
@@ -66,6 +67,8 @@ app.use('/api/v1/support', supportRoutes);
 app.use('/api/v1/upload', uploadRoutes);
 app.use('/api/v1/facilities', facilityRoutes);
 app.use('/api/v1/settings', settingsRoutes);
+app.use('/api/v1/permissions', permissionRoutes);
+app.use('/api/v1/permission-groups', permissionRoutes);
 
 // Serve frontend static build in production
 if (process.env.NODE_ENV === 'production') {
@@ -76,11 +79,14 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+import { SeedPermissionService } from './services/SeedPermissionService';
+
 // Start Server
 export const startServer = async () => {
   const isDbConnected = await connectDatabase();
   if (isDbConnected) {
     await sequelize.sync({ alter: true });
+    await SeedPermissionService.seedDefaultGroups();
   }
 
   await connectRedis();
