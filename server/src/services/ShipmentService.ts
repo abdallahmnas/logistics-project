@@ -453,10 +453,17 @@ export class ShipmentService {
       masterTrackingId = `${masterTrackingId}-${Math.floor(100 + Math.random() * 900)}`;
     }
 
-    const consolidationIds = payload.consolidationIds || payload.packageIds || [];
+    const consolidationInputs = payload.consolidationIds || payload.packageIds || [];
     
     // Fetch attached consolidations to calculate exact metrics & attached packages
-    const consolidations = await Consolidation.findAll({ where: { id: consolidationIds } });
+    const consolidations = await Consolidation.findAll({
+      where: {
+        [Op.or]: [
+          { id: consolidationInputs },
+          { consolidationId: consolidationInputs }
+        ]
+      }
+    });
     const totalWeightKg = consolidations.reduce((sum, c) => sum + (c.totalWeightKg || 0), 0);
     const totalCbm = consolidations.reduce((sum, c) => sum + (c.totalCbm || 0), 0);
     
@@ -471,9 +478,9 @@ export class ShipmentService {
       containerNo: payload.containerNo,
       shippingType: payload.shippingType,
       status: 'shipping_exported',
-      consolidationIds,
+      consolidationIds: consolidationInputs,
       packageIds: allPackageIds,
-      consolidationCount: consolidationIds.length,
+      consolidationCount: consolidationInputs.length,
       packageCount: allPackageIds.length,
       totalWeightKg,
       totalCbm,
@@ -481,11 +488,31 @@ export class ShipmentService {
     });
 
     // Update status of batched consolidations & underlying packages
-    if (consolidationIds.length > 0) {
-      await Consolidation.update({ status: 'batched' }, { where: { id: consolidationIds } });
+    if (consolidationInputs.length > 0) {
+      await Consolidation.update(
+        { status: 'batched' },
+        {
+          where: {
+            [Op.or]: [
+              { id: consolidationInputs },
+              { consolidationId: consolidationInputs }
+            ]
+          }
+        }
+      );
 
       if (allPackageIds.length > 0) {
-        await Package.update({ status: 'shipping_exported', shippedDate: new Date() }, { where: { id: allPackageIds } });
+        await Package.update(
+          { status: 'shipping_exported', shippedDate: new Date() },
+          {
+            where: {
+              [Op.or]: [
+                { id: allPackageIds },
+                { trackingId: allPackageIds }
+              ]
+            }
+          }
+        );
       }
 
       // Notify customers of batched consolidations
@@ -518,17 +545,43 @@ export class ShipmentService {
   }
 
   public static async addPackagesToBatch(batchId: string, packageIds: string[]) {
-    const batch = await Batch.findByPk(batchId);
+    let batch = await Batch.findByPk(batchId);
+    if (!batch) {
+      batch = await Batch.findOne({ where: { masterTrackingId: batchId } });
+    }
     if (!batch) throw new Error('Batch not found');
 
+    const inputIds = packageIds || [];
+    if (inputIds.length === 0) {
+      throw new Error('No consolidation or package IDs provided to attach');
+    }
+
+    const targetConsolidations = await Consolidation.findAll({
+      where: {
+        [Op.or]: [
+          { id: inputIds },
+          { consolidationId: inputIds }
+        ]
+      }
+    });
+
+    const foundConsolidationDbIds = targetConsolidations.map((c) => c.id);
     const currentConsolidationIds = (batch as any).consolidationIds || [];
-    const mergedConsolidations = [...new Set([...currentConsolidationIds, ...packageIds])];
-    
-    const consolidations = await Consolidation.findAll({ where: { id: mergedConsolidations } });
-    const totalWeightKg = consolidations.reduce((sum, c) => sum + (c.totalWeightKg || 0), 0);
-    const totalCbm = consolidations.reduce((sum, c) => sum + (c.totalCbm || 0), 0);
+    const mergedConsolidations = Array.from(new Set([...currentConsolidationIds, ...foundConsolidationDbIds, ...inputIds]));
+
+    const allConsolidations = await Consolidation.findAll({
+      where: {
+        [Op.or]: [
+          { id: mergedConsolidations },
+          { consolidationId: mergedConsolidations }
+        ]
+      }
+    });
+
+    const totalWeightKg = allConsolidations.reduce((sum, c) => sum + (c.totalWeightKg || 0), 0);
+    const totalCbm = allConsolidations.reduce((sum, c) => sum + (c.totalCbm || 0), 0);
     const allPackageIds = Array.from(
-      new Set(consolidations.flatMap((c) => c.packageIds || []))
+      new Set(allConsolidations.flatMap((c) => c.packageIds || []))
     );
 
     (batch as any).consolidationIds = mergedConsolidations;
@@ -540,9 +593,30 @@ export class ShipmentService {
     await batch.save();
 
     // Mark consolidations as batched and packages as shipping_exported
-    await Consolidation.update({ status: 'batched' }, { where: { id: packageIds } });
+    await Consolidation.update(
+      { status: 'batched' },
+      {
+        where: {
+          [Op.or]: [
+            { id: mergedConsolidations },
+            { consolidationId: mergedConsolidations }
+          ]
+        }
+      }
+    );
+
     if (allPackageIds.length > 0) {
-      await Package.update({ status: 'shipping_exported' }, { where: { id: allPackageIds } });
+      await Package.update(
+        { status: 'shipping_exported' },
+        {
+          where: {
+            [Op.or]: [
+              { id: allPackageIds },
+              { trackingId: allPackageIds }
+            ]
+          }
+        }
+      );
     }
 
     return batch;
