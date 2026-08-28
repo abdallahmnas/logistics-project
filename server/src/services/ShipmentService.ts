@@ -453,23 +453,26 @@ export class ShipmentService {
       masterTrackingId = `${masterTrackingId}-${Math.floor(100 + Math.random() * 900)}`;
     }
 
-    const consolidationInputs = payload.consolidationIds || payload.packageIds || [];
-    
+    const inputConsolidationIds = payload.consolidationIds || payload.packageIds || [];
+
     // Fetch attached consolidations to calculate exact metrics & attached packages
     const consolidations = await Consolidation.findAll({
       where: {
         [Op.or]: [
-          { id: consolidationInputs },
-          { consolidationId: consolidationInputs }
+          { id: inputConsolidationIds },
+          { consolidationId: inputConsolidationIds }
         ]
       }
     });
+
     const totalWeightKg = consolidations.reduce((sum, c) => sum + (c.totalWeightKg || 0), 0);
     const totalCbm = consolidations.reduce((sum, c) => sum + (c.totalCbm || 0), 0);
-    
+
     const allPackageIds = Array.from(
       new Set(consolidations.flatMap((c) => c.packageIds || []))
     );
+
+    const validConsolidationUUIDs = consolidations.map((c) => c.id);
 
     const batch = await Batch.create({
       masterTrackingId,
@@ -478,9 +481,9 @@ export class ShipmentService {
       containerNo: payload.containerNo,
       shippingType: payload.shippingType,
       status: 'shipping_exported',
-      consolidationIds: consolidationInputs,
+      consolidationIds: validConsolidationUUIDs,
       packageIds: allPackageIds,
-      consolidationCount: consolidationInputs.length,
+      consolidationCount: validConsolidationUUIDs.length,
       packageCount: allPackageIds.length,
       totalWeightKg,
       totalCbm,
@@ -488,22 +491,12 @@ export class ShipmentService {
     });
 
     // Update status of batched consolidations & underlying packages
-    if (consolidationInputs.length > 0) {
-      await Consolidation.update(
-        { status: 'batched' },
-        {
-          where: {
-            [Op.or]: [
-              { id: consolidationInputs },
-              { consolidationId: consolidationInputs }
-            ]
-          }
-        }
-      );
+    if (validConsolidationUUIDs.length > 0) {
+      await Consolidation.update({ status: 'batched' }, { where: { id: validConsolidationUUIDs } });
 
       if (allPackageIds.length > 0) {
         await Package.update(
-          { status: 'shipping_exported', shippedDate: new Date() },
+          { status: 'shipped', shippedDate: new Date() },
           {
             where: {
               [Op.or]: [
@@ -521,7 +514,7 @@ export class ShipmentService {
           userIdOrCustomerId: c.customerId,
           orderType: 'Shipment',
           orderId: c.consolidationId,
-          newStatus: 'shipping_exported',
+          newStatus: 'shipped',
           statusDescription: `Master Batch ${batch.masterTrackingId} (${batch.carrierName} ${batch.flightVoyageNo}) has departed China warehouse and is in transit to Nigeria.`,
         });
       }
@@ -549,65 +542,44 @@ export class ShipmentService {
     if (!batch) {
       batch = await Batch.findOne({ where: { masterTrackingId: batchId } });
     }
-    if (!batch) throw new Error('Batch not found');
+    if (!batch) throw new Error(`Batch ${batchId} not found`);
 
-    const inputIds = packageIds || [];
-    if (inputIds.length === 0) {
-      throw new Error('No consolidation or package IDs provided to attach');
-    }
-
-    const targetConsolidations = await Consolidation.findAll({
-      where: {
-        [Op.or]: [
-          { id: inputIds },
-          { consolidationId: inputIds }
-        ]
-      }
-    });
-
-    const foundConsolidationDbIds = targetConsolidations.map((c) => c.id);
     const currentConsolidationIds = (batch as any).consolidationIds || [];
-    const mergedConsolidations = Array.from(new Set([...currentConsolidationIds, ...foundConsolidationDbIds, ...inputIds]));
+    const inputIds = packageIds || [];
+    const mergedInputIds = [...new Set([...currentConsolidationIds, ...inputIds])];
 
-    const allConsolidations = await Consolidation.findAll({
+    const consolidations = await Consolidation.findAll({
       where: {
         [Op.or]: [
-          { id: mergedConsolidations },
-          { consolidationId: mergedConsolidations }
+          { id: mergedInputIds },
+          { consolidationId: mergedInputIds }
         ]
       }
     });
 
-    const totalWeightKg = allConsolidations.reduce((sum, c) => sum + (c.totalWeightKg || 0), 0);
-    const totalCbm = allConsolidations.reduce((sum, c) => sum + (c.totalCbm || 0), 0);
+    const totalWeightKg = consolidations.reduce((sum, c) => sum + (c.totalWeightKg || 0), 0);
+    const totalCbm = consolidations.reduce((sum, c) => sum + (c.totalCbm || 0), 0);
     const allPackageIds = Array.from(
-      new Set(allConsolidations.flatMap((c) => c.packageIds || []))
+      new Set(consolidations.flatMap((c) => c.packageIds || []))
     );
 
-    (batch as any).consolidationIds = mergedConsolidations;
-    (batch as any).consolidationCount = mergedConsolidations.length;
+    const validConsolidationUUIDs = consolidations.map((c) => c.id);
+
+    (batch as any).consolidationIds = validConsolidationUUIDs;
+    (batch as any).consolidationCount = validConsolidationUUIDs.length;
     (batch as any).packageIds = allPackageIds;
     (batch as any).packageCount = allPackageIds.length;
     (batch as any).totalWeightKg = totalWeightKg;
     (batch as any).totalCbm = totalCbm;
     await batch.save();
 
-    // Mark consolidations as batched and packages as shipping_exported
-    await Consolidation.update(
-      { status: 'batched' },
-      {
-        where: {
-          [Op.or]: [
-            { id: mergedConsolidations },
-            { consolidationId: mergedConsolidations }
-          ]
-        }
-      }
-    );
-
+    // Mark consolidations as batched and packages as shipped
+    if (validConsolidationUUIDs.length > 0) {
+      await Consolidation.update({ status: 'batched' }, { where: { id: validConsolidationUUIDs } });
+    }
     if (allPackageIds.length > 0) {
       await Package.update(
-        { status: 'shipping_exported' },
+        { status: 'shipped', shippedDate: new Date() },
         {
           where: {
             [Op.or]: [

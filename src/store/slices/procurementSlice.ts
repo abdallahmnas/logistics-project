@@ -16,8 +16,11 @@ export const fetchProcurements = createAsyncThunk('procurement/fetchAll', async 
 
 export const submitProcurement = createAsyncThunk(
   'procurement/submit',
-  async (payload: ProcurementSubmitPayload) => {
-    const res = await apiClient.post('/procurements', payload);
+  async (payload: ProcurementSubmitPayload | FormData) => {
+    const isFormData = payload instanceof FormData;
+    const res = await apiClient.post('/procurements', payload, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    });
     return res.data.data;
   }
 );

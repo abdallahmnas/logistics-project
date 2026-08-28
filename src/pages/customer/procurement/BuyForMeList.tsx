@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, InputNumber, Upload, Tag, Form, message, Image } from 'antd';
+import { Card, Button, Input, InputNumber, Upload, Tag, Form, message, Image, Spin } from 'antd';
 import type { UploadFile } from 'antd';
-import { LinkOutlined, CloudUploadOutlined, SafetyCertificateOutlined, InboxOutlined, WalletOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
+import { LinkOutlined, CloudUploadOutlined, SafetyCertificateOutlined, InboxOutlined, WalletOutlined, CheckCircleOutlined, WarningOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchProcurements, submitProcurement } from '../../../store/slices/procurementSlice';
 import { fetchWallet } from '../../../store/slices/walletSlice';
 import { fetchSettings } from '../../../store/slices/settingsSlice';
+import { FileThumbnail } from '../../../components/common/FileThumbnail';
 
 const { Dragger } = Upload;
 const { TextArea } = Input;
 
 const resolveImgUrl = (url?: string) => {
-  if (!url) return 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300';
+  if (!url) return '';
   if (url.startsWith('/uploads/')) return `http://localhost:5000${url}`;
   return url;
 };
@@ -26,6 +27,7 @@ export const BuyForMeList: React.FC = () => {
   const { settings } = useAppSelector((state) => state.settings);
 
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   useEffect(() => {
@@ -38,32 +40,44 @@ export const BuyForMeList: React.FC = () => {
   const submissionFee = settings?.buyForMeFixedFee || 1000;
 
   const handleSubmit = async (values: any) => {
+    if (fileList.length === 0) {
+      message.error('Please upload at least 1 reference photo or PDF file.');
+      return;
+    }
     try {
       setSubmitting(true);
-      const uploadedFiles = fileList.map((f) => f.name || f.url || 'document.pdf');
-      
       const fullSpecs = [
         values.itemName ? `Item: ${values.itemName}` : '',
-        values.estPrice ? `Est. Price: $${values.estPrice}` : '',
+        values.estPrice ? `Est. Price: ₦${values.estPrice}` : '',
         values.specifications ? `Specs: ${values.specifications}` : '',
       ].filter(Boolean).join('. ');
 
-      await dispatch(
-        submitProcurement({
-          productUrl: values.productUrl,
-          quantity: Number(values.quantity) || 1,
-          specifications: fullSpecs || 'Buy For Me Item',
-          notes: values.notes,
-          productPhotos: uploadedFiles,
-        })
-      ).unwrap();
+      const formData = new FormData();
+      formData.append('productUrl', values.productUrl || '');
+      formData.append('quantity', String(Number(values.quantity) || 1));
+      formData.append('specifications', fullSpecs || 'Buy For Me Item');
+      if (values.notes) formData.append('notes', values.notes);
 
-      message.success('Buy-For-Me request submitted successfully! Our agents will review and send a quote.');
+      const existingUrls: string[] = [];
+      fileList.forEach((f) => {
+        if (f.originFileObj) {
+          formData.append('files', f.originFileObj as File);
+        } else if (f.url) {
+          existingUrls.push(f.url);
+        }
+      });
+
+      if (existingUrls.length > 0) {
+        formData.append('productPhotos', JSON.stringify(existingUrls));
+      }
+
+      await dispatch(submitProcurement(formData as any)).unwrap();
+      message.success('Buy-For-Me request submitted successfully! Quote will be issued in Naira (₦).');
       form.resetFields();
       setFileList([]);
       dispatch(fetchProcurements());
     } catch (err: any) {
-      const msg = err?.message || 'Failed to submit procurement request. Please check inputs and try again.';
+      const msg = err?.message || 'Failed to submit procurement request.';
       message.error(msg);
     } finally {
       setSubmitting(false);
@@ -84,7 +98,7 @@ export const BuyForMeList: React.FC = () => {
           </div>
           <h1 className="text-4xl font-extrabold text-[#0A1128] m-0 mb-3 tracking-tight">Buy For Me</h1>
           <p className="text-slate-500 text-base max-w-xl m-0">
-            Provide the link, and our global procurement team will source, purchase, and consolidate your items at our secure facility.
+            Provide the link and supporting specs/photos. All quotes provided in Nigerian Naira (₦).
           </p>
         </div>
         <div className="flex gap-8">
@@ -118,8 +132,13 @@ export const BuyForMeList: React.FC = () => {
               </Form.Item>
             </div>
             <div>
-              <Form.Item name="estPrice" label={<span className="font-bold text-slate-700">Est. Price (USD)</span>}>
-                <InputNumber size="large" className="w-full bg-slate-50 border-slate-200" prefix="$" placeholder="0.00" />
+              <Form.Item name="estPrice" label={<span className="font-bold text-slate-700">Est. Price (Naira ₦)</span>}>
+                <InputNumber
+                  size="large"
+                  className="w-full bg-slate-50 border-slate-200"
+                  prefix="₦"
+                  placeholder="0.00"
+                />
               </Form.Item>
             </div>
           </div>
@@ -142,22 +161,43 @@ export const BuyForMeList: React.FC = () => {
           </Form.Item>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Supporting Documents (Optional)</label>
-            <Dragger
-              className="bg-white border-dashed border-slate-300"
-              beforeUpload={() => false}
-              onChange={({ fileList: newFileList }) => {
-                newFileList.forEach((f) => { f.status = 'done'; });
-                setFileList(newFileList);
-              }}
-              customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.("ok"), 0)}
-            >
-              <p className="ant-upload-drag-icon">
-                <CloudUploadOutlined className="text-slate-400" />
-              </p>
-              <p className="ant-upload-text font-bold text-slate-700">Click to upload or drag and drop</p>
-              <p className="ant-upload-hint text-xs text-slate-500">PDF, JPG, PNG (Max 5MB)</p>
-            </Dragger>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Supporting Photos / PDF Documents <span className="text-red-500">* (At least 1 required)</span></label>
+            <div className="relative">
+              <Dragger
+                className="bg-slate-50 border-dashed border-slate-300 rounded-xl"
+                beforeUpload={() => false}
+                accept="image/*,.pdf,application/pdf"
+                disabled={uploading}
+                onChange={({ fileList: newFileList }) => {
+                  setUploading(true);
+                  newFileList.forEach((f) => { f.status = 'done'; });
+                  setFileList(newFileList);
+                  setTimeout(() => setUploading(false), 300);
+                }}
+              >
+                <p className="ant-upload-drag-icon">
+                  {uploading ? <Spin indicator={<LoadingOutlined className="text-3xl text-brand-orange" spin />} /> : <CloudUploadOutlined className="text-brand-orange text-3xl" />}
+                </p>
+                <p className="ant-upload-text font-bold text-slate-700">Click or drag photos / PDF files to upload</p>
+                <p className="ant-upload-hint text-xs text-slate-500">PNG, JPG, WEBP, PDF (Max 10MB) · At least 1 file required</p>
+              </Dragger>
+
+              {uploading && (
+                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl flex items-center justify-center z-10 gap-2">
+                  <Spin indicator={<LoadingOutlined className="text-xl text-brand-orange" spin />} />
+                  <span className="text-xs font-bold text-slate-800">Uploading File... Please Wait</span>
+                </div>
+              )}
+            </div>
+
+            {/* Uploaded Thumbnail Cards */}
+            {fileList.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-3">
+                {fileList.map((f, idx) => (
+                  <FileThumbnail key={f.uid || idx} url={f.url || (f.originFileObj ? URL.createObjectURL(f.originFileObj as File) : '')} fileName={f.name} size="sm" showName={true} />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Fee & Charge Preview Box */}
@@ -165,13 +205,13 @@ export const BuyForMeList: React.FC = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4 mb-4">
               <div>
                 <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                  <WalletOutlined /> ORDER SUBMISSION CHARGE PREVIEW
+                  <WalletOutlined /> ORDER SUBMISSION CHARGE PREVIEW (NAIRA ₦)
                 </div>
                 <div className="text-2xl font-extrabold text-white">
                   ₦{(settings?.buyForMeFixedFee || 1000).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-slate-400 m-0 mt-0.5">
-                  Submission & sourcing fee automatically deducted from your platform wallet balance upon placing this order.
+                  Submission & sourcing fee automatically deducted in Naira (₦) from your platform wallet balance.
                 </p>
               </div>
 
@@ -214,12 +254,12 @@ export const BuyForMeList: React.FC = () => {
             <Button
               type="primary"
               htmlType="submit"
-              loading={submitting}
-              disabled={walletBalance < submissionFee}
+              loading={submitting || uploading}
+              disabled={walletBalance < submissionFee || uploading || fileList.length === 0}
               size="large"
               className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold px-8 shadow-md h-12 text-base"
             >
-              Submit Request (Charge ₦{submissionFee.toLocaleString()}) ➔
+              {uploading ? 'Uploading Attachment...' : `Submit Request (Charge ₦${submissionFee.toLocaleString()})`} ➔
             </Button>
           </div>
         </Form>
@@ -235,7 +275,7 @@ export const BuyForMeList: React.FC = () => {
           <div className="relative z-10">
             <h3 className="text-lg font-bold text-white mb-2">Secure Purchasing</h3>
             <p className="text-blue-100 text-sm m-0 leading-relaxed">
-              We handle the transaction securely. No need to share your personal credit card with unknown international vendors.
+              We handle the transaction securely. All quotes issued in Naira (₦).
             </p>
           </div>
         </div>
@@ -270,14 +310,7 @@ export const BuyForMeList: React.FC = () => {
               </div>
 
               <div className="flex gap-3 mb-3">
-                <Image.PreviewGroup items={photos.map((p) => resolveImgUrl(p))}>
-                  <Image
-                    src={firstPhoto}
-                    alt="Product"
-                    className="w-16 h-16 rounded-lg object-cover border border-slate-200 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
-                    fallback="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300"
-                  />
-                </Image.PreviewGroup>
+                <FileThumbnail url={firstPhoto} fileName={req.specifications} size="md" showName={false} />
                 <div className="space-y-1 flex-1 overflow-hidden">
                   <h3 className="text-sm font-bold text-[#0A1128] m-0 truncate" title={req.specifications}>
                     {req.specifications || 'Buy-For-Me Item'}
@@ -285,7 +318,7 @@ export const BuyForMeList: React.FC = () => {
                   <div className="text-xs text-slate-500 font-medium">Qty: {req.quantity} pcs</div>
                   {photos.length > 1 && (
                     <div className="text-[10px] text-brand-blue font-bold">
-                      📷 {photos.length} photos uploaded (Click to preview)
+                      📎 {photos.length} files attached
                     </div>
                   )}
                   <a href={req.productUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-blue font-medium flex items-center gap-1 hover:underline">
@@ -297,10 +330,16 @@ export const BuyForMeList: React.FC = () => {
               <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-xs">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                    {req.status === 'quoted' || req.totalCostRmb ? 'Quoted Total' : 'Submitted'}
+                    {req.status === 'quoted' || req.totalCostNaira ? 'Quoted Total (Naira ₦)' : 'Submitted'}
                   </span>
-                  <span className="font-bold text-slate-800">
-                    {req.totalCostRmb ? `¥${req.totalCostRmb.toFixed(2)} (₦${req.totalCostNaira?.toLocaleString() || 0})` : new Date(req.submittedAt).toLocaleDateString()}
+                  <span className="font-bold text-[#0A1128] text-sm">
+                    {req.totalCostNaira ? (
+                      <span className="text-brand-orange font-extrabold text-base">₦{req.totalCostNaira.toLocaleString()}</span>
+                    ) : req.totalCostRmb ? (
+                      `¥${req.totalCostRmb.toFixed(2)}`
+                    ) : (
+                      new Date(req.submittedAt).toLocaleDateString()
+                    )}
                   </span>
                 </div>
               </div>

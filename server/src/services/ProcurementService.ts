@@ -70,6 +70,15 @@ export class ProcurementService {
       statusDescription: `Buy-For-Me procurement request submitted for ${payload.quantity} items. Our team is verifying stock with Chinese suppliers.`,
     });
 
+    // Send real-time notification to Admin & Procurement staff
+    NotificationService.notifyAdmins({
+      title: 'New Buy-For-Me Request Submitted',
+      message: `Customer ${user.firstName} ${user.lastName} (${user.customerId}) submitted Buy-For-Me request ${req.id.slice(0, 8)} for ${payload.quantity} item(s).`,
+      type: 'procurement',
+      referenceId: req.id,
+      roles: ['super_admin', 'admin', 'procurement'],
+    });
+
     return req;
   }
 
@@ -167,6 +176,14 @@ export class ProcurementService {
       orderId: proc.id,
       newStatus: 'approved',
       statusDescription: `Payment confirmed. ₦${proc.totalCostNaira.toLocaleString()} deducted from wallet. Order queued for purchasing.`,
+    });
+
+    NotificationService.notifyAdmins({
+      title: 'Buy-For-Me Quote Approved & Paid',
+      message: `Customer ${proc.customerName} (${proc.customerId}) approved Buy-For-Me quote ${proc.id.slice(0, 8)} (₦${proc.totalCostNaira.toLocaleString()}). Ready for purchasing.`,
+      type: 'procurement',
+      referenceId: proc.id,
+      roles: ['super_admin', 'admin', 'procurement'],
     });
 
     return proc;

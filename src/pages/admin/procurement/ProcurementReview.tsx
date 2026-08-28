@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Table, Input, Select, Button, Drawer, Form, InputNumber, message, Descriptions, Divider, Image, Tag } from 'antd';
-import { SearchOutlined, DollarOutlined, EyeOutlined, LinkOutlined, TagOutlined } from '@ant-design/icons';
+import { SearchOutlined, DollarOutlined, EyeOutlined, LinkOutlined, TagOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchProcurements, quoteProcurement } from '../../../store/slices/procurementSlice';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { PriceTag } from '../../../components/common/PriceTag';
+import { FileThumbnail, isPdfFile } from '../../../components/common/FileThumbnail';
 import { procurementQuoteSchema, validateForm } from '../../../utils/validators';
 import { DEFAULT_EXCHANGE_RATE } from '../../../utils/constants';
 import { truncateText, formatDate } from '../../../utils/formatters';
@@ -13,8 +14,8 @@ import type { ProcurementRequest } from '../../../types/procurement.types';
 const { Option } = Select;
 
 interface QuoteFormValues {
-  productCostRmb: number;
-  serviceFeeRmb: number;
+  productCostNaira: number;
+  serviceFeeNaira: number;
   supplierName: string;
 }
 
@@ -28,8 +29,8 @@ export const ProcurementReview: React.FC = () => {
   const [viewDetailsModal, setViewDetailsModal] = useState<ProcurementRequest | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const productCostRmb = Form.useWatch('productCostRmb', form);
-  const serviceFeeRmb = Form.useWatch('serviceFeeRmb', form);
+  const productCostNaira = Form.useWatch('productCostNaira', form);
+  const serviceFeeNaira = Form.useWatch('serviceFeeNaira', form);
 
   useEffect(() => {
     dispatch(fetchProcurements());
@@ -47,8 +48,8 @@ export const ProcurementReview: React.FC = () => {
     });
   }, [requests, searchText, filterStatus]);
 
-  const totalRmb = (Number(productCostRmb) || 0) + (Number(serviceFeeRmb) || 0);
-  const totalNaira = totalRmb * DEFAULT_EXCHANGE_RATE.platformRate;
+  const totalNaira = (Number(productCostNaira) || 0) + (Number(serviceFeeNaira) || 0);
+  const totalRmb = totalNaira / DEFAULT_EXCHANGE_RATE.platformRate;
 
   const openQuote = (record: ProcurementRequest) => {
     setActiveRequest(record);
@@ -57,22 +58,22 @@ export const ProcurementReview: React.FC = () => {
 
   const onFinish = async (values: QuoteFormValues) => {
     if (!activeRequest) return;
-    const errors = await validateForm(procurementQuoteSchema, values as unknown as Record<string, unknown>);
-    if (Object.keys(errors).length > 0) {
-      form.setFields(Object.keys(errors).map((key) => ({ name: key, errors: [errors[key]] })) as any);
-      return;
-    }
+    const pNaira = Number(values.productCostNaira) || 0;
+    const sNaira = Number(values.serviceFeeNaira) || 0;
+    const pRmb = Number((pNaira / DEFAULT_EXCHANGE_RATE.platformRate).toFixed(2));
+    const sRmb = Number((sNaira / DEFAULT_EXCHANGE_RATE.platformRate).toFixed(2));
+
     setSubmitting(true);
     try {
       await dispatch(
         quoteProcurement({
           requestId: activeRequest.id,
-          productCostRmb: values.productCostRmb,
-          serviceFeeRmb: values.serviceFeeRmb,
+          productCostRmb: pRmb,
+          serviceFeeRmb: sRmb,
           supplierName: values.supplierName,
         })
       ).unwrap();
-      message.success('Quote sent to customer.');
+      message.success('Quote in Naira (₦) sent to customer.');
       setActiveRequest(null);
     } catch {
       message.error('Failed to submit quote.');
@@ -97,15 +98,10 @@ export const ProcurementReview: React.FC = () => {
       key: 'product',
       render: (record: ProcurementRequest) => {
         const photos = record.productPhotos || [];
-        const firstPhoto = photos[0] || 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300';
+        const firstPhoto = photos[0] || '';
         return (
           <div className="flex items-center gap-3 max-w-sm">
-            <Image
-              src={firstPhoto}
-              alt="Product"
-              className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
-              fallback="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300"
-            />
+            <FileThumbnail url={firstPhoto} fileName={record.specifications} size="sm" showName={false} />
             <div className="space-y-1 overflow-hidden">
               <div className="text-xs font-bold text-slate-800 truncate" title={record.specifications}>
                 {record.specifications || 'Buy-For-Me Item'}
@@ -130,16 +126,17 @@ export const ProcurementReview: React.FC = () => {
       render: (q: number) => <Tag color="blue" className="font-bold">{q} pcs</Tag>,
     },
     {
-      title: 'Quote (RMB)',
-      key: 'quote',
-      render: (record: ProcurementRequest) =>
-        record.totalCostRmb ? <PriceTag amount={record.totalCostRmb} currency="CNY" size="sm" /> : <span className="text-slate-400 italic text-xs">Pending</span>,
-    },
-    {
-      title: 'Quote (NGN)',
+      title: 'Quote (NGN Naira ₦)',
       key: 'quoteNaira',
       render: (record: ProcurementRequest) =>
-        record.totalCostNaira ? <PriceTag amount={record.totalCostNaira} size="sm" /> : <span className="text-slate-400 italic text-xs">—</span>,
+        record.totalCostNaira ? (
+          <div className="flex flex-col">
+            <span className="font-extrabold text-brand-orange text-sm">₦{record.totalCostNaira.toLocaleString()}</span>
+            <span className="text-[10px] text-slate-400 font-medium">¥{record.totalCostRmb?.toFixed(2)} RMB</span>
+          </div>
+        ) : (
+          <span className="text-slate-400 italic text-xs">Pending Quote</span>
+        ),
     },
     { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => <StatusBadge module="procurement" status={s} /> },
     { title: 'Submitted', dataIndex: 'submittedAt', key: 'submittedAt', render: (d: string) => formatDate(d) },
@@ -164,7 +161,7 @@ export const ProcurementReview: React.FC = () => {
               className="bg-brand-gold text-brand-navy font-bold border-none hover:bg-yellow-500"
               onClick={() => openQuote(record)}
             >
-              Quote
+              Quote (NGN)
             </Button>
           )}
         </div>
@@ -176,7 +173,7 @@ export const ProcurementReview: React.FC = () => {
     <div className="space-y-6 animate-fade-in-up">
       <div>
         <h1 className="text-2xl font-bold text-slate-800 m-0">Procurement Review</h1>
-        <p className="text-slate-500 mt-1 mb-0 text-sm">Review "Buy For Me" requests and issue price quotes</p>
+        <p className="text-slate-500 mt-1 mb-0 text-sm">Review "Buy For Me" requests and issue price quotes in Nigerian Naira (₦)</p>
       </div>
 
       <Card variant="borderless" className="shadow-sm rounded-2xl">
@@ -208,7 +205,7 @@ export const ProcurementReview: React.FC = () => {
 
       {/* Quote Modal Drawer */}
       <Drawer
-        title={activeRequest ? `Quote Request — ${activeRequest.id}` : 'Quote Request'}
+        title={activeRequest ? `Issue Quote (Naira ₦) — ${activeRequest.id}` : 'Quote Request'}
         open={!!activeRequest}
         onClose={() => setActiveRequest(null)}
         size="large"
@@ -218,20 +215,12 @@ export const ProcurementReview: React.FC = () => {
           <>
             {activeRequest.productPhotos && activeRequest.productPhotos.length > 0 && (
               <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Product Photo</span>
-                <Image.PreviewGroup>
-                  <div className="flex flex-wrap gap-2">
-                    {activeRequest.productPhotos.map((url, idx) => (
-                      <Image
-                        key={idx}
-                        src={url}
-                        alt={`Product Photo ${idx + 1}`}
-                        className="w-24 h-24 rounded-lg object-cover border border-slate-200"
-                        fallback="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300"
-                      />
-                    ))}
-                  </div>
-                </Image.PreviewGroup>
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Attached Photos / PDF Specs</span>
+                <div className="flex flex-wrap gap-3">
+                  {activeRequest.productPhotos.map((url, idx) => (
+                    <FileThumbnail key={idx} url={url} size="md" showName={true} />
+                  ))}
+                </div>
               </div>
             )}
 
@@ -243,7 +232,7 @@ export const ProcurementReview: React.FC = () => {
               {activeRequest.colors && <Descriptions.Item label="Colors">{activeRequest.colors}</Descriptions.Item>}
               {activeRequest.notes && <Descriptions.Item label="Customer Notes">{activeRequest.notes}</Descriptions.Item>}
               <Descriptions.Item label="Product Link">
-                <a href={activeRequest.productUrl} target="_blank" rel="noreferrer" className="text-brand-blue flex items-center gap-1">
+                <a href={activeRequest.productUrl} target="_blank" rel="noreferrer" className="text-brand-blue flex items-center gap-1 font-medium">
                   <LinkOutlined /> {truncateText(activeRequest.productUrl, 45)}
                 </a>
               </Descriptions.Item>
@@ -255,34 +244,33 @@ export const ProcurementReview: React.FC = () => {
               <Form.Item name="supplierName" label="Supplier Name" rules={[{ required: true, message: 'Required' }]}>
                 <Input size="large" placeholder="e.g. Shenzhen MobileTech Co." />
               </Form.Item>
-              <Form.Item name="productCostRmb" label="Product Cost (RMB)" rules={[{ required: true, message: 'Required' }]}>
-                <InputNumber className="w-full" min={0.01} size="large" prefix="¥" />
+              <Form.Item name="productCostNaira" label="Product Cost (Naira ₦)" rules={[{ required: true, message: 'Required' }]}>
+                <InputNumber className="w-full" min={1} size="large" prefix="₦" placeholder="0.00" />
               </Form.Item>
-              <Form.Item name="serviceFeeRmb" label="Service Fee (RMB)" rules={[{ required: true, message: 'Required' }]}>
-                <InputNumber className="w-full" min={0} size="large" prefix="¥" />
+              <Form.Item name="serviceFeeNaira" label="Service & Sourcing Fee (Naira ₦)" rules={[{ required: true, message: 'Required' }]}>
+                <InputNumber className="w-full" min={0} size="large" prefix="₦" placeholder="0.00" />
               </Form.Item>
 
-              <div className="bg-brand-blue-light rounded-lg p-4 mb-6 space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Total (RMB)</span>
-                  <span className="font-bold text-brand-navy">¥{totalRmb.toFixed(2)}</span>
+              {/* Calculated Quote Box in NGN */}
+              <div className="bg-[#0A1128] text-white p-5 rounded-xl border border-slate-800 space-y-2 mb-6">
+                <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">
+                  TOTAL CALCULATED QUOTE (NAIRA ₦)
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Rate Used</span>
-                  <span className="font-bold text-brand-navy">{DEFAULT_EXCHANGE_RATE.platformRate}</span>
+                <div className="text-3xl font-extrabold text-white">
+                  ₦{totalNaira.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Total (NGN)</span>
-                  <span className="font-bold text-brand-navy">₦{totalNaira.toLocaleString()}</span>
+                <div className="text-xs text-slate-300 flex justify-between pt-2 border-t border-slate-800">
+                  <span>RMB Total: ¥{totalRmb.toFixed(2)}</span>
+                  <span>Rate: ₦{DEFAULT_EXCHANGE_RATE.platformRate}/¥</span>
                 </div>
               </div>
 
               <Form.Item className="mb-0 text-right">
-                <Button onClick={() => setActiveRequest(null)} className="mr-2">
+                <Button onClick={() => setActiveRequest(null)} className="mr-2" size="large">
                   Cancel
                 </Button>
-                <Button type="primary" htmlType="submit" loading={submitting}>
-                  Send Quote
+                <Button type="primary" htmlType="submit" loading={submitting} size="large" className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold">
+                  Send Quote (₦{totalNaira.toLocaleString()})
                 </Button>
               </Form.Item>
             </Form>
@@ -313,20 +301,12 @@ export const ProcurementReview: React.FC = () => {
 
             {viewDetailsModal.productPhotos && viewDetailsModal.productPhotos.length > 0 && (
               <div>
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">PRODUCT PHOTOS</h4>
-                <Image.PreviewGroup>
-                  <div className="flex flex-wrap gap-3">
-                    {viewDetailsModal.productPhotos.map((url, idx) => (
-                      <Image
-                        key={idx}
-                        src={url}
-                        alt={`Photo ${idx + 1}`}
-                        className="w-28 h-28 rounded-xl object-cover border border-slate-200 shadow-sm"
-                        fallback="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300"
-                      />
-                    ))}
-                  </div>
-                </Image.PreviewGroup>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">ATTACHED FILES / PDF DOCUMENTS</h4>
+                <div className="flex flex-wrap gap-3">
+                  {viewDetailsModal.productPhotos.map((url, idx) => (
+                    <FileThumbnail key={idx} url={url} size="md" showName={true} />
+                  ))}
+                </div>
               </div>
             )}
 
@@ -352,10 +332,14 @@ export const ProcurementReview: React.FC = () => {
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">SUPPLIER & QUOTE DETAILS</h4>
                 <Descriptions column={1} bordered size="small" className="bg-white rounded-lg">
                   <Descriptions.Item label="Supplier Name">{viewDetailsModal.supplierName}</Descriptions.Item>
+                  {viewDetailsModal.totalCostNaira && (
+                    <Descriptions.Item label="Total Cost (NGN Naira ₦)">
+                      <span className="font-extrabold text-brand-orange text-base">₦{viewDetailsModal.totalCostNaira.toLocaleString()}</span>
+                    </Descriptions.Item>
+                  )}
                   {viewDetailsModal.productCostRmb && <Descriptions.Item label="Product Cost (RMB)">¥{viewDetailsModal.productCostRmb.toFixed(2)}</Descriptions.Item>}
                   {viewDetailsModal.serviceFeeRmb && <Descriptions.Item label="Service Fee (RMB)">¥{viewDetailsModal.serviceFeeRmb.toFixed(2)}</Descriptions.Item>}
                   {viewDetailsModal.totalCostRmb && <Descriptions.Item label="Total Cost (RMB)">¥{viewDetailsModal.totalCostRmb.toFixed(2)}</Descriptions.Item>}
-                  {viewDetailsModal.totalCostNaira && <Descriptions.Item label="Total Cost (NGN)">₦{viewDetailsModal.totalCostNaira.toLocaleString()}</Descriptions.Item>}
                   {viewDetailsModal.chineseTrackingNo && <Descriptions.Item label="Chinese Tracking No">{viewDetailsModal.chineseTrackingNo}</Descriptions.Item>}
                 </Descriptions>
               </div>

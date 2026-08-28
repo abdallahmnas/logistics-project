@@ -14,7 +14,9 @@ import path from 'path';
 export async function uploadToCloudinary(
   buffer: Buffer,
   folder: string,
-  publicId?: string
+  publicId?: string,
+  originalName?: string,
+  mimeType?: string
 ): Promise<string> {
   if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
     try {
@@ -38,12 +40,18 @@ export async function uploadToCloudinary(
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
-    const filename = `${publicId || Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
+    const ext = (originalName && path.extname(originalName)) || (mimeType === 'application/pdf' ? '.pdf' : '.png');
+    const baseName = publicId || `${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const filename = baseName.endsWith(ext) ? baseName : `${baseName}${ext}`;
     const filepath = path.join(uploadsDir, filename);
     fs.writeFileSync(filepath, buffer);
-    return `/uploads/${filename}`;
+
+    const serverUrl = process.env.SERVER_URL || 'http://localhost:5000';
+    return `${serverUrl}/uploads/${filename}`;
   } catch (err) {
-    return `data:image/png;base64,${buffer.toString('base64')}`;
+    const isPdf = (originalName && originalName.endsWith('.pdf')) || mimeType === 'application/pdf';
+    const mime = isPdf ? 'application/pdf' : 'image/png';
+    return `data:${mime};base64,${buffer.toString('base64')}`;
   }
 }
 

@@ -1,10 +1,47 @@
 import { Request, Response } from 'express';
 import { ProcurementService } from '../services/ProcurementService';
+import { uploadToCloudinary } from '../config/cloudinary';
 
 export const createProcurement = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
-    const proc = await ProcurementService.createRequest(userId, req.body);
+    let uploadedPhotoUrls: string[] = [];
+
+    // Process multipart binary files uploaded via multer
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      for (const file of req.files as Express.Multer.File[]) {
+        const publicId = `procurement_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        const url = await uploadToCloudinary(
+          file.buffer,
+          'procurement',
+          publicId,
+          file.originalname,
+          file.mimetype
+        );
+        uploadedPhotoUrls.push(url);
+      }
+    }
+
+    let existingPhotos: string[] = [];
+    if (req.body.productPhotos) {
+      if (Array.isArray(req.body.productPhotos)) {
+        existingPhotos = req.body.productPhotos;
+      } else if (typeof req.body.productPhotos === 'string') {
+        try {
+          existingPhotos = JSON.parse(req.body.productPhotos);
+        } catch {
+          existingPhotos = [req.body.productPhotos];
+        }
+      }
+    }
+
+    const payload = {
+      ...req.body,
+      quantity: req.body.quantity ? Number(req.body.quantity) : 1,
+      productPhotos: [...uploadedPhotoUrls, ...existingPhotos],
+    };
+
+    const proc = await ProcurementService.createRequest(userId, payload);
     res.status(201).json({ success: true, data: proc });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

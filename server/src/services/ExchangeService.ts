@@ -184,6 +184,14 @@ export class ExchangeService {
       statusDescription: `Exchange request initiated for ₦${payload.amountNaira.toLocaleString()} (¥${amountRmb}). Please deposit funds into the GTBank Escrow Account.`,
     });
 
+    NotificationService.notifyAdmins({
+      title: 'New RMB Exchange Request',
+      message: `Customer ${user.firstName} ${user.lastName} (${user.customerId}) initiated exchange request ${exchange.id.slice(0, 8)} for ₦${payload.amountNaira.toLocaleString()} (¥${amountRmb}).`,
+      type: 'exchange',
+      referenceId: exchange.id,
+      roles: ['super_admin', 'admin', 'finance'],
+    });
+
     return exchange;
   }
 

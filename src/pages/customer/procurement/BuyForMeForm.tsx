@@ -46,6 +46,7 @@ export const BuyForMeForm: React.FC = () => {
   const { settings } = useAppSelector((state) => state.settings);
 
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   React.useEffect(() => {
@@ -57,6 +58,11 @@ export const BuyForMeForm: React.FC = () => {
   const submissionFee = settings?.buyForMeFixedFee || 1000;
 
   const onFinish = async (values: ProcurementSubmitPayload) => {
+    if (fileList.length === 0) {
+      message.error("Please upload at least 1 reference image or PDF document to submit request.");
+      return;
+    }
+
     const errors = await validateForm(
       buyForMeSchema,
       values as unknown as Record<string, unknown>,
@@ -73,20 +79,31 @@ export const BuyForMeForm: React.FC = () => {
 
     setSubmitting(true);
     try {
-      await dispatch(
-        submitProcurement({
-          productUrl: values.productUrl,
-          productPhotos: fileList.map((f) => f.url || f.preview || f.name).filter((u): u is string => Boolean(u)),
-          quantity: values.quantity,
-          specifications: values.specifications,
-          sizes: values.sizes,
-          colors: values.colors,
-          variations: values.variations,
-          notes: values.notes,
-        }),
-      ).unwrap();
+      const formData = new FormData();
+      formData.append('productUrl', values.productUrl || '');
+      formData.append('quantity', String(values.quantity || 1));
+      formData.append('specifications', values.specifications || '');
+      if (values.sizes) formData.append('sizes', values.sizes);
+      if (values.colors) formData.append('colors', values.colors);
+      if (values.variations) formData.append('variations', values.variations);
+      if (values.notes) formData.append('notes', values.notes);
+
+      const existingUrls: string[] = [];
+      fileList.forEach((f) => {
+        if (f.originFileObj) {
+          formData.append('files', f.originFileObj as File);
+        } else if (f.url) {
+          existingUrls.push(f.url);
+        }
+      });
+
+      if (existingUrls.length > 0) {
+        formData.append('productPhotos', JSON.stringify(existingUrls));
+      }
+
+      await dispatch(submitProcurement(formData as any)).unwrap();
       message.success(
-        "Request submitted. Our procurement team will review and send you a quote.",
+        "Request submitted. Our procurement team will review and send you a quote in Naira (₦)."
       );
       navigate("/customer/buy-for-me");
     } finally {
@@ -110,7 +127,7 @@ export const BuyForMeForm: React.FC = () => {
         </h1>
         <p className="text-slate-500 mt-1 mb-0 text-sm text-center">
           Share a product link and details, and our agents will purchase it on
-          your behalf.
+          your behalf. All quotes provided in Nigerian Naira (₦).
         </p>
       </div>
 
@@ -194,16 +211,22 @@ export const BuyForMeForm: React.FC = () => {
 
             <SectionHeading
               icon={<PictureOutlined />}
-              title="Reference photos"
-              subtitle="Drag and drop screenshots or product photos (optional)"
+              title="Reference photos / PDF (Required - At least 1)"
+              subtitle="Upload screenshots, product photos, or PDF specs (Required at least 1 file)"
             />
-            <Form.Item className="mb-0">
+            <Form.Item
+              required
+              className="mb-0"
+              validateStatus={fileList.length === 0 ? "warning" : "success"}
+              help={fileList.length === 0 ? "At least 1 photo or PDF document is required for verification" : undefined}
+            >
               <ImageDropzone
                 fileList={fileList}
                 onChange={setFileList}
+                onUploadingChange={setUploading}
                 maxCount={8}
-                title="Click or drag photos here to upload"
-                hint="PNG, JPG up to 8 photos · helps the agent match the exact product"
+                title="Click or drag photos or PDF spec files here to upload"
+                hint="PNG, JPG, PDF up to 10MB · At least 1 file required for procurement matching"
               />
             </Form.Item>
 
@@ -212,13 +235,13 @@ export const BuyForMeForm: React.FC = () => {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4 mb-4">
                 <div>
                   <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                    <WalletOutlined /> ORDER SUBMISSION CHARGE PREVIEW
+                    <WalletOutlined /> ORDER SUBMISSION CHARGE PREVIEW (NAIRA ₦)
                   </div>
                   <div className="text-2xl font-extrabold text-white">
                     ₦{submissionFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                   <p className="text-xs text-slate-400 m-0 mt-0.5">
-                    Submission & sourcing fee automatically deducted from your platform wallet balance upon placing this order.
+                    Submission & sourcing fee automatically deducted in Naira (₦) from your platform wallet balance.
                   </p>
                 </div>
 
@@ -262,6 +285,7 @@ export const BuyForMeForm: React.FC = () => {
                 onClick={() => navigate("/customer/buy-for-me")}
                 className="mr-2"
                 size="large"
+                disabled={submitting || uploading}
               >
                 Cancel
               </Button>
@@ -269,12 +293,12 @@ export const BuyForMeForm: React.FC = () => {
                 type="primary"
                 htmlType="submit"
                 icon={<SendOutlined />}
-                loading={submitting}
-                disabled={walletBalance < submissionFee}
+                loading={submitting || uploading}
+                disabled={walletBalance < submissionFee || uploading || fileList.length === 0}
                 size="large"
                 className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-md"
               >
-                Submit Request (Charge ₦{submissionFee.toLocaleString()})
+                {uploading ? 'Uploading Attachment...' : `Submit Request (Charge ₦${submissionFee.toLocaleString()})`}
               </Button>
             </Form.Item>
           </Form>

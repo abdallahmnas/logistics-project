@@ -15,10 +15,16 @@ export const uploadFile = async (req: Request, res: Response): Promise<void> => 
     // 1. Handle multipart file upload via multer
     if (req.file) {
       const publicId = `${folder}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      const url = await uploadToCloudinary(req.file.buffer, folder, publicId);
+      const url = await uploadToCloudinary(
+        req.file.buffer,
+        folder,
+        publicId,
+        req.file.originalname,
+        req.file.mimetype
+      );
       res.status(200).json({
         success: true,
-        message: 'File uploaded successfully to Cloudinary',
+        message: 'File uploaded successfully',
         url,
       });
       return;

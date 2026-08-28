@@ -3,11 +3,13 @@ import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { permissionMiddleware } from '../middlewares/permission.middleware';
 import { createProcurement, getProcurements, quoteProcurement, approveProcurement, updateProcurementStatus } from '../controllers/procurement.controller';
 
+import { uploadMiddleware } from '../controllers/upload.controller';
+
 const router = Router();
 
 router.use(authenticate);
 
-router.post('/', createProcurement);
+router.post('/', uploadMiddleware.array('files', 10), createProcurement);
 router.get('/', getProcurements);
 router.post('/:id/quote', authorize('super_admin', 'admin', 'procurement'), permissionMiddleware('procurement', 'update'), quoteProcurement);
 router.post('/:id/approve', approveProcurement);

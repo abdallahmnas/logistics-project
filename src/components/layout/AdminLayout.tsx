@@ -453,17 +453,6 @@ export const AdminLayout: React.FC = () => {
               <QuestionCircleOutlined className="text-xl" />
             </div>
 
-            <div className="w-px h-6 bg-slate-200" />
-
-            {/* "+ NEW SHIPMENT" Button */}
-            <Button
-              type="primary"
-              className="!bg-[#D95F18] hover:!bg-[#C05010] !border-none !rounded-sm font-bold uppercase tracking-wider text-xs px-5 h-10 shadow-sm flex items-center gap-2"
-              onClick={() => setNewShipmentModalOpen(true)}
-            >
-              <PlusOutlined /> NEW SHIPMENT
-            </Button>
-
             {/* User Profile Avatar Dropdown */}
             <Dropdown menu={{ items: userMenuItems }} trigger={["click"]} placement="bottomRight">
               <div className="flex items-center gap-2 cursor-pointer pl-2">
