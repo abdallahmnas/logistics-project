@@ -4,6 +4,8 @@ import apiClient from '../../api/axios';
 
 const initialState: DeliveryState = {
   deliveries: [],
+  vehicles: [],
+  adminVehicles: [],
   selectedDelivery: null,
   loading: false,
   error: null,
@@ -50,10 +52,66 @@ export const assignDriver = createAsyncThunk(
 
 export const updateDeliveryStatus = createAsyncThunk(
   'delivery/updateStatus',
-  async (payload: { deliveryId: string; status: string }, { rejectWithValue }) => {
+  async (payload: { deliveryId: string; status: string; notes?: string; driverName?: string; driverPhone?: string }, { rejectWithValue }) => {
     try {
-      const res = await apiClient.patch(`/delivery/${payload.deliveryId}/status`, { status: payload.status });
+      const res = await apiClient.patch(`/delivery/${payload.deliveryId}/status`, {
+        status: payload.status,
+        notes: payload.notes,
+        driverName: payload.driverName,
+        driverPhone: payload.driverPhone,
+      });
       return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+// Delivery Vehicle CRUD Thunks
+export const fetchVehicles = createAsyncThunk('delivery/fetchVehicles', async () => {
+  const res = await apiClient.get('/delivery/vehicles');
+  return res.data.data;
+});
+
+export const fetchAdminVehicles = createAsyncThunk('delivery/fetchAdminVehicles', async () => {
+  const res = await apiClient.get('/delivery/admin/vehicles');
+  return res.data.data;
+});
+
+export const createVehicle = createAsyncThunk(
+  'delivery/createVehicle',
+  async (payload: FormData, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.post('/delivery/admin/vehicles', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+export const updateVehicle = createAsyncThunk(
+  'delivery/updateVehicle',
+  async (payload: { id: string; formData: FormData }, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.put(`/delivery/admin/vehicles/${payload.id}`, payload.formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+export const deleteVehicle = createAsyncThunk(
+  'delivery/deleteVehicle',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await apiClient.delete(`/delivery/admin/vehicles/${id}`);
+      return id;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || err.message);
     }
@@ -100,6 +158,32 @@ const deliverySlice = createSlice({
       .addCase(updateDeliveryStatus.fulfilled, (state, action) => {
         const idx = state.deliveries.findIndex((d) => d.id === action.payload.id);
         if (idx !== -1) state.deliveries[idx] = action.payload;
+      })
+      .addCase(fetchVehicles.fulfilled, (state, action) => {
+        state.vehicles = action.payload;
+      })
+      .addCase(fetchAdminVehicles.fulfilled, (state, action) => {
+        state.adminVehicles = action.payload;
+      })
+      .addCase(createVehicle.fulfilled, (state, action) => {
+        state.adminVehicles.unshift(action.payload);
+        if (action.payload.isActive) state.vehicles.push(action.payload);
+      })
+      .addCase(updateVehicle.fulfilled, (state, action) => {
+        const idx = state.adminVehicles.findIndex((v) => v.id === action.payload.id);
+        if (idx !== -1) state.adminVehicles[idx] = action.payload;
+
+        const vIdx = state.vehicles.findIndex((v) => v.id === action.payload.id);
+        if (action.payload.isActive) {
+          if (vIdx !== -1) state.vehicles[vIdx] = action.payload;
+          else state.vehicles.push(action.payload);
+        } else {
+          if (vIdx !== -1) state.vehicles.splice(vIdx, 1);
+        }
+      })
+      .addCase(deleteVehicle.fulfilled, (state, action) => {
+        state.adminVehicles = state.adminVehicles.filter((v) => v.id !== action.payload);
+        state.vehicles = state.vehicles.filter((v) => v.id !== action.payload);
       });
   },
 });
