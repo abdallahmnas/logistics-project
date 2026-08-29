@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Button, Input, Tag, Card, Avatar, Spin, Badge } from 'antd';
+import { Button, Input, Spin, Badge } from 'antd';
 import {
   RobotOutlined,
   CloseOutlined,
@@ -7,46 +7,41 @@ import {
   SearchOutlined,
   SwapOutlined,
   EnvironmentOutlined,
-  CustomerServiceOutlined,
-  CarOutlined,
-  GlobalOutlined,
-  MessageOutlined
+  WalletOutlined,
+  ShoppingCartOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import apiClient from '../../api/axios';
 
-interface Message {
+export interface ChatMessage {
   id: string;
-  sender: 'user' | 'bot';
-  text: string;
-  language?: 'ha' | 'en' | 'pcm';
-  actionCard?: {
-    type: 'tracking' | 'exchange' | 'freight' | 'ticket' | 'faq';
-    data?: any;
-  };
+  role: 'user' | 'assistant';
+  content: string;
   suggestedReplies?: string[];
   time: string;
 }
 
 export const AIChatbotWidget: React.FC = () => {
   const [open, setOpen] = useState(false);
-  const [language, setLanguage] = useState<'ha' | 'en' | 'pcm'>('ha');
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome-1',
-      sender: 'bot',
-      text: 'Sannu da zuwa Hamza RMB Global AI Assistant! 🇳🇬\nZan iya taimaka muku wajen duba kaya (tracking), lissafin chanjin RMB, da adreshin China warehouse.\n\nYaya zan taimake ku a yau?',
-      language: 'ha',
+      role: 'assistant',
+      content:
+        'Hello! Welcome to **HAMZA RMB GLOBAL** 🇳🇬🇨🇳\nI am **Aisha**, your personal AI assistant. How can I help you today with Air/Sea shipping, Buy-For-Me procurement, RMB currency exchange, or wallet funding?',
       suggestedReplies: [
-        'Duba kaya ta (Tracking)',
-        'Nawa ne chanjin RMB yau?',
-        'Ina adreshin China warehouse?',
-        'Magana da Support'
+        'How to Fund Wallet?',
+        'Air vs Sea Freight rates',
+        'China Warehouse Address',
+        'Buy-For-Me Procurement',
+        'RMB Currency Exchange',
+        'Track My Shipment',
       ],
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    },
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -61,47 +56,79 @@ export const AIChatbotWidget: React.FC = () => {
     }
   }, [messages, open]);
 
+  // Event listener for programmatic opening from any button in the app
+  useEffect(() => {
+    const handleOpen = () => setOpen(true);
+    window.addEventListener('open-chatbot', handleOpen);
+    return () => window.removeEventListener('open-chatbot', handleOpen);
+  }, []);
+
+  const renderBoldText = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index} className="font-extrabold text-[#0A1128]">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputValue).trim();
     if (!text) return;
 
-    const userMsg: Message = {
+    const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
-      sender: 'user',
-      text,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      role: 'user',
+      content: text,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     if (!textToSend) setInputValue('');
     setLoading(true);
 
     try {
-      const res = await apiClient.post('/support/chat', {
+      // Build history payload (role + content) for backend context
+      const historyPayload = newMessages
+        .filter((m) => m.id !== 'welcome-1')
+        .slice(-10)
+        .map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
+
+      const res = await apiClient.post('/chat', {
         message: text,
-        language
+        history: historyPayload,
       });
 
-      const botData = res.data.data;
-      const botMsg: Message = {
+      const replyText = res.data.reply || res.data.data?.reply || 'I am here to assist you with your logistics & trade needs!';
+      
+      let replies: string[] = [];
+      if (text.toLowerCase().includes('freight') || text.toLowerCase().includes('shipping')) {
+        replies = ['China Warehouse Address', 'How to Fund Wallet?', 'Buy-For-Me Procurement'];
+      } else if (text.toLowerCase().includes('wallet') || text.toLowerCase().includes('bank')) {
+        replies = ['RMB Currency Exchange', 'Track My Shipment', 'Contact Support'];
+      }
+
+      const botMsg: ChatMessage = {
         id: `msg-bot-${Date.now()}`,
-        sender: 'bot',
-        text: botData.reply,
-        language: botData.language,
-        actionCard: botData.actionCard,
-        suggestedReplies: botData.suggestedReplies,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        role: 'assistant',
+        content: replyText,
+        suggestedReplies: replies,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, botMsg]);
     } catch {
-      const fallbackMsg: Message = {
+      const fallbackMsg: ChatMessage = {
         id: `msg-err-${Date.now()}`,
-        sender: 'bot',
-        text: language === 'ha'
-          ? 'Yi hakuri, an sami matsala wajen hawawa cibiyar mu. Da fatan ku sake gwada sakon ku.'
-          : 'Sorry, I am having trouble connecting right now. Please try your message again.',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        role: 'assistant',
+        content:
+          'Sorry, I am having trouble connecting right now. Please check your network connection or contact our support team at +234 809 021 9021.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, fallbackMsg]);
     } finally {
@@ -111,12 +138,12 @@ export const AIChatbotWidget: React.FC = () => {
 
   return (
     <div className="fixed bottom-6 right-6 z-[9999]">
-      {/* Floating Toggle Button */}
+      {/* Floating Action Button (FAB) */}
       {!open && (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group relative flex items-center justify-center w-14 h-14 rounded-full bg-[#0A1128] hover:bg-[#1a2542] text-white shadow-2xl transition-all duration-300 hover:scale-105 border-2 border-brand-orange/40"
+          className="group relative flex items-center justify-center w-14 h-14 rounded-full bg-[#0A1128] hover:bg-[#1a2542] text-white shadow-2xl transition-all duration-300 hover:scale-105 border-2 border-brand-orange/40 cursor-pointer"
         >
           <RobotOutlined className="text-2xl text-brand-orange group-hover:rotate-12 transition-transform duration-300" />
           <span className="absolute -top-1 -right-1 flex h-4 w-4">
@@ -126,7 +153,7 @@ export const AIChatbotWidget: React.FC = () => {
         </button>
       )}
 
-      {/* AI Chat Window */}
+      {/* AI Chat Panel */}
       {open && (
         <div className="w-[380px] sm:w-[420px] h-[580px] bg-white rounded-2xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-fade-in-up transition-all">
           {/* Top Header */}
@@ -136,64 +163,45 @@ export const AIChatbotWidget: React.FC = () => {
                 <RobotOutlined className="text-xl" />
               </div>
               <div>
-                <div className="font-extrabold text-sm flex items-center gap-1.5">
-                  Hamza RMB AI Assistant
+                <div className="font-extrabold text-sm flex items-center gap-1.5 text-white">
+                  Aisha — Hamza RMB Assistant
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 </div>
-                <div className="text-[10px] text-slate-300 font-medium">Multilingual Support: Hausa & English</div>
+                <div className="text-[10px] text-slate-300 font-medium">China-Nigeria Cargo & Trade AI</div>
               </div>
             </div>
 
-            {/* Language Switcher */}
-            <div className="flex items-center gap-2">
-              <div className="flex bg-slate-800 p-0.5 rounded-lg border border-slate-700">
-                <button
-                  type="button"
-                  onClick={() => setLanguage('ha')}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${language === 'ha' ? 'bg-brand-orange text-white' : 'text-slate-400 hover:text-white'}`}
-                >
-                  🇳🇬 HA
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLanguage('en')}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${language === 'en' ? 'bg-brand-orange text-white' : 'text-slate-400 hover:text-white'}`}
-                >
-                  🇬🇧 EN
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="text-slate-400 hover:text-white p-1 bg-transparent border-none cursor-pointer"
-              >
-                <CloseOutlined className="text-base" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="text-slate-400 hover:text-white p-1 bg-transparent border-none cursor-pointer"
+            >
+              <CloseOutlined className="text-base" />
+            </button>
           </div>
 
-          {/* Quick Action Chips */}
+          {/* Quick Suggestions Chips Bar */}
           <div className="bg-slate-50 p-2.5 px-4 border-b border-slate-100 flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-none">
             <button
               type="button"
-              onClick={() => handleSendMessage(language === 'ha' ? 'Duba kaya ta HZ-AIR-20241001-001' : 'Track HZ-AIR-20241001-001')}
+              onClick={() => handleSendMessage('How to Fund Wallet?')}
               className="text-[11px] font-bold bg-white text-slate-700 hover:text-brand-orange border border-slate-200 px-3 py-1 rounded-full cursor-pointer transition-colors shadow-2xs flex items-center gap-1"
             >
-              <SearchOutlined className="text-brand-orange" /> {language === 'ha' ? '📦 Duba Kaya' : '📦 Track Package'}
+              <WalletOutlined className="text-brand-orange" /> Fund Wallet
             </button>
             <button
               type="button"
-              onClick={() => handleSendMessage(language === 'ha' ? 'Nawa ne chanjin RMB yau?' : 'Current RMB Exchange Rate')}
+              onClick={() => handleSendMessage('Air vs Sea Freight rates')}
               className="text-[11px] font-bold bg-white text-slate-700 hover:text-brand-orange border border-slate-200 px-3 py-1 rounded-full cursor-pointer transition-colors shadow-2xs flex items-center gap-1"
             >
-              <SwapOutlined className="text-emerald-500" /> {language === 'ha' ? '🔄 Chanjin RMB' : '🔄 RMB Rate'}
+              <RocketOutlined className="text-blue-500" /> Air & Sea Rates
             </button>
             <button
               type="button"
-              onClick={() => handleSendMessage(language === 'ha' ? 'Ina adreshin China warehouse?' : 'China Warehouse Address')}
+              onClick={() => handleSendMessage('China Warehouse Address')}
               className="text-[11px] font-bold bg-white text-slate-700 hover:text-brand-orange border border-slate-200 px-3 py-1 rounded-full cursor-pointer transition-colors shadow-2xs flex items-center gap-1"
             >
-              <EnvironmentOutlined className="text-blue-500" /> {language === 'ha' ? '📍 China Warehouse' : '📍 Guangzhou Hub'}
+              <EnvironmentOutlined className="text-emerald-500" /> China Hub
             </button>
           </div>
 
@@ -202,40 +210,17 @@ export const AIChatbotWidget: React.FC = () => {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+                className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
               >
                 <div
                   className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
-                    msg.sender === 'user'
+                    msg.role === 'user'
                       ? 'bg-[#0A1128] text-white rounded-br-none shadow-sm font-medium'
                       : 'bg-white text-slate-800 rounded-bl-none border border-slate-100 shadow-sm font-normal'
                   }`}
                 >
-                  {msg.text}
+                  {renderBoldText(msg.content)}
                 </div>
-
-                {/* Render Interactive Action Cards */}
-                {msg.actionCard && (
-                  <div className="mt-2 w-[85%]">
-                    {msg.actionCard.type === 'tracking' && (
-                      <div className="bg-white p-3 rounded-xl border border-brand-orange/30 shadow-sm text-xs space-y-1">
-                        <div className="font-bold text-[#0A1128] flex items-center justify-between">
-                          <span>Tracking: {msg.actionCard.data.trackingId}</span>
-                          <Tag color="orange" className="font-bold text-[10px]">{msg.actionCard.data.status}</Tag>
-                        </div>
-                        <div className="text-slate-500 text-[11px]">Goods: {msg.actionCard.data.description}</div>
-                        <div className="text-slate-500 text-[11px]">Weight: {msg.actionCard.data.weightKg} kg</div>
-                      </div>
-                    )}
-
-                    {msg.actionCard.type === 'exchange' && (
-                      <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-xs text-emerald-900 space-y-1">
-                        <div className="font-extrabold text-emerald-800">Live RMB Parity: 1 RMB = ₦{msg.actionCard.data.rateNairaPerRmb} NGN</div>
-                        <div className="text-[10px] text-emerald-700">Instant verification & direct supplier payout.</div>
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {/* Suggested Reply Buttons */}
                 {msg.suggestedReplies && msg.suggestedReplies.length > 0 && (
@@ -260,7 +245,7 @@ export const AIChatbotWidget: React.FC = () => {
             {loading && (
               <div className="flex items-center gap-2 text-slate-400 text-xs p-2">
                 <Spin size="small" />
-                <span>{language === 'ha' ? 'Taimaki yana amsawa...' : 'AI is typing response...'}</span>
+                <span>Aisha is thinking & typing...</span>
               </div>
             )}
 
@@ -271,7 +256,7 @@ export const AIChatbotWidget: React.FC = () => {
           <div className="p-3 bg-white border-t border-slate-100 flex items-center gap-2">
             <Input
               size="large"
-              placeholder={language === 'ha' ? 'Rubuta sakon ku a nan (Hausa ko English)...' : 'Ask a question or type tracking ID...'}
+              placeholder="Ask Aisha a question or type tracking ID..."
               className="bg-slate-50 border-slate-200 text-xs focus:bg-white"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -282,7 +267,7 @@ export const AIChatbotWidget: React.FC = () => {
               size="large"
               icon={<SendOutlined />}
               loading={loading}
-              className="bg-[#0A1128] hover:bg-[#1a2542] border-none font-bold shrink-0"
+              className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shrink-0"
               onClick={() => handleSendMessage()}
             />
           </div>

@@ -41,6 +41,7 @@ import { LocalDeliveryForm } from "./pages/customer/delivery/LocalDeliveryForm";
 import { WalletPage } from "./pages/customer/wallet/WalletPage";
 import { ProfilePage } from "./pages/customer/profile/ProfilePage";
 import { NotificationsPage } from "./pages/customer/notifications/NotificationsPage";
+import { AishaChatPage } from "./pages/customer/AishaChatPage";
 
 import { InboundPackages } from "./pages/admin/warehouse/InboundPackages";
 import { PackageScanPage } from "./pages/admin/warehouse/PackageScanPage";
@@ -135,6 +136,7 @@ function App() {
             <Route path="wallet" element={<WalletPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="aisha" element={<AishaChatPage />} />
           </Route>
 
           {/* Admin Dashboard Routes */}

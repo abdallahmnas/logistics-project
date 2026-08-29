@@ -17,6 +17,7 @@ import {
   LogoutOutlined,
   EnvironmentOutlined,
   CustomerServiceOutlined,
+  RobotOutlined,
 } from "@ant-design/icons";
 import { Logo } from "../common/Logo";
 import { SidebarNav, type SidebarNavSection } from "./SidebarNav";
@@ -95,6 +96,11 @@ export const DashboardLayout: React.FC = () => {
           icon: <CarOutlined />,
           label: "Local Delivery",
           badge: unreadByCategory["delivery"],
+        },
+        {
+          key: "/customer/aisha",
+          icon: <RobotOutlined className="text-brand-orange" />,
+          label: "Aisha AI Assistant",
         },
       ],
     },
