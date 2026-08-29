@@ -1,421 +1,457 @@
-import React, { useEffect, useState } from "react";
-import { Button, Table, Tag, Modal, InputNumber, message, Image } from "antd";
+import React, { useEffect, useState } from 'react';
+import { Button, Table, Tag, Modal, InputNumber, Input, Form, message, Upload, Spin, Alert, Tooltip } from 'antd';
+import type { UploadFile } from 'antd';
 import {
   WalletOutlined,
   PlusOutlined,
   ArrowDownOutlined,
-  CreditCardOutlined,
   BankOutlined,
-  CarOutlined,
-  BarcodeOutlined,
-  QrcodeOutlined,
-} from "@ant-design/icons";
-import { useAppDispatch, useAppSelector } from "../../../store/hooks";
+  CopyOutlined,
+  CloudUploadOutlined,
+  LoadingOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+  FileTextOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import {
   fetchTransactions,
   fetchWallet,
-} from "../../../store/slices/walletSlice";
-import type {
-  WalletTransaction,
-  TransactionType,
-} from "../../../types/wallet.types";
+  fetchDeposits,
+  submitDeposit,
+} from '../../../store/slices/walletSlice';
+import { fetchSettings } from '../../../store/slices/settingsSlice';
+import { FileThumbnail } from '../../../components/common/FileThumbnail';
+import type { WalletTransaction, WalletDeposit } from '../../../types/wallet.types';
 
 export const WalletPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { wallet, transactions, loading } = useAppSelector(
-    (state) => state.wallet,
+  const [form] = Form.useForm();
+  const { wallet, data: walletData, transactions, deposits, loading } = useAppSelector(
+    (state) => state.wallet
   );
+  const { settings } = useAppSelector((state) => state.settings);
+
   const [topUpOpen, setTopUpOpen] = useState(false);
-  const [topUpAmount, setTopUpAmount] = useState<number>(10000);
-  const [topUpLoading, setTopUpLoading] = useState(false);
+  const [topUpSubmitting, setTopUpSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   useEffect(() => {
     dispatch(fetchWallet());
     dispatch(fetchTransactions());
+    dispatch(fetchDeposits());
+    dispatch(fetchSettings());
   }, [dispatch]);
 
-  const handleTopUp = () => {
-    setTopUpLoading(true);
-    setTimeout(() => {
-      setTopUpLoading(false);
-      setTopUpOpen(false);
-      message.success(`Top-up of ₦${topUpAmount.toLocaleString()} initiated.`);
-    }, 1200);
+  const activeWallet = wallet || walletData;
+  const balance = Number(activeWallet?.balance || 0);
+  const escrowHeld = Number(activeWallet?.escrowHeld || 0);
+  const availableBalance = Number(activeWallet?.availableBalance || balance - escrowHeld);
+
+  const bankName = settings?.ngnEscrowBankName || 'GTBank';
+  const accountNo = settings?.ngnEscrowAccountNo || '0123456789';
+  const accountName = settings?.ngnEscrowAccountName || 'HAMZA RMB GLOBAL COMPANY LTD';
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    message.success(`${label} copied to clipboard!`);
   };
 
-  const balance = wallet?.balance || 0;
+  const handleDepositSubmit = async (values: any) => {
+    if (fileList.length === 0) {
+      message.error('Please upload your payment receipt photo or PDF document.');
+      return;
+    }
+    try {
+      setTopUpSubmitting(true);
+      const formData = new FormData();
+      formData.append('amount', String(values.amount));
+      formData.append('senderName', values.senderName);
+      if (values.sessionId) formData.append('sessionId', values.sessionId);
+
+      const file = fileList[0];
+      if (file.originFileObj) {
+        formData.append('receipt', file.originFileObj as File);
+      } else if (file.url) {
+        formData.append('paymentReceiptUrl', file.url);
+      }
+
+      await dispatch(submitDeposit(formData)).unwrap();
+      message.success('Deposit request submitted! Our staff will verify payment and credit your wallet shortly.');
+      setTopUpOpen(false);
+      form.resetFields();
+      setFileList([]);
+      dispatch(fetchDeposits());
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to submit deposit request');
+    } finally {
+      setTopUpSubmitting(false);
+    }
+  };
+
   const recentTransactions = [...transactions].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
-  // Mock due-for-payment items
-  const duePayments = [
-    {
-      id: "SHP-2024-8891",
-      route: "Guangzhou → Lagos",
-      amount: 45200,
-      type: "URGENT PACKING",
-    },
-    {
-      id: "SHP-2024-8842",
-      route: "Dubai → Accra",
-      amount: 120000,
-      type: "AIRWAY BILL",
-    },
-  ];
+  const recentDeposits = [...deposits].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
-  const txColumns = [
+  const depositColumns = [
     {
-      title: "Date",
-      dataIndex: "createdAt",
-      key: "date",
+      title: 'Date Submitted',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
       render: (d: string) => (
-        <span className="text-sm text-slate-600">
-          {new Date(d).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
+        <span className="text-xs text-slate-600 font-medium">
+          {new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
         </span>
       ),
     },
     {
-      title: "Description",
-      key: "description",
-      render: (record: WalletTransaction) => (
+      title: 'Amount (₦)',
+      dataIndex: 'amount',
+      key: 'amount',
+      render: (amt: number) => (
+        <span className="font-extrabold text-sm text-brand-orange">
+          ₦{Number(amt).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </span>
+      ),
+    },
+    {
+      title: 'Sender & Reference',
+      key: 'senderInfo',
+      render: (record: WalletDeposit) => (
         <div>
-          <div className="text-sm font-medium text-slate-800">
-            {record.description || "Transaction"}
-          </div>
-          <div className="text-[10px] text-slate-400">
-            {record.referenceId || record.category.replace(/_/g, " ")}
-          </div>
+          <div className="text-xs font-bold text-slate-800">{record.senderName}</div>
+          {record.sessionId && (
+            <div className="text-[10px] text-slate-400 font-mono">Ref: {record.sessionId}</div>
+          )}
         </div>
       ),
     },
     {
-      title: "Amount (₦)",
-      dataIndex: "amount",
-      key: "amount",
-      render: (amount: number, record: WalletTransaction) => (
-        <span
-          className={`font-bold text-sm ${record.type === "credit" || record.type === "refund" ? "text-green-600" : "text-slate-800"}`}
-        >
-          {record.type === "credit" || record.type === "refund" ? "+" : "-"}₦
-          {amount.toLocaleString()}
-        </span>
+      title: 'Payment Receipt',
+      key: 'receipt',
+      render: (record: WalletDeposit) => (
+        <FileThumbnail url={record.paymentReceiptUrl} size="sm" showName={false} />
       ),
     },
     {
-      title: "Status",
-      dataIndex: "type",
-      key: "status",
-      render: (type: TransactionType) => {
-        const map: Record<string, { color: string; text: string }> = {
-          credit: { color: "bg-green-100 text-green-700", text: "Successful" },
-          debit: { color: "bg-green-100 text-green-700", text: "Successful" },
-          escrow_hold: {
-            color: "bg-orange-100 text-orange-600",
-            text: "Pending",
-          },
-          escrow_release: {
-            color: "bg-green-100 text-green-700",
-            text: "Successful",
-          },
-          refund: { color: "bg-red-100 text-red-600", text: "Failed" },
-        };
-        const s = map[type] || {
-          color: "bg-slate-100 text-slate-600",
-          text: type,
-        };
+      title: 'Verification Status',
+      key: 'status',
+      render: (record: WalletDeposit) => {
+        if (record.status === 'approved') {
+          return (
+            <Tag color="green" icon={<CheckCircleOutlined />} className="font-bold border-none text-[10px] uppercase">
+              APPROVED & CREDITED
+            </Tag>
+          );
+        }
+        if (record.status === 'rejected') {
+          return (
+            <Tooltip title={`Rejection Reason: ${record.rejectionReason || 'Receipt invalid'}`}>
+              <Tag color="red" icon={<CloseCircleOutlined />} className="font-bold border-none text-[10px] uppercase cursor-pointer">
+                REJECTED
+              </Tag>
+            </Tooltip>
+          );
+        }
         return (
-          <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${s.color}`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-            {s.text}
-          </span>
+          <Tag color="orange" icon={<ClockCircleOutlined />} className="font-bold border-none text-[10px] uppercase">
+            PENDING VERIFICATION
+          </Tag>
         );
       },
     },
   ];
 
+  const txColumns = [
+    {
+      title: 'Date',
+      dataIndex: 'createdAt',
+      key: 'date',
+      render: (d: string) => (
+        <span className="text-xs text-slate-600">
+          {new Date(d).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })}
+        </span>
+      ),
+    },
+    {
+      title: 'Description',
+      key: 'description',
+      render: (record: WalletTransaction) => (
+        <div>
+          <div className="text-sm font-medium text-slate-800">
+            {record.description || 'Transaction'}
+          </div>
+          <div className="text-[10px] text-slate-400">
+            {record.referenceId || record.category.replace(/_/g, ' ')}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Amount (₦)',
+      dataIndex: 'amount',
+      key: 'amount',
+      render: (amount: number, record: WalletTransaction) => (
+        <span
+          className={`font-bold text-sm ${record.type === 'credit' || record.type === 'refund' ? 'text-green-600' : 'text-slate-800'}`}
+        >
+          {record.type === 'credit' || record.type === 'refund' ? '+' : '-'}₦
+          {Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </span>
+      ),
+    },
+    {
+      title: 'Status',
+      dataIndex: 'type',
+      key: 'status',
+      render: (type: string) => (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+          ✓ COMPLETED
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <div className="animate-fade-in-up max-w-[1200px] mx-auto pb-20">
-      {/* Balance Card */}
-      <div className="bg-[#0A1128] rounded-2xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl mb-8">
+    <div className="space-y-8 animate-fade-in-up">
+      {/* Balance Banner */}
+      <div className="bg-[#0A1128] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl">
         <div className="absolute -right-20 -top-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
         <div className="absolute -left-10 -bottom-20 w-60 h-60 bg-brand-orange/10 rounded-full blur-3xl"></div>
 
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <WalletOutlined className="text-blue-300" />
-              <span className="text-xs font-bold text-blue-300 uppercase tracking-wider">
-                Naira Platform Balance
+            <div className="flex items-center gap-2 mb-2">
+              <WalletOutlined className="text-amber-400 text-lg" />
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">
+                Naira Platform Wallet
               </span>
             </div>
-            <p className="text-blue-200 text-xs m-0 mb-4">
-              Available for shipping and clearance
+            <p className="text-slate-300 text-xs m-0 mb-4">
+              Instant balance used for Buy-For-Me, Shipping & Local Delivery payments
             </p>
-            <div className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-2">
+            <div className="text-4xl sm:text-5xl font-black tracking-tight mb-2 text-white">
               ₦{balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-green-400 text-xs m-0 flex items-center gap-1">
-              ↑ ₦50,000.00 since last week
-            </p>
+            {escrowHeld > 0 && (
+              <div className="text-xs text-amber-300 font-semibold bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg inline-block">
+                Available: ₦{availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })} (₦{escrowHeld.toLocaleString()} Escrow Held)
+              </div>
+            )}
           </div>
 
-          <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
-            <WalletOutlined className="text-3xl text-blue-300" />
-          </div>
-        </div>
-
-        <div className="flex gap-3 mt-6 relative z-10">
-          <Button
-            size="large"
-            className="bg-brand-orange hover:bg-[#E86E21] text-white border-none font-bold shadow-md px-8"
-            icon={<PlusOutlined />}
-            onClick={() => setTopUpOpen(true)}
-          >
-            Fund Wallet
-          </Button>
-          <Button
-            size="large"
-            className="bg-white/10 hover:bg-white/20 text-white border-none font-bold backdrop-blur-sm px-8"
-            icon={<ArrowDownOutlined />}
-          >
-            Withdraw
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Due for Payment */}
-          <div>
-            <h2 className="text-lg font-bold text-[#0A1128] m-0 mb-4 flex items-center gap-2">
-              <CarOutlined className="text-slate-400" /> Due for Payment
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {duePayments.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-xl border border-slate-100 shadow-sm p-5"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <Tag className="m-0 bg-orange-100 text-orange-600 border-none text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm">
-                      {item.type}
-                    </Tag>
-                    <span className="text-lg font-extrabold text-[#0A1128]">
-                      ₦ {item.amount.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="text-sm font-bold text-[#0A1128] mb-1">
-                    {item.id}
-                  </div>
-                  <div className="text-xs text-slate-500 mb-4">
-                    {item.route}
-                  </div>
-                  <Button
-                    type="primary"
-                    block
-                    className="bg-[#0A1128] hover:bg-[#1a2542] border-none font-bold shadow-sm"
-                  >
-                    Pay Now
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Transactions Table */}
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-[#0A1128] m-0">
-                Recent Transactions
-              </h2>
-              <Button
-                type="link"
-                className="text-[#0A1128] font-bold text-sm p-0"
-              >
-                View All →
-              </Button>
-            </div>
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-              <Table
-                columns={txColumns}
-                dataSource={recentTransactions}
-                rowKey="id"
-                pagination={false}
-                loading={loading}
-                className="[&_.ant-table-thead_th]:!bg-white [&_.ant-table-thead_th]:!text-slate-500 [&_.ant-table-thead_th]:!text-xs [&_.ant-table-thead_th]:!font-bold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:tracking-wider [&_.ant-table-thead_th]:!py-4 [&_.ant-table-tbody_td]:!py-4"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Linked Methods */}
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-[#0A1128] text-base m-0">
-                Linked Methods
-              </h3>
-              <Button
-                type="text"
-                icon={<PlusOutlined />}
-                className="text-brand-orange font-bold text-xs"
-              />
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-3 border border-slate-100">
-                <div className="w-9 h-9 rounded-lg bg-[#0A1128] text-white flex items-center justify-center">
-                  <BankOutlined />
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-bold text-slate-800">
-                    GT Bank Transfer
-                  </div>
-                  <div className="text-[10px] text-slate-400">****4421</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-3 border border-slate-100">
-                <div className="w-9 h-9 rounded-lg bg-brand-orange text-white flex items-center justify-center">
-                  <CreditCardOutlined />
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-bold text-slate-800">
-                    Mastercard
-                  </div>
-                  <div className="text-[10px] text-slate-400">****7792</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Receiving Barcodes & Wallet Account Info */}
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <BarcodeOutlined className="text-brand-orange text-lg" />
-                <h3 className="font-bold text-[#0A1128] text-base m-0">
-                  Receiving Barcodes
-                </h3>
-              </div>
-              <Tag color="orange" className="font-bold border-none text-[10px] uppercase">
-                To Be Funded
-              </Tag>
-            </div>
-            <p className="text-xs text-slate-500 m-0">
-              Manage your WeChat & Alipay receiving account barcodes for RMB funding.
-            </p>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
-                <Image
-                  src="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=300"
-                  alt="WeChat Barcode"
-                  className="w-12 h-12 rounded-lg object-contain bg-white border border-slate-200"
-                />
-                <div className="flex-1 overflow-hidden">
-                  <div className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                    <span>WeChat Pay Barcode</span>
-                    <span className="text-[10px] text-green-600 font-bold bg-green-50 px-1 rounded">Active</span>
-                  </div>
-                  <div className="text-[10px] text-slate-500 font-mono truncate">ID: wx_889123490</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
-                <Image
-                  src="https://images.unsplash.com/photo-1620825937374-87fc7d6aaf8e?q=80&w=300"
-                  alt="Alipay Barcode"
-                  className="w-12 h-12 rounded-lg object-contain bg-white border border-slate-200"
-                />
-                <div className="flex-1 overflow-hidden">
-                  <div className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                    <span>Alipay Barcode</span>
-                    <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-1 rounded">Active</span>
-                  </div>
-                  <div className="text-[10px] text-slate-500 font-mono truncate">ID: ali_pay_user992</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Pay On Delivery */}
-          <div className="bg-gradient-to-br from-[#0A1128] to-[#1a2542] rounded-xl p-6 text-white shadow-lg relative overflow-hidden">
-            <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
-            <h3 className="font-bold text-white text-base m-0 mb-2 relative z-10">
-              Pay On Delivery (POD)
-            </h3>
-            <p className="text-blue-200 text-xs m-0 mb-4 relative z-10 leading-relaxed">
-              You have 2 upcoming shipments opted for POD.
-            </p>
-            <div className="flex justify-between items-center mb-4 relative z-10">
-              <div>
-                <div className="text-[10px] font-bold text-blue-300 uppercase tracking-wider">
-                  TOTAL COMMITMENT
-                </div>
-                <div className="text-2xl font-extrabold mt-1">₦ 185,500</div>
-              </div>
-            </div>
+          <div className="flex gap-4 relative z-10">
             <Button
-              type="link"
-              className="text-brand-orange font-bold text-xs p-0 relative z-10"
+              size="large"
+              className="bg-brand-orange hover:bg-[#E86E21] text-white border-none font-extrabold shadow-lg px-8 h-12 rounded-xl text-base"
+              icon={<PlusOutlined />}
+              onClick={() => setTopUpOpen(true)}
             >
-              View Shipments →
+              Fund Wallet
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Top Up Modal */}
+      {/* Manual Deposit Requests Section */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
+        <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+          <div>
+            <h2 className="text-lg font-bold text-[#0A1128] m-0">Manual Top-Up Requests & Status</h2>
+            <p className="text-xs text-slate-500 m-0">View verification status of your bank transfer deposits</p>
+          </div>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setTopUpOpen(true)}
+            className="bg-brand-orange border-none font-bold text-xs"
+          >
+            Submit New Deposit
+          </Button>
+        </div>
+
+        {recentDeposits.length === 0 ? (
+          <Alert
+            type="info"
+            showIcon
+            message="No Manual Deposit Requests Yet"
+            description="Click 'Fund Wallet' above to view company bank details, make a transfer, and upload your payment receipt for manual verification."
+          />
+        ) : (
+          <Table
+            columns={depositColumns}
+            dataSource={recentDeposits}
+            rowKey="id"
+            pagination={{ pageSize: 5 }}
+            className="[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!text-xs [&_.ant-table-thead_th]:!font-bold [&_.ant-table-thead_th]:uppercase"
+          />
+        )}
+      </div>
+
+      {/* Recent Transactions Table */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
+        <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+          <h2 className="text-lg font-bold text-[#0A1128] m-0">Transaction History</h2>
+          <span className="text-xs text-slate-400 font-semibold">Total ({recentTransactions.length})</span>
+        </div>
+        <Table
+          columns={txColumns}
+          dataSource={recentTransactions}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+          loading={loading}
+          className="[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!text-xs [&_.ant-table-thead_th]:!font-bold [&_.ant-table-thead_th]:uppercase"
+        />
+      </div>
+
+      {/* Manual Wallet Funding Modal */}
       <Modal
-        title="Fund Wallet"
+        title={
+          <div className="flex items-center gap-2 text-lg font-bold text-brand-navy">
+            <BankOutlined className="text-brand-orange" />
+            Manual Wallet Funding (Bank Transfer)
+          </div>
+        }
         open={topUpOpen}
         onCancel={() => setTopUpOpen(false)}
-        onOk={handleTopUp}
-        confirmLoading={topUpLoading}
-        okText="Proceed to Payment"
-        okButtonProps={{
-          className: "bg-brand-orange hover:bg-[#E86E21] border-none",
-        }}
+        footer={null}
+        width={600}
+        className="rounded-2xl"
         destroyOnHidden
       >
-        <div className="py-4">
-          <label className="block text-sm font-bold text-slate-700 mb-2">
-            Amount (₦)
-          </label>
-          <InputNumber
-            size="large"
-            className="w-full"
-            min={1000}
-            step={5000}
-            value={topUpAmount}
-            onChange={(v) => setTopUpAmount(v || 10000)}
-            formatter={(value) =>
-              `₦ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-            }
-          />
-          <div className="flex gap-2 mt-3">
-            {[10000, 50000, 100000, 500000].map((amt) => (
-              <button
-                key={amt}
-                onClick={() => setTopUpAmount(amt)}
-                className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                  topUpAmount === amt
-                    ? "bg-[#0A1128] text-white border-[#0A1128]"
-                    : "bg-white text-slate-600 border-slate-200"
-                }`}
-              >
-                ₦{amt / 1000}k
-              </button>
-            ))}
+        <div className="space-y-6 pt-3">
+          {/* Step 1: Admin Funding Bank Account Card */}
+          <div className="bg-gradient-to-r from-[#0A1128] to-[#1C2A4E] text-white p-5 rounded-2xl border border-slate-800 space-y-3 relative shadow-sm">
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest block mb-0.5">
+                  STEP 1: TRANSFER FUNDS TO COMPANY ACCOUNT
+                </span>
+                <h3 className="text-lg font-black text-white m-0">{bankName}</h3>
+              </div>
+              <BankOutlined className="text-2xl text-amber-400" />
+            </div>
+
+            <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-400 font-semibold">Account Number:</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-mono font-black text-amber-400">{accountNo}</span>
+                  <Button
+                    size="small"
+                    icon={<CopyOutlined />}
+                    className="bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30 text-xs font-bold"
+                    onClick={() => copyToClipboard(accountNo, 'Account Number')}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+                <span className="text-xs text-slate-400 font-semibold">Account Name:</span>
+                <span className="text-xs font-bold text-white">{accountName}</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 m-0 leading-relaxed">
+              <strong>Instructions:</strong> Transfer the exact deposit amount to the bank account above. After completing transfer, fill out Step 2 below and upload your payment receipt for staff confirmation.
+            </p>
           </div>
+
+          {/* Step 2: Form to confirm transaction */}
+          <Form form={form} layout="vertical" onFinish={handleDepositSubmit}>
+            <span className="text-[10px] font-extrabold text-brand-orange uppercase tracking-widest block mb-3">
+              STEP 2: FILL TRANSACTION DETAILS & ATTACH RECEIPT
+            </span>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Form.Item
+                name="amount"
+                label={<span className="font-bold text-slate-700">Amount Transferred (Naira ₦) <span className="text-red-500">*</span></span>}
+                rules={[{ required: true, message: 'Please enter deposit amount' }]}
+              >
+                <InputNumber
+                  size="large"
+                  className="w-full bg-slate-50 border-slate-200"
+                  prefix="₦"
+                  min={100}
+                  step={5000}
+                  placeholder="e.g. 50,000"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="senderName"
+                label={<span className="font-bold text-slate-700">Sender Name (Name on Account) <span className="text-red-500">*</span></span>}
+                rules={[{ required: true, message: 'Please enter sender name' }]}
+              >
+                <Input size="large" placeholder="e.g. Adebayo Okonkwo" className="bg-slate-50 border-slate-200" />
+              </Form.Item>
+            </div>
+
+            <Form.Item
+              name="sessionId"
+              label={<span className="font-bold text-slate-700">Session ID / Bank Reference NO. <span className="text-slate-400">(Optional)</span></span>}
+            >
+              <Input size="large" placeholder="e.g. 0000132408221643190" className="bg-slate-50 border-slate-200 font-mono" />
+            </Form.Item>
+
+            <Form.Item
+              label={<span className="font-bold text-slate-700">Upload Payment Receipt / Proof of Transfer <span className="text-red-500">*</span></span>}
+              required
+            >
+              <Upload.Dragger
+                className="bg-slate-50 border-dashed border-slate-300 rounded-xl"
+                beforeUpload={() => false}
+                accept="image/*,.pdf,application/pdf"
+                maxCount={1}
+                fileList={fileList}
+                onChange={({ fileList: newFileList }) => {
+                  setUploading(true);
+                  newFileList.forEach((f) => { f.status = 'done'; });
+                  setFileList(newFileList);
+                  setTimeout(() => setUploading(false), 200);
+                }}
+              >
+                <p className="ant-upload-drag-icon">
+                  {uploading ? (
+                    <Spin indicator={<LoadingOutlined className="text-3xl text-brand-orange" spin />} />
+                  ) : (
+                    <CloudUploadOutlined className="text-brand-orange text-3xl" />
+                  )}
+                </p>
+                <p className="ant-upload-text font-bold text-slate-700">Click or drag receipt photo / PDF here</p>
+                <p className="ant-upload-hint text-xs text-slate-500">PNG, JPG, WEBP, PDF (Max 10MB)</p>
+              </Upload.Dragger>
+            </Form.Item>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button onClick={() => setTopUpOpen(false)} size="large">
+                Cancel
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                size="large"
+                loading={topUpSubmitting}
+                disabled={fileList.length === 0 || uploading}
+                className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold px-8"
+              >
+                Confirm Transaction & Submit →
+              </Button>
+            </div>
+          </Form>
         </div>
       </Modal>
     </div>

@@ -23,7 +23,7 @@ export interface WalletTransaction {
   currency: 'NGN';
   balanceAfter: number;
   description: string;
-  referenceId?: string; // Linked shipment/exchange/delivery ID
+  referenceId?: string;
   reference?: string;
   createdAt: string;
 }
@@ -40,14 +40,32 @@ export interface Wallet {
   updatedAt: string;
 }
 
-export interface TopUpPayload {
+export type WalletDepositStatus = 'pending' | 'approved' | 'rejected';
+
+export interface WalletDeposit {
+  id: string;
+  userId: string;
+  customerId: string;
+  customerName: string;
   amount: number;
-  paymentMethod: 'bank_transfer' | 'card';
+  currency: 'NGN';
+  senderName: string;
+  paymentReceiptUrl: string;
+  sessionId?: string;
+  status: WalletDepositStatus;
+  rejectionReason?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface WalletState {
   wallet: Wallet | null;
+  data?: Wallet | null;
   transactions: WalletTransaction[];
+  deposits: WalletDeposit[];
+  adminDeposits: WalletDeposit[];
   loading: boolean;
   error: string | null;
 }

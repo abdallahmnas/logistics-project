@@ -33,6 +33,14 @@ export const quoteProcurement = createAsyncThunk(
   }
 );
 
+export const approveProcurement = createAsyncThunk(
+  'procurement/approve',
+  async (requestId: string) => {
+    const res = await apiClient.post(`/procurements/${requestId}/approve`);
+    return res.data.data;
+  }
+);
+
 const procurementSlice = createSlice({
   name: 'procurement',
   initialState,
@@ -54,6 +62,12 @@ const procurementSlice = createSlice({
       })
       .addCase(submitProcurement.fulfilled, (state, action) => {
         state.requests.unshift(action.payload);
+      })
+      .addCase(approveProcurement.fulfilled, (state, action) => {
+        const idx = state.requests.findIndex((r) => r.id === action.payload.id);
+        if (idx !== -1) {
+          state.requests[idx] = action.payload;
+        }
       })
       .addCase(quoteProcurement.fulfilled, (state, action) => {
         const idx = state.requests.findIndex((r) => r.id === action.payload.requestId);

@@ -18,10 +18,14 @@ import { ActivityLog } from './ActivityLog';
 import { Facility } from './Facility';
 import { SavedAccount } from './SavedAccount';
 import { SystemSettings } from './SystemSettings';
+import { WalletDeposit } from './WalletDeposit';
 
 // Define Relationships
 User.hasOne(Wallet, { foreignKey: 'userId', as: 'wallet' });
 Wallet.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+User.hasMany(WalletDeposit, { foreignKey: 'userId', as: 'walletDeposits' });
+WalletDeposit.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 User.hasMany(SavedAccount, { foreignKey: 'userId', as: 'savedAccounts' });
 SavedAccount.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -56,4 +60,5 @@ export {
   Facility,
   SavedAccount,
   SystemSettings,
+  WalletDeposit,
 };

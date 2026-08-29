@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, InputNumber, Upload, Tag, Form, message, Image, Spin } from 'antd';
+import { Card, Button, Input, InputNumber, Upload, Tag, Form, message, Image, Spin, Modal, Descriptions, Alert } from 'antd';
 import type { UploadFile } from 'antd';
-import { LinkOutlined, CloudUploadOutlined, SafetyCertificateOutlined, InboxOutlined, WalletOutlined, CheckCircleOutlined, WarningOutlined, LoadingOutlined } from '@ant-design/icons';
+import { LinkOutlined, CloudUploadOutlined, SafetyCertificateOutlined, InboxOutlined, WalletOutlined, CheckCircleOutlined, WarningOutlined, LoadingOutlined, CheckOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchProcurements, submitProcurement } from '../../../store/slices/procurementSlice';
+import { fetchProcurements, submitProcurement, approveProcurement } from '../../../store/slices/procurementSlice';
 import { fetchWallet } from '../../../store/slices/walletSlice';
 import { fetchSettings } from '../../../store/slices/settingsSlice';
 import { FileThumbnail } from '../../../components/common/FileThumbnail';
+import type { ProcurementRequest } from '../../../types/procurement.types';
 
 const { Dragger } = Upload;
 const { TextArea } = Input;
@@ -29,6 +30,8 @@ export const BuyForMeList: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [approveModalItem, setApproveModalItem] = useState<ProcurementRequest | null>(null);
+  const [approving, setApproving] = useState(false);
 
   useEffect(() => {
     dispatch(fetchProcurements());
@@ -36,8 +39,24 @@ export const BuyForMeList: React.FC = () => {
     dispatch(fetchSettings());
   }, [dispatch]);
 
-  const walletBalance = walletState.wallet?.balance || 0;
+  const walletBalance = walletState.data?.balance || 0;
   const submissionFee = settings?.buyForMeFixedFee || 1000;
+
+  const handleConfirmApprove = async () => {
+    if (!approveModalItem) return;
+    try {
+      setApproving(true);
+      await dispatch(approveProcurement(approveModalItem.id)).unwrap();
+      message.success('Quote approved & payment confirmed! Package added to your consolidation queue.');
+      setApproveModalItem(null);
+      dispatch(fetchProcurements());
+      dispatch(fetchWallet());
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to approve quote');
+    } finally {
+      setApproving(false);
+    }
+  };
 
   const handleSubmit = async (values: any) => {
     if (fileList.length === 0) {
@@ -77,51 +96,55 @@ export const BuyForMeList: React.FC = () => {
       setFileList([]);
       dispatch(fetchProcurements());
     } catch (err: any) {
-      const msg = err?.message || 'Failed to submit procurement request.';
-      message.error(msg);
+      message.error(err?.message || 'Failed to submit request');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const activeRequests = requests.filter(r => ['submitted', 'under_review', 'quoted', 'purchasing'].includes(r.status)).length;
-  const pendingPayment = requests.filter(r => r.status === 'quoted').length;
-
   return (
-    <div className="animate-fade-in-up max-w-[1200px] mx-auto pb-20">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6">
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Header Banner */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-gradient-to-r from-[#0A1128] to-[#1C2A4E] p-6 rounded-2xl text-white shadow-md gap-4">
         <div>
-          <div className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-2 flex items-center gap-2">
-            <span className="w-6 h-px bg-slate-300"></span>
+          <span className="text-xs font-bold text-brand-orange uppercase tracking-wider block mb-1">
             Procurement Services
-          </div>
-          <h1 className="text-4xl font-extrabold text-[#0A1128] m-0 mb-3 tracking-tight">Buy For Me</h1>
-          <p className="text-slate-500 text-base max-w-xl m-0">
+          </span>
+          <h1 className="text-2xl font-black text-white m-0">Buy For Me</h1>
+          <p className="text-slate-300 text-sm mt-1 mb-0 max-w-xl">
             Provide the link and supporting specs/photos. All quotes provided in Nigerian Naira (₦).
           </p>
         </div>
-        <div className="flex gap-8">
-          <div className="flex flex-col items-center">
-            <span className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">Active<br/>Requests</span>
-            <span className="text-3xl font-extrabold text-[#0A1128]">{activeRequests}</span>
+        <div className="flex items-center gap-6">
+          <div className="text-right">
+            <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider">Active Requests</span>
+            <span className="text-2xl font-black text-white">{requests.filter((r) => r.status !== 'cancelled').length}</span>
           </div>
-          <div className="flex flex-col items-center">
-            <span className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1">Pending<br/>Payment</span>
-            <span className="text-3xl font-extrabold text-brand-orange">{pendingPayment}</span>
+          <div className="text-right">
+            <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider">Pending Payment</span>
+            <span className="text-2xl font-black text-brand-orange">{requests.filter((r) => r.status === 'quoted').length}</span>
           </div>
         </div>
       </div>
 
-      {/* Main Form */}
-      <Card bordered={false} className="shadow-lg border border-orange-100 rounded-xl overflow-hidden mb-8" bodyStyle={{ padding: '32px' }}>
-        <div className="absolute top-0 left-0 w-full h-1 bg-brand-orange"></div>
-        <h2 className="text-2xl font-bold text-[#0A1128] mb-6 flex items-center gap-3">
-          <ShoppingCartIcon /> New Request
-        </h2>
+      {/* New Request Card */}
+      <Card variant="borderless" className="shadow-sm border border-slate-100 rounded-2xl overflow-hidden">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+          <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-brand-orange text-xl font-bold border border-orange-200">
+            🛒
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-[#0A1128] m-0">New Request</h2>
+            <p className="text-xs text-slate-500 m-0">Fill out details & attach photos/PDF specs for sourcing</p>
+          </div>
+        </div>
 
-        <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false} className="space-y-6">
-          <Form.Item name="productUrl" label={<span className="font-bold text-slate-700">Item URL <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'Please enter product URL' }]}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ quantity: 1 }}>
+          <Form.Item
+            name="productUrl"
+            label={<span className="font-bold text-slate-700">Item URL <span className="text-red-500">*</span></span>}
+            rules={[{ required: true, message: 'Please enter product URL' }]}
+          >
             <Input size="large" prefix={<LinkOutlined className="text-slate-400 mr-2" />} placeholder="https://www.example.com/product/123" className="bg-slate-50 border-slate-200" />
           </Form.Item>
 
@@ -145,8 +168,8 @@ export const BuyForMeList: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <Form.Item name="quantity" initialValue={1} label={<span className="font-bold text-slate-700">Quantity <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'Please specify quantity' }]}>
-                <InputNumber size="large" min={1} className="w-full bg-slate-50 border-slate-200" />
+              <Form.Item name="quantity" label={<span className="font-bold text-slate-700">Quantity <span className="text-red-500">*</span></span>} rules={[{ required: true, message: 'Please enter quantity' }]}>
+                <InputNumber min={1} size="large" className="w-full bg-slate-50 border-slate-200" />
               </Form.Item>
             </div>
             <div className="md:col-span-2">
@@ -157,40 +180,30 @@ export const BuyForMeList: React.FC = () => {
           </div>
 
           <Form.Item name="notes" label={<span className="font-bold text-slate-700">Additional Instructions</span>}>
-            <TextArea rows={4} placeholder="Any specific requirements for purchasing or handling..." className="bg-slate-50 border-slate-200 resize-none" />
+            <TextArea rows={3} placeholder="Any specific requirements for purchasing or handling..." className="bg-slate-50 border-slate-200" />
           </Form.Item>
 
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Supporting Photos / PDF Documents <span className="text-red-500">* (At least 1 required)</span></label>
-            <div className="relative">
-              <Dragger
-                className="bg-slate-50 border-dashed border-slate-300 rounded-xl"
-                beforeUpload={() => false}
-                accept="image/*,.pdf,application/pdf"
-                disabled={uploading}
-                onChange={({ fileList: newFileList }) => {
-                  setUploading(true);
-                  newFileList.forEach((f) => { f.status = 'done'; });
-                  setFileList(newFileList);
-                  setTimeout(() => setUploading(false), 300);
-                }}
-              >
-                <p className="ant-upload-drag-icon">
-                  {uploading ? <Spin indicator={<LoadingOutlined className="text-3xl text-brand-orange" spin />} /> : <CloudUploadOutlined className="text-brand-orange text-3xl" />}
-                </p>
-                <p className="ant-upload-text font-bold text-slate-700">Click or drag photos / PDF files to upload</p>
-                <p className="ant-upload-hint text-xs text-slate-500">PNG, JPG, WEBP, PDF (Max 10MB) · At least 1 file required</p>
-              </Dragger>
-
-              {uploading && (
-                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl flex items-center justify-center z-10 gap-2">
-                  <Spin indicator={<LoadingOutlined className="text-xl text-brand-orange" spin />} />
-                  <span className="text-xs font-bold text-slate-800">Uploading File... Please Wait</span>
-                </div>
-              )}
-            </div>
-
-            {/* Uploaded Thumbnail Cards */}
+          <div className="mb-6">
+            <label className="block text-xs font-bold text-slate-700 mb-2">
+              Supporting Photos / PDF Documents <span className="text-red-500">* (At least 1 required)</span>
+            </label>
+            <Dragger
+              className="bg-slate-50 border-dashed border-slate-300 rounded-xl"
+              beforeUpload={() => false}
+              accept="image/*,.pdf,application/pdf"
+              disabled={uploading}
+              onChange={({ fileList: newFileList }) => {
+                setUploading(true);
+                newFileList.forEach((f) => { f.status = 'done'; });
+                setFileList(newFileList);
+                setTimeout(() => setUploading(false), 300);
+              }}
+            >
+              <p className="ant-upload-drag-icon">
+                {uploading ? <Spin indicator={<LoadingOutlined className="text-3xl text-brand-orange" spin />} /> : <CloudUploadOutlined className="text-brand-orange text-3xl" />}
+              </p>
+              <p className="ant-upload-text font-bold text-slate-700">Click or drag photos / PDF files to upload</p>
+            </Dragger>
             {fileList.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-3">
                 {fileList.map((f, idx) => (
@@ -200,81 +213,78 @@ export const BuyForMeList: React.FC = () => {
             )}
           </div>
 
-          {/* Fee & Charge Preview Box */}
-          <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-lg border border-slate-800 my-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4 mb-4">
+          {/* Submission Charge Preview Card */}
+          <div className="bg-[#0A1128] text-white p-5 rounded-2xl border border-slate-800 space-y-3 mb-6 shadow-sm">
+            <div className="flex justify-between items-center">
               <div>
-                <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                  <WalletOutlined /> ORDER SUBMISSION CHARGE PREVIEW (NAIRA ₦)
+                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest block mb-0.5">
+                  ORDER SUBMISSION CHARGE PREVIEW (NAIRA ₦)
+                </span>
+                <div className="text-2xl font-black text-white">
+                  ₦{submissionFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
-                <div className="text-2xl font-extrabold text-white">
-                  ₦{(settings?.buyForMeFixedFee || 1000).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-slate-400 m-0 mt-0.5">
+                <span className="text-xs text-slate-400">
                   Submission & sourcing fee automatically deducted in Naira (₦) from your platform wallet balance.
-                </p>
+                </span>
               </div>
-
-              <div className="bg-slate-800/90 border border-slate-700 px-4 py-2.5 rounded-xl text-right shrink-0">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Your Wallet Balance</span>
-                <span className={`text-lg font-extrabold ${walletBalance >= submissionFee ? "text-emerald-400" : "text-red-400"}`}>
+              <div className="bg-slate-900/80 px-4 py-3 rounded-xl border border-slate-800 text-right">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Your Wallet Balance</span>
+                <span className={`text-lg font-black ${walletBalance >= submissionFee ? 'text-emerald-400' : 'text-red-400'}`}>
                   ₦{walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
 
-            {walletBalance >= submissionFee ? (
-              <div className="bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 rounded-xl p-3 text-xs flex items-center gap-2">
+            {walletBalance < submissionFee ? (
+              <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-xl flex items-center justify-between text-xs text-red-300">
+                <span className="flex items-center gap-2 font-medium">
+                  <WarningOutlined className="text-red-400 text-base" />
+                  Insufficient wallet balance (₦{walletBalance.toLocaleString()}). Please top up to proceed.
+                </span>
+                <Button type="primary" size="small" onClick={() => navigate('/customer/wallet')} className="bg-red-500 border-none font-bold text-xs">
+                  Top Up Wallet
+                </Button>
+              </div>
+            ) : (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl flex items-center gap-2 text-xs text-emerald-300">
                 <CheckCircleOutlined className="text-emerald-400 text-base shrink-0" />
                 <span>
                   <strong>Balance Sufficient:</strong> ₦{submissionFee.toLocaleString()} will be charged to place this order. Remaining balance after order: <strong>₦{(walletBalance - submissionFee).toLocaleString()}</strong>
                 </span>
               </div>
-            ) : (
-              <div className="bg-red-950/60 border border-red-500/30 text-red-300 rounded-xl p-3 text-xs flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <WarningOutlined className="text-red-400 text-base shrink-0" />
-                  <span>
-                    <strong>Insufficient Wallet Balance:</strong> You need ₦{submissionFee.toLocaleString()} to place this order (Short by ₦{(submissionFee - walletBalance).toLocaleString()}).
-                  </span>
-                </div>
-                <Button
-                  type="primary"
-                  size="small"
-                  className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold text-xs shrink-0"
-                  onClick={() => navigate('/customer/wallet')}
-                >
-                  Top Up Wallet →
-                </Button>
-              </div>
             )}
           </div>
 
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end">
             <Button
               type="primary"
               htmlType="submit"
-              loading={submitting || uploading}
-              disabled={walletBalance < submissionFee || uploading || fileList.length === 0}
               size="large"
-              className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold px-8 shadow-md h-12 text-base"
+              loading={submitting}
+              disabled={walletBalance < submissionFee || uploading || fileList.length === 0}
+              className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold px-8 h-12 rounded-xl text-base shadow-md disabled:bg-slate-200 disabled:text-slate-400"
             >
-              {uploading ? 'Uploading Attachment...' : `Submit Request (Charge ₦${submissionFee.toLocaleString()})`} ➔
+              {uploading ? (
+                <span className="flex items-center gap-2">
+                  <Spin indicator={<LoadingOutlined className="text-white spin" />} /> Uploading File...
+                </span>
+              ) : (
+                `Submit Request (Charge ₦${submissionFee.toLocaleString()}) →`
+              )}
             </Button>
           </div>
         </Form>
       </Card>
 
-      {/* Info Boxes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-        <div className="bg-[#0A1128] rounded-xl p-6 flex gap-4 text-white shadow-md relative overflow-hidden">
-          <div className="absolute -right-4 -bottom-4 opacity-10">
-            <SafetyCertificateOutlined className="text-9xl" />
+      {/* Info Banner */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-[#0A1128] rounded-xl p-6 flex gap-4 text-white shadow-sm relative overflow-hidden">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl font-bold shrink-0">
+            <SafetyCertificateOutlined />
           </div>
-          <SafetyCertificateOutlined className="text-blue-400 text-3xl shrink-0" />
-          <div className="relative z-10">
+          <div>
             <h3 className="text-lg font-bold text-white mb-2">Secure Purchasing</h3>
-            <p className="text-blue-100 text-sm m-0 leading-relaxed">
+            <p className="text-slate-300 text-sm m-0 leading-relaxed">
               We handle the transaction securely. All quotes issued in Naira (₦).
             </p>
           </div>
@@ -342,11 +352,120 @@ export const BuyForMeList: React.FC = () => {
                     )}
                   </span>
                 </div>
+
+                {/* Interactive Action Buttons */}
+                {req.status === 'quoted' && req.totalCostNaira && (
+                  <Button
+                    type="primary"
+                    size="small"
+                    className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold text-xs shadow-sm"
+                    onClick={() => setApproveModalItem(req)}
+                  >
+                    Approve & Pay (₦{req.totalCostNaira.toLocaleString()})
+                  </Button>
+                )}
+
+                {(req.status === 'approved' || req.status === 'purchasing' || req.status === 'received_at_wh' || req.status === 'shipped_to_wh') && (
+                  <Button
+                    type="default"
+                    size="small"
+                    icon={<InboxOutlined className="text-brand-orange" />}
+                    className="border-brand-orange text-brand-orange font-bold text-xs hover:bg-orange-50 shadow-sm"
+                    onClick={() => navigate('/customer/consolidation/new')}
+                  >
+                    📦 Add to Consolidation
+                  </Button>
+                )}
               </div>
             </Card>
           );
         })}
       </div>
+
+      {/* Quote Approval & Payment Modal */}
+      <Modal
+        open={!!approveModalItem}
+        onCancel={() => setApproveModalItem(null)}
+        footer={null}
+        title={
+          <div className="flex items-center gap-2 text-lg font-bold text-brand-navy">
+            <SafetyCertificateOutlined className="text-brand-orange" />
+            Approve & Pay Procurement Quote
+          </div>
+        }
+        className="rounded-2xl"
+      >
+        {approveModalItem && (
+          <div className="space-y-5 pt-2">
+            <Alert
+              type="info"
+              showIcon
+              message="Supplier Quote Sourced"
+              description={`Our team has sourced your product with supplier "${approveModalItem.supplierName || 'Verified Supplier'}". Please review and confirm payment to proceed.`}
+            />
+
+            <Descriptions column={1} bordered size="small" className="bg-slate-50 rounded-xl">
+              <Descriptions.Item label="Item Details">{approveModalItem.specifications}</Descriptions.Item>
+              <Descriptions.Item label="Quantity">{approveModalItem.quantity} pcs</Descriptions.Item>
+              <Descriptions.Item label="Supplier">{approveModalItem.supplierName || 'China Supplier'}</Descriptions.Item>
+              <Descriptions.Item label="RMB Quote Total">¥{approveModalItem.totalCostRmb?.toFixed(2)}</Descriptions.Item>
+              <Descriptions.Item label="Naira (₦) Charge">
+                <span className="text-brand-orange font-black text-lg">₦{approveModalItem.totalCostNaira?.toLocaleString()}</span>
+              </Descriptions.Item>
+            </Descriptions>
+
+            {/* Wallet Balance Verification */}
+            <div className="bg-[#0A1128] text-white p-4 rounded-xl space-y-2 border border-slate-800">
+              <div className="flex justify-between items-center text-xs text-slate-300">
+                <span>Available Wallet Balance</span>
+                <span className={`font-bold text-sm ${walletBalance >= (approveModalItem.totalCostNaira || 0) ? 'text-emerald-400' : 'text-red-400'}`}>
+                  ₦{walletBalance.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs text-slate-300 pt-2 border-t border-slate-800">
+                <span>Deduction Amount</span>
+                <span className="font-bold text-brand-orange">₦{approveModalItem.totalCostNaira?.toLocaleString()}</span>
+              </div>
+              {walletBalance >= (approveModalItem.totalCostNaira || 0) && (
+                <div className="flex justify-between items-center text-xs text-emerald-300 pt-1">
+                  <span>Balance After Payment</span>
+                  <span className="font-bold">₦{(walletBalance - (approveModalItem.totalCostNaira || 0)).toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+
+            {walletBalance < (approveModalItem.totalCostNaira || 0) ? (
+              <div className="space-y-3">
+                <Alert
+                  type="error"
+                  showIcon
+                  message="Insufficient Wallet Balance"
+                  description={`Your current balance (₦${walletBalance.toLocaleString()}) is less than the required ₦${approveModalItem.totalCostNaira?.toLocaleString()}. Please top up your wallet.`}
+                />
+                <Button type="primary" block size="large" onClick={() => navigate('/customer/wallet')} className="bg-red-500 border-none font-bold">
+                  Top Up Wallet Now
+                </Button>
+              </div>
+            ) : (
+              <div className="flex justify-end gap-3 pt-2">
+                <Button onClick={() => setApproveModalItem(null)} size="large">
+                  Cancel
+                </Button>
+                <Button
+                  type="primary"
+                  size="large"
+                  loading={approving}
+                  icon={<CheckOutlined />}
+                  onClick={handleConfirmApprove}
+                  className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold px-6"
+                >
+                  Confirm & Pay ₦{approveModalItem.totalCostNaira?.toLocaleString()}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

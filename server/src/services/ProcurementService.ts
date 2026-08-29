@@ -156,8 +156,27 @@ export class ProcurementService {
       await wallet.save();
     }
 
+    // Automatically create an inbound warehouse Package record for consolidation
+    const pkgCount = (await Package.count()) + 1;
+    const trackingId = `HZ-PROC-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(pkgCount).padStart(3, '0')}`;
+
+    const pkg = await Package.create({
+      trackingId,
+      chineseTrackingNo: proc.id.slice(0, 12),
+      customerId: user.customerId,
+      customerName: `${user.firstName} ${user.lastName}`,
+      status: 'received_cn',
+      description: `Buy-For-Me Item: ${proc.specifications || 'Sourced Product'}`,
+      originCountry: 'Guangzhou Hub, China',
+      weightKg: 1.0,
+      cbm: 0.01,
+      paymentStatus: 'paid',
+      receivedAt: new Date(),
+    });
+
     proc.status = 'approved';
     proc.approvedAt = new Date();
+    proc.linkedShipmentId = pkg.trackingId;
     await proc.save();
 
     ActivityLogService.logActivity({

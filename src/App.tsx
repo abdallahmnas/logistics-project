@@ -53,6 +53,7 @@ import { NewBatchPage } from "./pages/admin/warehouse/NewBatchPage";
 import { ViewBatchPage } from "./pages/admin/warehouse/ViewBatchPage";
 import { ProcurementReview } from "./pages/admin/procurement/ProcurementReview";
 import { ExchangeManagement } from "./pages/admin/exchange/ExchangeManagement";
+import { WalletFundingManagement } from "./pages/admin/financial/WalletFundingManagement";
 import { DeliveryDispatch } from "./pages/admin/delivery/DeliveryDispatch";
 import { UserManagement } from "./pages/admin/users/UserManagement";
 import { PermissionGroups } from "./pages/admin/permissions/PermissionGroups";
@@ -179,6 +180,7 @@ function App() {
             <Route path="procurement" element={<ProcurementReview />} />
             <Route path="exchange" element={<ExchangeManagement />} />
             <Route path="exchange/:id" element={<ExchangeReviewPage />} />
+            <Route path="wallet-funding" element={<WalletFundingManagement />} />
             <Route path="delivery" element={<DeliveryDispatch />} />
             <Route path="users" element={<UserManagement />} />
             <Route path="customers" element={<CustomersList />} />

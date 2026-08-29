@@ -40,6 +40,7 @@ import {
   PhoneOutlined,
   GlobalOutlined,
   HistoryOutlined,
+  WalletOutlined,
 } from "@ant-design/icons";
 import { Logo } from "../common/Logo";
 import { SidebarNav, type SidebarNavSection } from "./SidebarNav";
@@ -226,6 +227,12 @@ export const AdminLayout: React.FC = () => {
       icon: <SwapOutlined />,
       label: "RMB Exchange & Payments",
       badge: unreadByCategory["exchange"],
+    });
+    opsItems.push({
+      key: "/admin/wallet-funding",
+      icon: <WalletOutlined />,
+      label: "Wallet Top-Ups & Funding",
+      badge: unreadByCategory["wallet_deposit"],
     });
   }
   if (role === "super_admin" || role === "admin" || role === "warehouse_ng" || role === "warehouse_cn" || role === "driver" || hasPermission("delivery")) {
