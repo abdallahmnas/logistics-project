@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Table, Tag, Button, Modal, Input, message, Alert, Tabs, Space, Tooltip, Descriptions } from 'antd';
+import { Card, Table, Tag, Button, Modal, Input, message, Alert, Tabs, Space, Tooltip, Descriptions, Form } from 'antd';
 import {
   WalletOutlined,
   CheckCircleOutlined,
@@ -9,7 +9,9 @@ import {
   CheckOutlined,
   CloseOutlined,
   SearchOutlined,
-  FilterOutlined,
+  SettingOutlined,
+  BankOutlined,
+  SaveOutlined,
 } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import {
@@ -17,6 +19,7 @@ import {
   approveDepositAdmin,
   rejectDepositAdmin,
 } from '../../../store/slices/walletSlice';
+import { fetchSettings, updateSettings } from '../../../store/slices/settingsSlice';
 import { FileThumbnail } from '../../../components/common/FileThumbnail';
 import type { WalletDeposit } from '../../../types/wallet.types';
 
@@ -25,10 +28,16 @@ const { TextArea } = Input;
 export const WalletFundingManagement: React.FC = () => {
   const dispatch = useAppDispatch();
   const { adminDeposits, loading } = useAppSelector((state) => state.wallet);
+  const { settings } = useAppSelector((state) => state.settings);
 
   const [activeTab, setActiveTab] = useState<string>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReceiptUrl, setSelectedReceiptUrl] = useState<string | null>(null);
+
+  // Bank Account Settings Modal
+  const [bankSettingsModalOpen, setBankSettingsModalOpen] = useState(false);
+  const [bankForm] = Form.useForm();
+  const [savingBank, setSavingBank] = useState(false);
 
   // Action Modals
   const [approveModalItem, setApproveModalItem] = useState<WalletDeposit | null>(null);
@@ -40,7 +49,32 @@ export const WalletFundingManagement: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchAdminDeposits(activeTab));
+    dispatch(fetchSettings());
   }, [dispatch, activeTab]);
+
+  useEffect(() => {
+    if (settings) {
+      bankForm.setFieldsValue({
+        ngnEscrowBankName: settings.ngnEscrowBankName || 'GTBank',
+        ngnEscrowAccountNo: settings.ngnEscrowAccountNo || '0123456789',
+        ngnEscrowAccountName: settings.ngnEscrowAccountName || 'HAMZA RMB GLOBAL COMPANY LTD',
+      });
+    }
+  }, [settings, bankForm]);
+
+  const handleSaveBankSettings = async (values: any) => {
+    try {
+      setSavingBank(true);
+      await dispatch(updateSettings(values)).unwrap();
+      message.success('Platform Funding Bank Account details updated successfully!');
+      setBankSettingsModalOpen(false);
+      dispatch(fetchSettings());
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to update bank account details');
+    } finally {
+      setSavingBank(false);
+    }
+  };
 
   const handleConfirmApprove = async () => {
     if (!approveModalItem) return;
@@ -119,7 +153,7 @@ export const WalletFundingManagement: React.FC = () => {
       ),
     },
     {
-      title: 'Sender & Reference',
+      title: 'Sender & Session ID',
       key: 'senderInfo',
       render: (record: WalletDeposit) => (
         <div>
@@ -241,10 +275,10 @@ export const WalletFundingManagement: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-gradient-to-r from-[#0A1128] to-[#1C2A4E] p-6 rounded-2xl text-white shadow-md gap-4">
         <div>
           <span className="text-xs font-bold text-brand-orange uppercase tracking-wider block mb-1">
-            Financial Management
+            Financial & Wallet Operations
           </span>
           <h1 className="text-2xl font-black text-white m-0 flex items-center gap-2">
-            <WalletOutlined className="text-brand-orange" /> Manual Wallet Funding & Top-Ups
+            <WalletOutlined className="text-brand-orange" /> Manual Wallet Funding & Top-Up Approvals
           </h1>
           <p className="text-slate-300 text-sm mt-1 mb-0 max-w-xl">
             Verify bank payment receipts submitted by customers and credit their Naira platform wallets.
@@ -260,6 +294,14 @@ export const WalletFundingManagement: React.FC = () => {
             <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider">Total Approved</span>
             <span className="text-2xl font-black text-emerald-400">{approvedCount}</span>
           </div>
+          <Button
+            type="primary"
+            icon={<SettingOutlined />}
+            onClick={() => setBankSettingsModalOpen(true)}
+            className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold text-xs h-10 px-4 rounded-xl"
+          >
+            Edit Platform Bank Account
+          </Button>
         </div>
       </div>
 
@@ -296,6 +338,67 @@ export const WalletFundingManagement: React.FC = () => {
           className="[&_.ant-table-thead_th]:!bg-slate-50 [&_.ant-table-thead_th]:!text-slate-600 [&_.ant-table-thead_th]:!text-xs [&_.ant-table-thead_th]:!font-bold [&_.ant-table-thead_th]:uppercase"
         />
       </Card>
+
+      {/* Platform Bank Account Settings Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-lg font-bold text-brand-navy">
+            <BankOutlined className="text-brand-orange" /> Configure Platform Funding Bank Account
+          </div>
+        }
+        open={bankSettingsModalOpen}
+        onCancel={() => setBankSettingsModalOpen(false)}
+        footer={null}
+        width={500}
+        destroyOnHidden
+      >
+        <Form form={bankForm} layout="vertical" onFinish={handleSaveBankSettings} className="pt-2">
+          <Alert
+            type="info"
+            showIcon
+            message="Customer Transfer Target"
+            description="These bank details are displayed to customers on their Wallet page & Funding modal as the official bank transfer recipient."
+            className="mb-4"
+          />
+
+          <Form.Item
+            name="ngnEscrowBankName"
+            label={<span className="font-bold text-slate-700">Bank Name</span>}
+            rules={[{ required: true, message: 'Please enter bank name' }]}
+          >
+            <Input placeholder="e.g. GTBank" size="large" className="bg-slate-50 border-slate-200 font-bold" />
+          </Form.Item>
+
+          <Form.Item
+            name="ngnEscrowAccountNo"
+            label={<span className="font-bold text-slate-700">Account Number</span>}
+            rules={[{ required: true, message: 'Please enter account number' }]}
+          >
+            <Input placeholder="e.g. 0123456789" size="large" className="bg-slate-50 border-slate-200 font-mono font-bold" />
+          </Form.Item>
+
+          <Form.Item
+            name="ngnEscrowAccountName"
+            label={<span className="font-bold text-slate-700">Account Name</span>}
+            rules={[{ required: true, message: 'Please enter account name' }]}
+          >
+            <Input placeholder="e.g. HAMZA RMB GLOBAL COMPANY LTD" size="large" className="bg-slate-50 border-slate-200 font-bold" />
+          </Form.Item>
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <Button onClick={() => setBankSettingsModalOpen(false)}>Cancel</Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={savingBank}
+              icon={<SaveOutlined />}
+              className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold"
+            >
+              Save Account Details
+            </Button>
+          </div>
+        </Form>
+      </Modal>
 
       {/* Receipt Full Preview Modal */}
       <Modal

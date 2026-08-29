@@ -4,7 +4,6 @@ import type { UploadFile } from 'antd';
 import {
   WalletOutlined,
   PlusOutlined,
-  ArrowDownOutlined,
   BankOutlined,
   CopyOutlined,
   CloudUploadOutlined,
@@ -12,8 +11,8 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
-  FileTextOutlined,
-  InfoCircleOutlined,
+  ArrowRightOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import {
@@ -85,6 +84,7 @@ export const WalletPage: React.FC = () => {
       form.resetFields();
       setFileList([]);
       dispatch(fetchDeposits());
+      dispatch(fetchWallet());
     } catch (err: any) {
       message.error(err?.message || 'Failed to submit deposit request');
     } finally {
@@ -122,19 +122,23 @@ export const WalletPage: React.FC = () => {
       ),
     },
     {
-      title: 'Sender & Reference',
+      title: 'Sender & Session ID',
       key: 'senderInfo',
       render: (record: WalletDeposit) => (
         <div>
           <div className="text-xs font-bold text-slate-800">{record.senderName}</div>
-          {record.sessionId && (
-            <div className="text-[10px] text-slate-400 font-mono">Ref: {record.sessionId}</div>
+          {record.sessionId ? (
+            <div className="text-[10px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded inline-block mt-0.5">
+              Session ID: {record.sessionId}
+            </div>
+          ) : (
+            <div className="text-[10px] text-slate-400 italic">No Session ID</div>
           )}
         </div>
       ),
     },
     {
-      title: 'Payment Receipt',
+      title: 'Proof of Payment',
       key: 'receipt',
       render: (record: WalletDeposit) => (
         <FileThumbnail url={record.paymentReceiptUrl} size="sm" showName={false} />
@@ -146,7 +150,7 @@ export const WalletPage: React.FC = () => {
       render: (record: WalletDeposit) => {
         if (record.status === 'approved') {
           return (
-            <Tag color="green" icon={<CheckCircleOutlined />} className="font-bold border-none text-[10px] uppercase">
+            <Tag color="green" icon={<CheckCircleOutlined />} className="font-bold border-none text-[10px] uppercase py-0.5 px-2">
               APPROVED & CREDITED
             </Tag>
           );
@@ -154,14 +158,14 @@ export const WalletPage: React.FC = () => {
         if (record.status === 'rejected') {
           return (
             <Tooltip title={`Rejection Reason: ${record.rejectionReason || 'Receipt invalid'}`}>
-              <Tag color="red" icon={<CloseCircleOutlined />} className="font-bold border-none text-[10px] uppercase cursor-pointer">
+              <Tag color="red" icon={<CloseCircleOutlined />} className="font-bold border-none text-[10px] uppercase cursor-pointer py-0.5 px-2">
                 REJECTED
               </Tag>
             </Tooltip>
           );
         }
         return (
-          <Tag color="orange" icon={<ClockCircleOutlined />} className="font-bold border-none text-[10px] uppercase">
+          <Tag color="orange" icon={<ClockCircleOutlined />} className="font-bold border-none text-[10px] uppercase py-0.5 px-2">
             PENDING VERIFICATION
           </Tag>
         );
@@ -215,7 +219,7 @@ export const WalletPage: React.FC = () => {
       title: 'Status',
       dataIndex: 'type',
       key: 'status',
-      render: (type: string) => (
+      render: () => (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
           ✓ COMPLETED
         </span>
@@ -225,7 +229,7 @@ export const WalletPage: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-fade-in-up">
-      {/* Balance Banner */}
+      {/* Wallet Balance Banner */}
       <div className="bg-[#0A1128] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl">
         <div className="absolute -right-20 -top-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
         <div className="absolute -left-10 -bottom-20 w-60 h-60 bg-brand-orange/10 rounded-full blur-3xl"></div>
@@ -239,7 +243,7 @@ export const WalletPage: React.FC = () => {
               </span>
             </div>
             <p className="text-slate-300 text-xs m-0 mb-4">
-              Instant balance used for Buy-For-Me, Shipping & Local Delivery payments
+              Balance used for Buy-For-Me procurement, Air/Sea Shipping & Local Delivery
             </p>
             <div className="text-4xl sm:text-5xl font-black tracking-tight mb-2 text-white">
               ₦{balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -254,12 +258,78 @@ export const WalletPage: React.FC = () => {
           <div className="flex gap-4 relative z-10">
             <Button
               size="large"
-              className="bg-brand-orange hover:bg-[#E86E21] text-white border-none font-extrabold shadow-lg px-8 h-12 rounded-xl text-base"
+              className="bg-brand-orange hover:bg-[#E86E21] text-white border-none font-extrabold shadow-lg px-8 h-12 rounded-xl text-base flex items-center gap-2"
               icon={<PlusOutlined />}
               onClick={() => setTopUpOpen(true)}
             >
-              Fund Wallet
+              Submit Funding Request
             </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Official Platform Funding Bank Account Card */}
+      <div className="bg-gradient-to-r from-slate-900 via-[#0A1128] to-[#1C2A4E] text-white rounded-3xl p-6 sm:p-8 shadow-md border border-slate-800 space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
+          <div>
+            <span className="text-[10px] font-extrabold text-brand-orange uppercase tracking-widest block mb-1">
+              OFFICIAL PLATFORM FUNDING ACCOUNT
+            </span>
+            <h2 className="text-xl font-black text-white m-0 flex items-center gap-2">
+              <BankOutlined className="text-amber-400" /> Transfer Money to Platform Bank Account
+            </h2>
+          </div>
+          <Button
+            type="primary"
+            size="large"
+            onClick={() => setTopUpOpen(true)}
+            className="bg-brand-orange hover:bg-[#E86E21] border-none font-extrabold text-sm rounded-xl px-6"
+            icon={<CloudUploadOutlined />}
+          >
+            Submit Proof of Payment →
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 space-y-1">
+            <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider">Bank Name</span>
+            <span className="text-lg font-black text-white block">{bankName}</span>
+          </div>
+
+          <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 space-y-1 relative">
+            <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider">Account Number</span>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-mono font-black text-amber-400">{accountNo}</span>
+              <Button
+                size="small"
+                icon={<CopyOutlined />}
+                className="bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/40 text-xs font-bold"
+                onClick={() => copyToClipboard(accountNo, 'Account Number')}
+              >
+                Copy
+              </Button>
+            </div>
+          </div>
+
+          <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 space-y-1">
+            <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider">Account Name</span>
+            <span className="text-sm font-extrabold text-white block truncate">{accountName}</span>
+          </div>
+        </div>
+
+        {/* 3 Step Manual Process Guide */}
+        <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-slate-300">
+          <div className="flex items-center gap-3">
+            <span className="w-7 h-7 rounded-full bg-brand-orange text-white font-black flex items-center justify-center text-xs shrink-0">1</span>
+            <span>Make bank transfer of desired amount to account details above.</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="w-7 h-7 rounded-full bg-brand-orange text-white font-black flex items-center justify-center text-xs shrink-0">2</span>
+            <span>Click <strong>"Submit Proof of Payment"</strong> button.</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="w-7 h-7 rounded-full bg-brand-orange text-white font-black flex items-center justify-center text-xs shrink-0">3</span>
+            <span>Fill amount, sender name, upload receipt & optional session ID for staff approval.</span>
           </div>
         </div>
       </div>
@@ -269,7 +339,7 @@ export const WalletPage: React.FC = () => {
         <div className="flex justify-between items-center pb-3 border-b border-slate-100">
           <div>
             <h2 className="text-lg font-bold text-[#0A1128] m-0">Manual Top-Up Requests & Status</h2>
-            <p className="text-xs text-slate-500 m-0">View verification status of your bank transfer deposits</p>
+            <p className="text-xs text-slate-500 m-0">Track staff verification of your submitted bank transfer receipts</p>
           </div>
           <Button
             type="primary"
@@ -285,8 +355,8 @@ export const WalletPage: React.FC = () => {
           <Alert
             type="info"
             showIcon
-            message="No Manual Deposit Requests Yet"
-            description="Click 'Fund Wallet' above to view company bank details, make a transfer, and upload your payment receipt for manual verification."
+            message="No Funding Requests Submitted Yet"
+            description="Transfer money to the platform bank account above, then click 'Submit Proof of Payment' to submit your transfer details and upload receipt."
           />
         ) : (
           <Table
@@ -302,7 +372,7 @@ export const WalletPage: React.FC = () => {
       {/* Recent Transactions Table */}
       <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
         <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-[#0A1128] m-0">Transaction History</h2>
+          <h2 className="text-lg font-bold text-[#0A1128] m-0">Wallet Transaction History</h2>
           <span className="text-xs text-slate-400 font-semibold">Total ({recentTransactions.length})</span>
         </div>
         <Table
@@ -320,7 +390,7 @@ export const WalletPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2 text-lg font-bold text-brand-navy">
             <BankOutlined className="text-brand-orange" />
-            Manual Wallet Funding (Bank Transfer)
+            Submit Manual Bank Transfer Funding Request
           </div>
         }
         open={topUpOpen}
@@ -365,7 +435,7 @@ export const WalletPage: React.FC = () => {
             </div>
 
             <p className="text-xs text-slate-300 m-0 leading-relaxed">
-              <strong>Instructions:</strong> Transfer the exact deposit amount to the bank account above. After completing transfer, fill out Step 2 below and upload your payment receipt for staff confirmation.
+              <strong>Instructions:</strong> Transfer your deposit amount to the bank account above. Then enter the amount, sender name, upload receipt image/PDF, and optional session ID below.
             </p>
           </div>
 
