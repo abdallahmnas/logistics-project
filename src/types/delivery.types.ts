@@ -4,11 +4,28 @@ export type DeliveryStatus =
   | 'driver_assigned'
   | 'out_for_pickup'
   | 'in_transit'
+  | 'out_for_delivery'
   | 'delivered'
   | 'cancelled'
   | 'failed';
 
-export type VehicleType = 'motorbike' | 'sedan' | 'box_truck';
+export type VehicleType = 'motorbike' | 'sedan' | 'van' | 'truck' | string;
+
+export interface DeliveryVehicle {
+  id: string;
+  name: string;
+  type: string;
+  imageUrl?: string;
+  description?: string;
+  priceLagos: number;
+  priceKano: number;
+  priceInterstate: number;
+  perKmRate?: number;
+  maxWeightKg?: number;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface LocalDelivery {
   id: string;
@@ -27,10 +44,11 @@ export interface LocalDelivery {
   // Package details
   packageDescription: string;
   packagePhotos?: string[];
-  handlingInstructions?: string; // 'fragile' | 'keep_upright' | etc
+  handlingInstructions?: string;
   estimatedWeightKg?: number;
   // Logistics
-  vehicleType: VehicleType;
+  vehicleType: string;
+  vehicleId?: string;
   distanceKm: number;
   baseFare: number;
   distanceFee: number;
@@ -64,12 +82,15 @@ export interface LocalDeliveryPayload {
   packagePhotos?: string[];
   handlingInstructions?: string;
   estimatedWeightKg?: number;
-  vehicleType: VehicleType;
+  vehicleId?: string;
+  vehicleType?: string;
   paymentMethod: 'wallet' | 'cash_on_delivery';
 }
 
 export interface DeliveryState {
   deliveries: LocalDelivery[];
+  vehicles: DeliveryVehicle[];
+  adminVehicles: DeliveryVehicle[];
   selectedDelivery: LocalDelivery | null;
   loading: boolean;
   error: string | null;

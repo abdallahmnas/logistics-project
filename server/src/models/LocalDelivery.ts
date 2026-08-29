@@ -116,8 +116,9 @@ LocalDelivery.init(
     handlingInstructions: { type: DataTypes.STRING, allowNull: true },
     estimatedWeightKg: { type: DataTypes.FLOAT, allowNull: true },
     vehicleType: {
-      type: DataTypes.ENUM('motorbike', 'sedan', 'box_truck'),
+      type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: 'sedan',
     },
     distanceKm: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
     baseFare: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
