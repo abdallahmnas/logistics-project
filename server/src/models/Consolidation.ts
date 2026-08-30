@@ -94,7 +94,7 @@ Consolidation.init(
     },
     status: {
       type: DataTypes.STRING,
-      defaultValue: 'ready_to_batch',
+      defaultValue: 'requested',
     },
   },
   {

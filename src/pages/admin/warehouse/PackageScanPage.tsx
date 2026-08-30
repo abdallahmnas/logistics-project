@@ -96,6 +96,7 @@ export const PackageScanPage: React.FC = () => {
         userId: targetUserId,
         chineseTrackingNo: activePackage.chineseTrackingNo || '',
         description: activePackage.description || '',
+        status: activePackage.status || 'received_cn',
         weightKg: activePackage.weightKg || undefined,
         length: activePackage.dimensions?.length || undefined,
         width: activePackage.dimensions?.width || undefined,
@@ -191,6 +192,7 @@ export const PackageScanPage: React.FC = () => {
       await dispatch(
         scanPackage({
           packageId: targetId,
+          status: values.status || 'received_cn',
           weightKg: values.weightKg,
           length: values.length,
           width: values.width,
@@ -334,6 +336,26 @@ export const PackageScanPage: React.FC = () => {
                   className="mb-4"
                 >
                   <Input placeholder="e.g. SF12345678" className="!h-10 !bg-slate-50" />
+                </Form.Item>
+
+                <Form.Item 
+                  name="status" 
+                  label={<span className="text-xs font-bold text-slate-500">Logistics Pipeline Stage</span>}
+                  initialValue="received_cn"
+                  className="mb-4"
+                >
+                  <Select className="w-full !h-10 text-xs">
+                    <Option value="order_created">1. Order Created</Option>
+                    <Option value="received_cn">2. Received in China Warehouse</Option>
+                    <Option value="measured">3. Measured & Weighed</Option>
+                    <Option value="consolidating">4. Consolidated</Option>
+                    <Option value="packed">5. Packed</Option>
+                    <Option value="shipped">6. Shipped (Departed China)</Option>
+                    <Option value="arrived_ng">7. Arrived Nigeria</Option>
+                    <Option value="customs_clearance">8. Customs Clearance</Option>
+                    <Option value="ready_for_delivery">9. Ready for Delivery</Option>
+                    <Option value="delivered">10. Delivered</Option>
+                  </Select>
                 </Form.Item>
               </div>
 

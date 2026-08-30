@@ -15,6 +15,7 @@ import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { fetchPackages, fetchConsolidations, submitConsolidation } from "../../../store/slices/shipmentSlice";
 import { fetchFacilities } from "../../../store/slices/facilitySlice";
 import { fetchSettings } from "../../../store/slices/settingsSlice";
+import { fetchWallet } from "../../../store/slices/walletSlice";
 
 export const NewConsolidationPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -22,12 +23,13 @@ export const NewConsolidationPage: React.FC = () => {
   const { packages, consolidations } = useAppSelector((state) => state.shipments);
   const { facilities } = useAppSelector((state) => state.facilities || { facilities: [] });
   const { settings } = useAppSelector((state) => state.settings);
+  const { wallet } = useAppSelector((state) => state.wallet);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeWarehouse, setActiveWarehouse] = useState<string>("all");
   const [freight, setFreight] = useState<"air" | "sea">("air");
   const [paymentMethod, setPaymentMethod] = useState<
-    "pay_now" | "pay_on_delivery"
-  >("pay_now");
+    "wallet" | "pay_on_delivery"
+  >("wallet");
   const [payModalOpen, setPayModalOpen] = useState(false);
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export const NewConsolidationPage: React.FC = () => {
     dispatch(fetchConsolidations());
     dispatch(fetchFacilities());
     dispatch(fetchSettings());
+    dispatch(fetchWallet());
   }, [dispatch]);
 
   const warehouseTabs = useMemo(() => {
@@ -137,24 +140,38 @@ export const NewConsolidationPage: React.FC = () => {
   const selectedItems = warehouseItems.filter((i) =>
     selectedIds.includes(i.id),
   );
-  const totalWeight = selectedItems.reduce((sum, i) => sum + i.weight, 0);
-  const totalVolume = selectedItems.reduce((sum, i) => sum + i.volume, 0);
+  const totalWeight = selectedItems.reduce((sum, i) => sum + (i.weight || 0), 0);
+  const totalVolume = selectedItems.reduce((sum, i) => sum + (i.volume || 0), 0);
+
+  const availableBalance = wallet?.availableBalance ?? wallet?.balance ?? 0;
+  const estimatedFee =
+    freight === "air"
+      ? totalWeight * (settings?.airFreightRatePerKg || 12500)
+      : totalVolume * (settings?.seaFreightRatePerCbm || 450000);
+  const hasEnoughWalletBalance = availableBalance >= estimatedFee;
 
   const handleConsolidateSubmit = async () => {
+    if (paymentMethod === "wallet" && !hasEnoughWalletBalance) {
+      message.error("Insufficient wallet balance. Please top up your wallet to proceed.");
+      navigate("/customer/wallet");
+      return;
+    }
+
     try {
       await dispatch(
         submitConsolidation({
           packageIds: selectedIds,
           shippingMethod: freight,
-          destinationWarehouse: 'lagos',
-          paymentMethod: paymentMethod === 'pay_now' ? 'wallet' : 'pod',
+          destinationWarehouse: "lagos",
+          paymentMethod: paymentMethod === "wallet" ? "wallet" : "pod",
         })
       ).unwrap();
-      message.success('Consolidation request submitted successfully!');
+      message.success("Consolidation request submitted successfully!");
       setPayModalOpen(false);
-      navigate('/customer/shipments/consolidation');
+      dispatch(fetchWallet());
+      navigate("/customer/shipments/consolidation");
     } catch (err: any) {
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to submit consolidation request.';
+      const msg = typeof err === "string" ? err : err?.message || "Failed to submit consolidation request.";
       message.error(msg);
     }
   };
@@ -443,38 +460,42 @@ export const NewConsolidationPage: React.FC = () => {
                 >
                   <div
                     className={`rounded-xl p-4 border-2 cursor-pointer transition-all flex items-center gap-3 ${
-                      paymentMethod === "pay_now"
+                      paymentMethod === "wallet"
                         ? "border-brand-orange bg-brand-orange/5 shadow-sm"
-                        : "border-slate-200"
+                        : "border-slate-200 hover:border-slate-300"
                     }`}
-                    onClick={() => setPaymentMethod("pay_now")}
+                    onClick={() => setPaymentMethod("wallet")}
                   >
-                    <Radio value="pay_now" />
+                    <Radio value="wallet" />
                     <WalletOutlined
-                      className={`text-lg ${paymentMethod === "pay_now" ? "text-brand-orange" : "text-slate-400"}`}
+                      className={`text-xl ${paymentMethod === "wallet" ? "text-brand-orange" : "text-slate-400"}`}
                     />
                     <div className="flex-1">
-                      <div
-                        className={`text-sm font-bold ${paymentMethod === "pay_now" ? "text-brand-orange" : "text-slate-700"}`}
-                      >
-                        Pay Now
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm font-bold ${paymentMethod === "wallet" ? "text-brand-orange" : "text-slate-700"}`}>
+                          Pay from Wallet
+                        </span>
+                        <span className="text-[9px] font-extrabold bg-orange-100 text-brand-orange px-2 py-0.5 rounded-full uppercase">
+                          RECOMMENDED
+                        </span>
                       </div>
-                      <div className="text-[10px] text-slate-400">
-                        Bank transfer before packing
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        Deduct from Naira Wallet (Available: <strong className="text-slate-800 font-mono">₦{availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>)
                       </div>
                     </div>
                   </div>
+
                   <div
                     className={`rounded-xl p-4 border-2 cursor-pointer transition-all flex items-center gap-3 ${
                       paymentMethod === "pay_on_delivery"
                         ? "border-brand-orange bg-brand-orange/5 shadow-sm"
-                        : "border-slate-200"
+                        : "border-slate-200 hover:border-slate-300"
                     }`}
                     onClick={() => setPaymentMethod("pay_on_delivery")}
                   >
                     <Radio value="pay_on_delivery" />
                     <CarOutlined
-                      className={`text-lg ${paymentMethod === "pay_on_delivery" ? "text-brand-orange" : "text-slate-400"}`}
+                      className={`text-xl ${paymentMethod === "pay_on_delivery" ? "text-brand-orange" : "text-slate-400"}`}
                     />
                     <div className="flex-1">
                       <div
@@ -482,8 +503,8 @@ export const NewConsolidationPage: React.FC = () => {
                       >
                         Pay on Delivery
                       </div>
-                      <div className="text-[10px] text-slate-400">
-                        Pay when package arrives
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        Pay when package arrives at destination hub
                       </div>
                     </div>
                   </div>
@@ -517,19 +538,19 @@ export const NewConsolidationPage: React.FC = () => {
       >
         <div className="text-center mb-6">
           <div className="w-16 h-16 rounded-full bg-brand-orange/10 text-brand-orange flex items-center justify-center mx-auto mb-4">
-            {paymentMethod === "pay_now" ? (
-              <BankOutlined className="text-3xl" />
+            {paymentMethod === "wallet" ? (
+              <WalletOutlined className="text-3xl text-brand-orange" />
             ) : (
               <CarOutlined className="text-3xl" />
             )}
           </div>
           <h2 className="text-xl font-bold text-[#0A1128] m-0 mb-1">
-            {paymentMethod === "pay_now"
-              ? "Payment & Order Summary"
+            {paymentMethod === "wallet"
+              ? "Wallet Payment Confirmation"
               : "Pay on Delivery Confirmation"}
           </h2>
           <p className="text-slate-500 text-xs m-0 leading-relaxed">
-            Review your calculated freight charges and shipment details before confirming.
+            Review your calculated freight charges and wallet balance before confirming.
           </p>
         </div>
 
@@ -541,11 +562,7 @@ export const NewConsolidationPage: React.FC = () => {
                 Estimated Freight Charge
               </div>
               <div className="text-3xl font-extrabold text-amber-300">
-                ₦
-                {(freight === "air"
-                  ? totalWeight * (settings?.airFreightRatePerKg || 12500)
-                  : totalVolume * (settings?.seaFreightRatePerCbm || 450000)
-                ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                ₦{estimatedFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </div>
             </div>
             <div className="bg-white/10 px-3 py-1.5 rounded-lg text-xs font-bold border border-white/10 text-right">
@@ -565,82 +582,56 @@ export const NewConsolidationPage: React.FC = () => {
           </div>
         </div>
 
-        {paymentMethod === "pay_now" ? (
+        {paymentMethod === "wallet" ? (
           <>
-            {/* Pay Now Escrow Bank Details */}
+            {/* Wallet Balance Summary Card */}
             <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-3 mb-6">
-              <div className="text-xs font-bold text-[#0A1128] mb-2 uppercase tracking-wider border-b border-slate-200 pb-2">
-                Naira Receiving Account Details
+              <div className="text-xs font-bold text-[#0A1128] mb-2 uppercase tracking-wider border-b border-slate-200 pb-2 flex justify-between items-center">
+                <span>Naira Wallet Summary</span>
+                <span className="text-brand-orange font-extrabold">ONLINE WALLET</span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Bank Name:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-[#0A1128]">{settings?.ngnEscrowBankName || "GTBank"}</span>
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<CopyOutlined />}
-                    className="text-brand-orange font-bold p-0"
-                    onClick={() => {
-                      navigator.clipboard.writeText(settings?.ngnEscrowBankName || "GTBank");
-                      message.success("Copied!");
-                    }}
-                  />
-                </div>
+                <span className="text-slate-500">Available Wallet Balance:</span>
+                <span className="font-bold text-[#0A1128] font-mono text-sm">
+                  ₦{availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Account Number:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-[#0A1128] font-mono text-sm">{settings?.ngnEscrowAccountNo || "0123456789"}</span>
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<CopyOutlined />}
-                    className="text-brand-orange font-bold p-0"
-                    onClick={() => {
-                      navigator.clipboard.writeText(settings?.ngnEscrowAccountNo || "0123456789");
-                      message.success("Copied!");
-                    }}
-                  />
-                </div>
+                <span className="text-slate-500">Consolidation Charge:</span>
+                <span className="font-bold text-red-600 font-mono text-sm">
+                  - ₦{estimatedFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
               </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Account Name:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-[#0A1128]">{settings?.ngnEscrowAccountName || "Hamza RMB Trading Escrow Ltd"}</span>
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<CopyOutlined />}
-                    className="text-brand-orange font-bold p-0"
-                    onClick={() => {
-                      navigator.clipboard.writeText(settings?.ngnEscrowAccountName || "Hamza RMB Trading Escrow Ltd");
-                      message.success("Copied!");
-                    }}
-                  />
-                </div>
+              <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-200">
+                <span className="text-slate-700 font-bold">Balance After Deduction:</span>
+                <span className={`font-extrabold font-mono text-sm ${hasEnoughWalletBalance ? 'text-emerald-600' : 'text-red-600'}`}>
+                  ₦{Math.max(0, availableBalance - estimatedFee).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
               </div>
             </div>
 
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 text-xs text-orange-800">
-              <strong>Note:</strong> Transfer the exact amount above to complete your consolidation. Your request will be queued for packing upon transfer verification.
-            </div>
+            {!hasEnoughWalletBalance && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-xs text-red-800 space-y-2">
+                <div className="font-bold text-red-900 flex items-center gap-1.5">
+                  <span>⚠️ Insufficient Wallet Balance</span>
+                </div>
+                <p className="m-0 text-slate-700 leading-relaxed">
+                  You need an additional <strong className="text-red-950 font-bold">₦{(estimatedFee - availableBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong> in your wallet balance to pay for this consolidation request.
+                </p>
+              </div>
+            )}
           </>
         ) : (
           <>
             {/* Pay On Delivery Alert Banner */}
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 space-y-2">
               <div className="flex items-center gap-2 font-bold text-green-900 text-sm">
-                <span>🚚 Pay on Delivery / Pickup Selected</span>
+                <span>🚚 Pay on Delivery Selected</span>
               </div>
               <p className="text-xs text-green-800 m-0 leading-relaxed">
-                You do not need to make an immediate transfer right now. Your total freight charge of{" "}
+                Your total freight charge of{" "}
                 <strong className="text-green-950 font-extrabold">
-                  ₦
-                  {(freight === "air"
-                    ? totalWeight * (settings?.airFreightRatePerKg || 12500)
-                    : totalVolume * (settings?.seaFreightRatePerCbm || 450000)
-                  ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  ₦{estimatedFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </strong>{" "}
                 will be collected when your master batch arrives at your designated Nigeria destination hub prior to pickup or doorstep dispatch.
               </p>
@@ -657,16 +648,31 @@ export const NewConsolidationPage: React.FC = () => {
           >
             Cancel
           </Button>
-          <Button
-            type="primary"
-            size="large"
-            block
-            icon={<CheckCircleOutlined />}
-            className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-md"
-            onClick={handleConsolidateSubmit}
-          >
-            {paymentMethod === "pay_now" ? "I've Made Payment" : "Confirm & Submit Request"}
-          </Button>
+          {!hasEnoughWalletBalance && paymentMethod === "wallet" ? (
+            <Button
+              type="primary"
+              size="large"
+              block
+              icon={<WalletOutlined />}
+              className="bg-red-600 hover:bg-red-700 border-none font-bold shadow-md text-white"
+              onClick={() => navigate("/customer/wallet")}
+            >
+              Fund Wallet First ↗
+            </Button>
+          ) : (
+            <Button
+              type="primary"
+              size="large"
+              block
+              icon={<CheckCircleOutlined />}
+              className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-md"
+              onClick={handleConsolidateSubmit}
+            >
+              {paymentMethod === "wallet"
+                ? `Confirm & Pay ₦${estimatedFee.toLocaleString()} from Wallet`
+                : "Confirm & Submit Request"}
+            </Button>
+          )}
         </div>
       </Modal>
     </div>

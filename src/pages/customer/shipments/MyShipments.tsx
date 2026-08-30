@@ -4,6 +4,7 @@ import { SearchOutlined, EyeOutlined, PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { fetchPackages } from "../../../store/slices/shipmentSlice";
+import { markAsRead } from "../../../store/slices/notificationSlice";
 import { StatusBadge } from "../../../components/common/StatusBadge";
 import { PriceTag } from "../../../components/common/PriceTag";
 import type { Package } from "../../../types/shipment.types";
@@ -14,12 +15,23 @@ export const MyShipments: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { packages, loading } = useAppSelector((state) => state.shipments);
+  const { notifications } = useAppSelector((state) => state.notifications);
   const [searchText, setSearchText] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
   useEffect(() => {
     dispatch(fetchPackages());
   }, [dispatch]);
+
+  // Automatically mark unread shipment notifications as read when customer views their shipments page
+  useEffect(() => {
+    const unreadShipments = (notifications || []).filter(
+      (n) => n.type === "shipment" && !n.isRead
+    );
+    if (unreadShipments.length > 0) {
+      unreadShipments.forEach((n) => dispatch(markAsRead(n.id)));
+    }
+  }, [dispatch, notifications]);
 
   const filteredPackages = packages.filter((pkg) => {
     const matchesSearch =

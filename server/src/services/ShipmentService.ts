@@ -164,6 +164,7 @@ export class ShipmentService {
     length: number;
     width: number;
     height: number;
+    status?: string;
     description?: string;
     customerId?: string;
     customerName?: string;
@@ -192,6 +193,9 @@ export class ShipmentService {
       uploadedCloudinaryUrls = uploadedCloudinaryUrls.filter(Boolean);
     }
 
+    const targetStatus = payload.status || 'received_cn';
+    const now = new Date();
+
     if (!pkg) {
       const generatedTrackingId = packageId.startsWith('HZ-') ? packageId : `HZ-AIR-${Date.now().toString().slice(-6)}`;
       pkg = await Package.create({
@@ -204,10 +208,13 @@ export class ShipmentService {
         customerId: payload.customerId || 'CUST-DEFAULT',
         customerName: payload.customerName || 'Walk-in Customer',
         photos: uploadedCloudinaryUrls,
-        status: 'received_cn',
+        status: targetStatus as any,
         paymentStatus: 'unpaid',
-        preAlertDate: new Date(),
-        receivedDate: new Date(),
+        preAlertDate: now,
+        receivedDate: now,
+        shippedDate: targetStatus === 'shipped' ? now : undefined,
+        arrivedDate: targetStatus === 'arrived_ng' ? now : undefined,
+        deliveredDate: targetStatus === 'delivered' ? now : undefined,
       });
     } else {
       pkg.weightKg = payload.weightKg;
@@ -219,8 +226,11 @@ export class ShipmentService {
       if (uploadedCloudinaryUrls.length > 0) {
         pkg.photos = uploadedCloudinaryUrls;
       }
-      pkg.status = 'received_cn';
-      pkg.receivedDate = new Date();
+      pkg.status = targetStatus as any;
+      if (!pkg.receivedDate) pkg.receivedDate = now;
+      if (targetStatus === 'shipped' && !pkg.shippedDate) pkg.shippedDate = now;
+      if (targetStatus === 'arrived_ng' && !pkg.arrivedDate) pkg.arrivedDate = now;
+      if (targetStatus === 'delivered' && !pkg.deliveredDate) pkg.deliveredDate = now;
       await pkg.save();
     }
 
@@ -230,7 +240,7 @@ export class ShipmentService {
       userRole: 'warehouse_cn',
       module: 'warehouse',
       action: 'SCAN_PACKAGE',
-      description: `Scanned package ${pkg.trackingId || pkg.id} at China Hub (${payload.weightKg || 0}kg, ${payload.cbm || 0} CBM)`,
+      description: `Scanned package ${pkg.trackingId || pkg.id} to status "${targetStatus}" (${payload.weightKg || 0}kg, ${payload.cbm || 0} CBM)`,
       entityId: pkg.id,
     });
 
@@ -239,8 +249,8 @@ export class ShipmentService {
       userIdOrCustomerId: pkg.customerId,
       orderType: 'Shipment',
       orderId: pkg.trackingId || pkg.id,
-      newStatus: 'received_cn',
-      statusDescription: `Package received and weighed at China Hub (${payload.weightKg || 0}kg). Ready for consolidation packing.`,
+      newStatus: targetStatus,
+      statusDescription: `Package status updated to ${targetStatus.toUpperCase().replace(/_/g, ' ')} (${payload.weightKg || 0}kg).`,
     });
 
     return pkg;
@@ -322,7 +332,7 @@ export class ShipmentService {
       totalCbm,
       shippingFee,
       originCountry,
-      status: 'ready_to_batch',
+      status: 'requested',
     });
 
     await Package.update({ status: 'consolidating' }, { where: { id: payload.packageIds } });
@@ -342,8 +352,8 @@ export class ShipmentService {
       userIdOrCustomerId: user.id,
       orderType: 'Shipment',
       orderId: consolidationId,
-      newStatus: 'ready_to_batch',
-      statusDescription: `Consolidation ${consolidationId} created with ${packages.length} packages (${totalWeightKg}kg). Queued for overseas freight batch.`,
+      newStatus: 'requested',
+      statusDescription: `Consolidation request ${consolidationId} submitted with ${packages.length} packages (${totalWeightKg}kg). Awaiting warehouse packaging.`,
     });
 
     return consolidation;
@@ -364,6 +374,10 @@ export class ShipmentService {
 
     if (consolidation.status === 'batched') {
       throw new Error('Cannot modify consolidation after it has been assigned to a master batch');
+    }
+
+    if (payload.status === 'batched') {
+      throw new Error('Consolidation status turns to "batched" automatically when assigned to a Master Batch on the Master Batches page.');
     }
 
     if (payload.status) {
@@ -508,12 +522,21 @@ export class ShipmentService {
         );
       }
 
-      // Notify customers of batched consolidations
+      // Notify all customers in the master batch (consolidations & packages)
+      const customerIdsToNotify = new Set<string>();
       for (const c of consolidations) {
+        if (c.customerId) customerIdsToNotify.add(c.customerId);
+      }
+      if (allPackageIds.length > 0) {
+        const pkgs = await Package.findAll({ where: { id: allPackageIds } });
+        pkgs.forEach((p) => { if (p.customerId) customerIdsToNotify.add(p.customerId); });
+      }
+
+      for (const custId of customerIdsToNotify) {
         NotificationService.sendOrderStatusNotification({
-          userIdOrCustomerId: c.customerId,
+          userIdOrCustomerId: custId,
           orderType: 'Shipment',
-          orderId: c.consolidationId,
+          orderId: masterTrackingId,
           newStatus: 'shipped',
           statusDescription: `Master Batch ${batch.masterTrackingId} (${batch.carrierName} ${batch.flightVoyageNo}) has departed China warehouse and is in transit to Nigeria.`,
         });
@@ -640,29 +663,38 @@ export class ShipmentService {
       await Package.update(updateData, { where: { id: packageIds } });
     }
 
-    // Send notifications to all customers in the batch
+    // Send multi-channel notifications to all customers in the master batch
+    const customerIdsToNotify = new Set<string>();
+
     if (consolidationIds.length > 0) {
       const consolidations = await Consolidation.findAll({ where: { id: consolidationIds } });
-      const statusDescriptions: Record<string, string> = {
-        shipped: `Master Batch ${batch.masterTrackingId} has departed China and is in transit to Nigeria.`,
-        shipping_exported: `Master Batch ${batch.masterTrackingId} has departed China and is in transit to Nigeria.`,
-        arrived_ng: `Master Batch ${batch.masterTrackingId} has arrived in Nigeria at ${targetDestWh}.`,
-        customs_clearance: `Master Batch ${batch.masterTrackingId} is currently undergoing customs clearance.`,
-        ready_for_delivery: `Master Batch ${batch.masterTrackingId} has cleared customs and is ready for delivery / pickup!`,
-        delivered: `Master Batch ${batch.masterTrackingId} packages have been delivered.`,
-        held_customs: `Master Batch ${batch.masterTrackingId} has been temporarily held at customs for inspection.`,
-      };
-      const desc = statusDescriptions[status] || `Master Batch ${batch.masterTrackingId} status updated to ${status}.`;
+      consolidations.forEach((c) => { if (c.customerId) customerIdsToNotify.add(c.customerId); });
+    }
 
-      for (const c of consolidations) {
-        NotificationService.sendOrderStatusNotification({
-          userIdOrCustomerId: c.customerId,
-          orderType: 'Shipment',
-          orderId: c.consolidationId,
-          newStatus: status,
-          statusDescription: desc,
-        });
-      }
+    if (packageIds.length > 0) {
+      const pkgsInBatch = await Package.findAll({ where: { id: packageIds } });
+      pkgsInBatch.forEach((p) => { if (p.customerId) customerIdsToNotify.add(p.customerId); });
+    }
+
+    const statusDescriptions: Record<string, string> = {
+      shipped: `Master Batch ${batch.masterTrackingId} has departed China and is in transit to Nigeria.`,
+      shipping_exported: `Master Batch ${batch.masterTrackingId} has departed China and is in transit to Nigeria.`,
+      arrived_ng: `Master Batch ${batch.masterTrackingId} has arrived in Nigeria at ${targetDestWh}.`,
+      customs_clearance: `Master Batch ${batch.masterTrackingId} is currently undergoing customs clearance.`,
+      ready_for_delivery: `Master Batch ${batch.masterTrackingId} has cleared customs and is ready for delivery / pickup!`,
+      delivered: `Master Batch ${batch.masterTrackingId} packages have been delivered.`,
+      held_customs: `Master Batch ${batch.masterTrackingId} has been temporarily held at customs for inspection.`,
+    };
+    const desc = statusDescriptions[status] || `Master Batch ${batch.masterTrackingId} status updated to ${status}.`;
+
+    for (const custId of customerIdsToNotify) {
+      NotificationService.sendOrderStatusNotification({
+        userIdOrCustomerId: custId,
+        orderType: 'Shipment',
+        orderId: batch.masterTrackingId,
+        newStatus: status,
+        statusDescription: desc,
+      });
     }
 
     if (admin) {

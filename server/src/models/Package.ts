@@ -109,21 +109,7 @@ Package.init(
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM(
-        'order_created',
-        'pre_alerted',
-        'received_cn',
-        'measured',
-        'consolidating',
-        'packed',
-        'shipped',
-        'arrived_ng',
-        'customs_clearance',
-        'ready_for_delivery',
-        'delivered',
-        'cancelled',
-        'held_customs'
-      ),
+      type: DataTypes.STRING,
       defaultValue: 'order_created',
     },
     description: {
