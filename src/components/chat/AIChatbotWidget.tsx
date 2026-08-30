@@ -31,7 +31,7 @@ export const AIChatbotWidget: React.FC = () => {
       id: 'welcome-1',
       role: 'assistant',
       content:
-        'Hello! Welcome to **HAMZA RMB GLOBAL** 🇳🇬🇨🇳\nI am **Aisha**, your personal AI assistant. How can I help you today with Air/Sea shipping, Buy-For-Me procurement, RMB currency exchange, or wallet funding?',
+        'Hello! Welcome to **HAMZA RMB GLOBAL** 🇳🇬🇨🇳\nI am **Hamza**, your personal AI assistant. How can I help you today with Air/Sea shipping, Buy-For-Me procurement, RMB currency exchange, or wallet funding?',
       suggestedReplies: [
         'How to Fund Wallet?',
         'Air vs Sea Freight rates',
@@ -164,7 +164,7 @@ export const AIChatbotWidget: React.FC = () => {
               </div>
               <div>
                 <div className="font-extrabold text-sm flex items-center gap-1.5 text-white">
-                  Aisha — Hamza RMB Assistant
+                  Hamza — AI Assistant
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 </div>
                 <div className="text-[10px] text-slate-300 font-medium">China-Nigeria Cargo & Trade AI</div>
@@ -245,7 +245,7 @@ export const AIChatbotWidget: React.FC = () => {
             {loading && (
               <div className="flex items-center gap-2 text-slate-400 text-xs p-2">
                 <Spin size="small" />
-                <span>Aisha is thinking & typing...</span>
+                <span>Hamza is thinking & typing...</span>
               </div>
             )}
 
@@ -256,7 +256,7 @@ export const AIChatbotWidget: React.FC = () => {
           <div className="p-3 bg-white border-t border-slate-100 flex items-center gap-2">
             <Input
               size="large"
-              placeholder="Ask Aisha a question or type tracking ID..."
+              placeholder="Ask Hamza a question or type tracking ID..."
               className="bg-slate-50 border-slate-200 text-xs focus:bg-white"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
