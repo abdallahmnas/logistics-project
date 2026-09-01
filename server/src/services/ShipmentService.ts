@@ -380,6 +380,13 @@ export class ShipmentService {
       throw new Error('Consolidation status turns to "batched" automatically when assigned to a Master Batch on the Master Batches page.');
     }
 
+    // Customer restriction: Customers can only modify package contents if status is 'requested' or 'pending_packing'
+    if (!adminUser && payload.packageIds !== undefined) {
+      if (!['requested', 'pending_packing'].includes(consolidation.status)) {
+        throw new Error('Customers can only modify consolidation box contents before warehouse packaging begins (Status: Requested or Pending Packaging).');
+      }
+    }
+
     if (payload.status) {
       consolidation.status = payload.status as any;
     }
@@ -420,13 +427,39 @@ export class ShipmentService {
 
       const totalWeightKg = packages.reduce((acc, p) => acc + (p.weightKg || 0), 0);
       const totalCbm = packages.reduce((acc, p) => acc + (p.cbm || 0), 0);
-      const ratePerKg = consolidation.shippingMethod === 'air' ? 10 : 2;
-      const shippingFee = totalWeightKg * ratePerKg;
+
+      const settings = await SettingsService.getSettings();
+      const airRate = settings?.airFreightRatePerKg || 12500;
+      const seaRate = settings?.seaFreightRatePerCbm || 450000;
+
+      const newShippingFee = consolidation.shippingMethod === 'air'
+        ? (totalWeightKg > 0 ? totalWeightKg * airRate : airRate)
+        : (totalCbm > 0 ? totalCbm * seaRate : seaRate);
+
+      const oldShippingFee = consolidation.shippingFee || 0;
+      const feeDiff = newShippingFee - oldShippingFee;
+
+      // Handle wallet adjustment if fee changed
+      if (feeDiff !== 0 && consolidation.paymentMethod === 'wallet') {
+        const wallet = await Wallet.findOne({ where: { userId: consolidation.customerId } });
+        if (feeDiff > 0) {
+          if (!wallet || wallet.balance < feeDiff) {
+            throw new Error(`Insufficient wallet balance to add this package. Additional fee required: ₦${feeDiff.toLocaleString()}, but available balance is ₦${(wallet?.balance || 0).toLocaleString()}.`);
+          }
+          wallet.balance -= feeDiff;
+          wallet.availableBalance = wallet.balance - (wallet.escrowHeld || 0);
+          await wallet.save();
+        } else if (feeDiff < 0 && wallet) {
+          wallet.balance += Math.abs(feeDiff);
+          wallet.availableBalance = wallet.balance - (wallet.escrowHeld || 0);
+          await wallet.save();
+        }
+      }
 
       (consolidation as any).packageIds = newPackageIds;
       (consolidation as any).totalWeightKg = totalWeightKg;
       (consolidation as any).totalCbm = totalCbm;
-      (consolidation as any).shippingFee = shippingFee;
+      (consolidation as any).shippingFee = newShippingFee;
     }
     await consolidation.save();
 

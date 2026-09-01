@@ -28,11 +28,7 @@ router.post('/pre-alert', createPreAlert);
 router.get('/packages', getPackages);
 router.post('/consolidate', consolidatePackages);
 router.get('/consolidations', getConsolidations);
-router.put(
-  '/consolidations/:id',
-  authorize('super_admin', 'admin', 'warehouse_cn', 'warehouse_ng'),
-  updateConsolidation
-);
+router.put('/consolidations/:id', updateConsolidation);
 
 // Admin/warehouse routes
 router.post(
