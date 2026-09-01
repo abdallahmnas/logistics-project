@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchProcurements, submitProcurement, approveProcurement } from '../../../store/slices/procurementSlice';
 import { fetchWallet } from '../../../store/slices/walletSlice';
 import { fetchSettings } from '../../../store/slices/settingsSlice';
+import { markAsRead } from '../../../store/slices/notificationSlice';
 import { FileThumbnail } from '../../../components/common/FileThumbnail';
 import type { ProcurementRequest } from '../../../types/procurement.types';
 
@@ -26,6 +27,16 @@ export const BuyForMeList: React.FC = () => {
   const { requests } = useAppSelector((state) => state.procurement);
   const walletState = useAppSelector((state) => state.wallet);
   const { settings } = useAppSelector((state) => state.settings);
+  const { notifications } = useAppSelector((state) => state.notifications);
+
+  useEffect(() => {
+    const unreadProcurement = (notifications || []).filter(
+      (n) => n.type === 'procurement' && !n.isRead
+    );
+    if (unreadProcurement.length > 0) {
+      unreadProcurement.forEach((n) => dispatch(markAsRead(n.id)));
+    }
+  }, [dispatch, notifications]);
 
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);

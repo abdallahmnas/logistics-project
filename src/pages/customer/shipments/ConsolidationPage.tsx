@@ -11,6 +11,8 @@ import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { fetchPackages, fetchConsolidations } from "../../../store/slices/shipmentSlice";
 
+import { formatNaira } from "../../../utils/formatters";
+
 type FilterType = "all" | "pending" | "processing" | "completed";
 
 export const ConsolidationPage: React.FC = () => {
@@ -31,12 +33,13 @@ export const ConsolidationPage: React.FC = () => {
         dateCreated: c.createdAt || new Date().toISOString(),
         items: c.packageIds?.length || 1,
         estWeight: `${c.totalWeightKg || 1} kg`,
+        shippingFee: c.shippingFee || 0,
         destination: c.destinationWarehouse ? `${c.destinationWarehouse.toUpperCase()}, NG` : 'Lagos, NG',
         status: ({
           pending_packing: 'pending',
           ready_to_batch: 'ready',
           batched: 'completed',
-        } as const)[c.status],
+        } as const)[c.status] || 'pending',
         raw: c,
     }));
   }, [storeConsolidations]);
@@ -127,6 +130,16 @@ export const ConsolidationPage: React.FC = () => {
       dataIndex: "estWeight",
       key: "estWeight",
       render: (w: string) => <span className="text-slate-600">{w}</span>,
+    },
+    {
+      title: "Shipping Fee",
+      dataIndex: "shippingFee",
+      key: "shippingFee",
+      render: (fee: number) => (
+        <span className="font-bold text-emerald-600 font-mono">
+          {formatNaira(fee)}
+        </span>
+      ),
     },
     {
       title: "Destination",

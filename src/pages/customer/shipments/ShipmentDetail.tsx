@@ -7,119 +7,66 @@ import {
   fetchBatches,
   fetchPackages,
 } from "../../../store/slices/shipmentSlice";
+import { markAsRead } from "../../../store/slices/notificationSlice";
 import { StatusBadge } from "../../../components/common/StatusBadge";
 import { PriceTag } from "../../../components/common/PriceTag";
 import { EmptyState } from "../../../components/common/EmptyState";
 import { formatDate, formatWeight, formatCbm } from "../../../utils/formatters";
 import type { Package } from "../../../types/shipment.types";
 
+const PIPELINE_STEPS: { key: string; label: string; dateField?: keyof Package }[] = [
+  { key: 'order_created', label: 'Order Created', dateField: 'createdAt' },
+  { key: 'received_cn', label: 'Received in China Warehouse', dateField: 'receivedDate' },
+  { key: 'measured', label: 'Measured' },
+  { key: 'consolidating', label: 'Consolidated' },
+  { key: 'packed', label: 'Packed' },
+  { key: 'shipped', label: 'Shipped (Departed China)', dateField: 'shippedDate' },
+  { key: 'arrived_ng', label: 'Arrived Nigeria', dateField: 'arrivedDate' },
+  { key: 'customs_clearance', label: 'Customs Clearance' },
+  { key: 'ready_for_delivery', label: 'Ready for Delivery' },
+  { key: 'delivered', label: 'Delivered', dateField: 'deliveredDate' },
+];
+
 const generateTimelineItems = (pkg: Package) => {
-  const items: {
-    color: string;
-    dot?: React.ReactNode;
-    children: React.ReactNode;
-  }[] = [];
+  const currentIndex = PIPELINE_STEPS.findIndex((s) => s.key === pkg.status);
+  // Default to step 0 if status is order_created or pre_alerted
+  const activeIdx = currentIndex >= 0 ? currentIndex : 0;
 
-  if (pkg.preAlertDate) {
-    items.push({
-      color: "gray",
-      children: (
-        <div>
-          <p className="font-semibold text-slate-700 m-0">Pre-Alert Created</p>
-          <p className="text-xs text-slate-500 m-0">
-            {formatDate(pkg.preAlertDate)}
-          </p>
-        </div>
-      ),
-    });
-  }
+  return PIPELINE_STEPS.map((step, idx) => {
+    const isCompleted = idx < activeIdx;
+    const isCurrent = idx === activeIdx;
 
-  if (pkg.receivedDate) {
-    items.push({
-      color: "blue",
-      children: (
-        <div>
-          <p className="font-semibold text-slate-700 m-0">
-            Received at China Hub
-          </p>
-          <p className="text-xs text-slate-500 m-0">
-            {formatDate(pkg.receivedDate)}
-          </p>
-        </div>
-      ),
-    });
-  }
+    let dotColor = 'gray';
+    if (isCompleted) dotColor = 'green';
+    else if (isCurrent) dotColor = 'orange';
 
-  if (pkg.shippedDate) {
-    items.push({
-      color: "orange",
-      children: (
-        <div>
-          <p className="font-semibold text-slate-700 m-0">Departed China</p>
-          <p className="text-xs text-slate-500 m-0">
-            {formatDate(pkg.shippedDate)}
-          </p>
-        </div>
-      ),
-    });
-  }
+    const timestampRaw = step.dateField ? pkg[step.dateField] : undefined;
+    const timestamp = typeof timestampRaw === 'string' ? timestampRaw : undefined;
 
-  if (pkg.arrivedDate) {
-    items.push({
-      color: "green",
+    return {
+      color: dotColor,
+      dot: isCurrent ? <RocketOutlined className="text-base text-brand-orange animate-pulse" /> : undefined,
       children: (
-        <div>
-          <p className="font-semibold text-slate-700 m-0">
-            Arrived at Destination
-          </p>
-          <p className="text-xs text-slate-500 m-0">
-            {formatDate(pkg.arrivedDate)}
-          </p>
-        </div>
-      ),
-    });
-  }
-
-  if (pkg.deliveredDate) {
-    items.push({
-      color: "green",
-      dot: <RocketOutlined className="text-xl" />,
-      children: (
-        <div>
-          <p className="font-semibold text-green-600 m-0">Delivered</p>
-          <p className="text-xs text-slate-500 m-0">
-            {formatDate(pkg.deliveredDate)}
-          </p>
-        </div>
-      ),
-    });
-  } else if (pkg.status === "ready_for_pickup") {
-    items.push({
-      color: "green",
-      children: (
-        <div>
-          <p className="font-semibold text-green-600 m-0">Ready for Pickup</p>
-          <p className="text-xs text-slate-500 m-0">
-            Awaiting customer collection
-          </p>
-        </div>
-      ),
-    });
-  } else {
-    items.push({
-      color: "blue",
-      children: (
-        <div>
-          <p className="font-semibold text-brand-navy m-0">Current Status</p>
-          <div className="mt-1">
-            <StatusBadge module="shipment" status={pkg.status} />
+        <div className="py-1">
+          <div className="flex items-center gap-2">
+            <p className={`font-bold text-xs m-0 ${isCurrent ? 'text-brand-orange text-sm' : isCompleted ? 'text-emerald-700' : 'text-slate-400'}`}>
+              {step.label}
+            </p>
+            {isCurrent && (
+              <span className="bg-orange-100 text-brand-orange text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                CURRENT STAGE
+              </span>
+            )}
           </div>
+          {timestamp && (
+            <p className="text-[11px] text-slate-500 m-0 mt-0.5">
+              {formatDate(timestamp)}
+            </p>
+          )}
         </div>
       ),
-    });
-  }
-
-  return items;
+    };
+  });
 };
 
 export const ShipmentDetail: React.FC = () => {
@@ -129,6 +76,7 @@ export const ShipmentDetail: React.FC = () => {
   const { packages, batches, loading } = useAppSelector(
     (state) => state.shipments,
   );
+  const { notifications } = useAppSelector((state) => state.notifications);
 
   useEffect(() => {
     if (packages.length === 0) {
@@ -143,6 +91,22 @@ export const ShipmentDetail: React.FC = () => {
   const batch = pkg?.linkedBatchId
     ? batches.find((b) => b.id === pkg.linkedBatchId)
     : undefined;
+
+  useEffect(() => {
+    if (pkg) {
+      const unreadForPkg = (notifications || []).filter(
+        (n) =>
+          !n.isRead &&
+          n.type === "shipment" &&
+          (n.referenceId === pkg.id ||
+            n.referenceId === pkg.trackingId ||
+            n.referenceId === id ||
+            n.title.includes(pkg.trackingId) ||
+            n.message.includes(pkg.trackingId))
+      );
+      unreadForPkg.forEach((n) => dispatch(markAsRead(n.id)));
+    }
+  }, [dispatch, pkg, notifications, id]);
 
   return (
     <div className="space-y-6 animate-fade-in-up">

@@ -109,7 +109,7 @@ export class AiService {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://hamzarmbglobal.com',
-            'X-Title': 'Hamza RMB Global Aisha AI',
+            'X-Title': 'Hamza RMB Global AI Assistant',
           },
           timeout: 25000,
         }

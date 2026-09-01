@@ -100,7 +100,7 @@ export const DashboardLayout: React.FC = () => {
         {
           key: "/customer/aisha",
           icon: <RobotOutlined className="text-brand-orange" />,
-          label: "Aisha AI Assistant",
+          label: "Hamza AI Assistant",
         },
       ],
     },

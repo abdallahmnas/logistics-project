@@ -91,16 +91,7 @@ LocalDelivery.init(
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM(
-        'pending',
-        'confirmed',
-        'driver_assigned',
-        'out_for_pickup',
-        'in_transit',
-        'delivered',
-        'cancelled',
-        'failed'
-      ),
+      type: DataTypes.STRING,
       defaultValue: 'pending',
     },
     pickupAddress: { type: DataTypes.STRING, allowNull: false },

@@ -26,7 +26,7 @@ export const AishaChatPage: React.FC = () => {
     {
       id: 'welcome-page-1',
       role: 'assistant',
-      content: `Hello **${userName}**! Welcome to your personal Aisha AI Assistant terminal 🇳🇬🇨🇳\n\nI can help you with:\n- **Air Freight** (3-5 days delivery)\n- **Sea Freight** (35-45 days shipping)\n- **China Warehouse Address & Marking Code**\n- **Buy-For-Me Procurement Quotes**\n- **RMB & NGN Currency Exchange**\n- **Manual Wallet Funding via Bank Transfer**\n\nHow can I assist you today?`,
+      content: `Hello **${userName}**! Welcome to your personal Hamza AI Assistant terminal 🇳🇬🇨🇳\n\nI can help you with:\n- **Air Freight** (3-5 days delivery)\n- **Sea Freight** (35-45 days shipping)\n- **China Warehouse Address & Marking Code**\n- **Buy-For-Me Procurement Quotes**\n- **RMB & NGN Currency Exchange**\n- **Manual Wallet Funding via Bank Transfer**\n\nHow can I assist you today?`,
       suggestedReplies: [
         'How to Fund Wallet?',
         'Air vs Sea Freight rates',
@@ -122,7 +122,7 @@ export const AishaChatPage: React.FC = () => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-white m-0">Aisha AI Assistant</h1>
+              <h1 className="text-2xl font-black text-white m-0">Hamza AI Assistant</h1>
               <Tag color="green" className="font-bold border-none text-[10px] uppercase">
                 ● ONLINE
               </Tag>
@@ -206,7 +206,7 @@ export const AishaChatPage: React.FC = () => {
           {loading && (
             <div className="flex items-center gap-3 text-slate-500 text-xs p-3 bg-white rounded-xl border border-slate-100 w-max shadow-2xs">
               <Spin size="small" />
-              <span className="font-semibold">Aisha is analyzing and composing reply...</span>
+              <span className="font-semibold">Hamza is analyzing and composing reply...</span>
             </div>
           )}
 
@@ -217,7 +217,7 @@ export const AishaChatPage: React.FC = () => {
         <div className="p-4 bg-white border-t border-slate-100 flex items-center gap-3">
           <Input
             size="large"
-            placeholder="Type your question for Aisha (e.g., 'What is the air freight rate per kg?')..."
+            placeholder="Type your question for Hamza (e.g., 'What is the air freight rate per kg?')..."
             className="bg-slate-50 border-slate-200 text-sm py-3 rounded-xl focus:bg-white"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}

@@ -75,6 +75,7 @@ export const updateBatchStatus = createAsyncThunk(
 
 export interface ScanPackagePayload {
   packageId: string;
+  status?: string;
   weightKg: number;
   length: number;
   width: number;

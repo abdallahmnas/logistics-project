@@ -4,7 +4,7 @@ import { SearchOutlined, EyeOutlined, BoxPlotOutlined, RocketOutlined, DollarOut
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchConsolidations, fetchPackages, fetchBatches, updateConsolidation, addPackagesToBatch } from '../../../store/slices/shipmentSlice';
 import { StatusBadge } from '../../../components/common/StatusBadge';
-import { formatWeight, formatCbm, formatRmb, formatDate } from '../../../utils/formatters';
+import { formatWeight, formatCbm, formatNaira, formatDate } from '../../../utils/formatters';
 import { useNavigate } from 'react-router-dom';
 import type { Consolidation } from '../../../types/shipment.types';
 
@@ -242,7 +242,7 @@ export const ConsolidationManagement: React.FC = () => {
         </div>
       ),
     },
-    { title: 'Shipping Fee', dataIndex: 'shippingFee', key: 'shippingFee', render: (v: number) => <span className="font-bold text-emerald-600">{formatRmb(v)}</span> },
+    { title: 'Shipping Fee', dataIndex: 'shippingFee', key: 'shippingFee', render: (v: number) => <span className="font-bold text-emerald-600">{formatNaira(v)}</span> },
     { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => <StatusBadge module="shipment" status={s} /> },
     {
       title: 'Action',
@@ -401,7 +401,9 @@ export const ConsolidationManagement: React.FC = () => {
                     <Option value="packaging">⚙️ In Packaging</Option>
                     <Option value="packaged">✅ Packaged & Sealed</Option>
                     <Option value="ready_to_batch">🚀 Ready for Batching</Option>
-                    <Option value="batched">🔒 Batched</Option>
+                    {selectedConsolidation.status === 'batched' && (
+                      <Option value="batched" disabled>🔒 Batched (Assigned via Master Batch)</Option>
+                    )}
                   </Select>
                 </div>
 
@@ -448,7 +450,7 @@ export const ConsolidationManagement: React.FC = () => {
                   <span className="font-mono font-bold text-slate-700">{formatCbm(selectedConsolidation.totalCbm)}</span>
                 </Descriptions.Item>
                 <Descriptions.Item label="Calculated Shipping Fee">
-                  <span className="font-mono font-bold text-emerald-600">{formatRmb(selectedConsolidation.shippingFee)}</span>
+                  <span className="font-mono font-bold text-emerald-600">{formatNaira(selectedConsolidation.shippingFee)}</span>
                 </Descriptions.Item>
                 <Descriptions.Item label="Payment Method">
                   <span className="uppercase font-bold text-slate-600"><DollarOutlined className="mr-1 text-emerald-500" /> {selectedConsolidation.paymentMethod || 'Wallet'}</span>

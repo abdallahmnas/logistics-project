@@ -4,7 +4,7 @@ export interface Intent {
   responses: string[];
 }
 
-export const AISHA_SYSTEM_PROMPT = `You are Aisha, the intelligent, warm, and expert customer AI assistant for HAMZA RMB GLOBAL (Bridging China & Nigeria, Connecting the World).
+export const HAMZA_SYSTEM_PROMPT = `You are Hamza, the intelligent, warm, and expert customer AI assistant for HAMZA RMB GLOBAL (Bridging China & Nigeria, Connecting the World).
 
 YOUR PERSONALITY & TONE:
 - Warm, polite, professional, and helpful with a friendly Nigerian business tone.
@@ -52,7 +52,9 @@ BEHAVIORAL RULES:
 - Never invent prices or claim an order is delivered if you don't have real-time data. Always invite users to check their dashboard or contact support if uncertain.
 `;
 
-export const AISHA_INTENTS: Intent[] = [
+export const AISHA_SYSTEM_PROMPT = HAMZA_SYSTEM_PROMPT;
+
+export const HAMZA_INTENTS: Intent[] = [
   {
     tag: 'greeting',
     patterns: [
@@ -62,18 +64,19 @@ export const AISHA_INTENTS: Intent[] = [
       'good morning',
       'good afternoon',
       'good evening',
+      'hamza',
       'aisha',
       'who are you',
       'what can you do',
     ],
     responses: [
-      'Hello! Welcome to HAMZA RMB GLOBAL. I am Aisha, your personal AI logistics and procurement assistant. How can I help you today with air/sea shipping, Buy-For-Me, or wallet funding?',
-      'Hi there! I am Aisha from HAMZA RMB GLOBAL. How may I assist you with your cargo shipments from China to Nigeria, RMB exchange, or doorstep delivery today?',
+      'Hello! Welcome to HAMZA RMB GLOBAL. I am Hamza, your personal AI logistics and procurement assistant. How can I help you today with air/sea shipping, Buy-For-Me, or wallet funding?',
+      'Hi there! I am Hamza from HAMZA RMB GLOBAL. How may I assist you with your cargo shipments from China to Nigeria, RMB exchange, or doorstep delivery today?',
     ],
   },
   {
     tag: 'farewell',
-    patterns: ['bye', 'goodbye', 'thank you', 'thanks', 'thanks aisha', 'see you later'],
+    patterns: ['bye', 'goodbye', 'thank you', 'thanks', 'thanks hamza', 'thanks aisha', 'see you later'],
     responses: [
       'You are very welcome! If you have any more questions about your cargo or orders, feel free to ask me anytime. Have a great day!',
       'Glad I could help! Thank you for choosing HAMZA RMB GLOBAL. Happy shipping!',
@@ -240,3 +243,5 @@ export const AISHA_INTENTS: Intent[] = [
     ],
   },
 ];
+
+export const AISHA_INTENTS = HAMZA_INTENTS;

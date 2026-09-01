@@ -88,7 +88,11 @@ import { SeedPermissionService } from './services/SeedPermissionService';
 export const startServer = async () => {
   const isDbConnected = await connectDatabase();
   if (isDbConnected) {
-    await sequelize.sync({ alter: true });
+    try {
+      await sequelize.sync({ alter: true });
+    } catch (_err) {
+      await sequelize.sync();
+    }
     await SeedPermissionService.seedDefaultGroups();
   }
 
