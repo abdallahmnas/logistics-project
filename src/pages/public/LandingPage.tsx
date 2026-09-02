@@ -9,6 +9,7 @@ import {
 } from "@ant-design/icons";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { fetchSettings } from "../../store/slices/settingsSlice";
+import { ServicesCarousel } from "../../components/common/ServicesCarousel";
 
 export const LandingPage: React.FC = () => {
   const [form] = Form.useForm();
@@ -31,7 +32,7 @@ export const LandingPage: React.FC = () => {
       subtitle: "Yiwu & Guangzhou ➔ Kano & Lagos",
       badge: "3–5 DAYS EXPRESS",
       badgeBg: "bg-[#C0262D] text-white shadow-lg shadow-red-950/50",
-      image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1200&q=80",
+      image: "/services/air-freight-new.jpg",
       desc: "Fast express air cargo dispatch from our Guangzhou and Yiwu receiving hubs directly to Kano & Lagos airports with full customs clearance included.",
       features: [
         "Departs 3x weekly from China",
@@ -47,7 +48,7 @@ export const LandingPage: React.FC = () => {
       subtitle: "Bulk Maritime Transport",
       badge: "COST-EFFECTIVE CBM",
       badgeBg: "bg-blue-600 text-white shadow-lg shadow-blue-950/50",
-      image: "https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?w=1200&q=80",
+      image: "/services/sea-freight-new.jpg",
       desc: "High-volume ocean shipping billed per CBM (volume). LCL groupage consolidation and 20ft/40ft full container loading to Lagos ports.",
       features: [
         "Flexible CBM volume billing",
@@ -63,7 +64,7 @@ export const LandingPage: React.FC = () => {
       subtitle: "1688, Taobao & Factory Sourcing",
       badge: "SUPPLIER PROCUREMENT",
       badgeBg: "bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-950/50",
-      image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1200&q=80",
+      image: "/services/buy-for-me-new.jpg",
       desc: "Can't pay Chinese suppliers? Send product links from 1688 or Taobao. We verify suppliers, negotiate prices, pay in RMB, and procure your items.",
       features: [
         "Supplier verification & inspection",
@@ -79,7 +80,7 @@ export const LandingPage: React.FC = () => {
       subtitle: "Fast Supplier Payments in Yuan",
       badge: "SAME-DAY SETTLEMENT",
       badgeBg: "bg-purple-600 text-white shadow-lg shadow-purple-950/50",
-      image: "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?w=1200&q=80",
+      image: "/services/express-delivery.jpg",
       desc: "Fast, secure Chinese Yuan (RMB) currency exchange. Transfer Naira to pay your Chinese suppliers via Alipay, WeChat Pay, or UnionPay banks.",
       features: [
         "Direct Alipay & WeChat transfers",
@@ -95,7 +96,7 @@ export const LandingPage: React.FC = () => {
       subtitle: "Save Up to 40% Shipping Fees",
       badge: "FREE 30-DAY STORAGE",
       badgeBg: "bg-indigo-600 text-white shadow-lg shadow-indigo-950/50",
-      image: "https://images.unsplash.com/photo-1553413077-190dd305871c?w=1200&q=80",
+      image: "/services/cargo-consolidation-new.jpg",
       desc: "Combine parcels from different suppliers into one master shipment. We strip excess packaging, reducing volumetric shipping costs significantly.",
       features: [
         "Yiwu & Guangzhou intake logging",
@@ -111,7 +112,7 @@ export const LandingPage: React.FC = () => {
       subtitle: "Kano, Lagos & 36 States",
       badge: "NIGERIA DISPATCH",
       badgeBg: "bg-emerald-600 text-white shadow-lg shadow-emerald-950/50",
-      image: "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=1200&q=80",
+      image: "/services/local-delivery.jpg",
       desc: "Self-pickup at our Kano (Gwarzo Road) or Lagos hubs, or request door-to-door delivery and waybill dispatch across all 36 states in Nigeria.",
       features: [
         "Kano & Lagos central warehouses",
@@ -125,6 +126,9 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="flex flex-col font-sans">
+      {/* Services Carousel Showcase */}
+      <ServicesCarousel />
+
       {/* Hero Section */}
       <section className="relative py-16 md:py-24 lg:py-28 overflow-hidden bg-[#0A1B3A]">
         {/* Background Overlay */}
@@ -265,91 +269,6 @@ export const LandingPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Main Services Showcase Section (Bigger, High-Impact Cards) */}
-      <section className="py-20 lg:py-28 bg-slate-950 text-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs font-black text-[#FF4D4D] uppercase tracking-widest bg-[#C0262D]/20 px-4 py-1.5 rounded-full border border-[#C0262D]/40 inline-block mb-3">
-              CORE FREIGHT &amp; TRADE SOLUTIONS
-            </span>
-            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-              Everything You Need for China-Nigeria Trade
-            </h2>
-            <p className="text-slate-300 text-base mt-3 max-w-2xl mx-auto">
-              From supplier payment in Yuan to cargo warehousing in Yiwu/Guangzhou and doorstep delivery in Nigeria.
-            </p>
-          </div>
-
-          {/* Large High-Impact Image Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {servicesData.map((service) => (
-              <div
-                key={service.id}
-                id={service.id}
-                className="group relative rounded-3xl overflow-hidden border-2 border-white/20 bg-slate-950 flex flex-col justify-between shadow-2xl transition-all duration-500 hover:border-[#FF4D4D] hover:shadow-red-950/50 hover:-translate-y-2 min-h-[470px]"
-              >
-                {/* Clean High-Res Background Image (No baked text) */}
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110 opacity-50 group-hover:opacity-65"
-                  style={{ backgroundImage: `url('${service.image}')` }}
-                />
-                
-                {/* High Contrast Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/90 to-slate-950/40" />
-
-                {/* Card Content Top Header */}
-                <div className="relative z-10 p-8 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-5">
-                      <span className={`text-xs font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider ${service.badgeBg}`}>
-                        {service.badge}
-                      </span>
-                      <span className="text-xs font-bold text-slate-300 bg-slate-900/80 px-2.5 py-1 rounded-md border border-white/10">
-                        {service.subtitle}
-                      </span>
-                    </div>
-
-                    {/* Loud Bold Title */}
-                    <h3 className="text-2xl sm:text-3xl font-black text-white mb-3 tracking-tight leading-tight group-hover:text-[#FF4D4D] transition-colors drop-shadow-md">
-                      {service.title}
-                    </h3>
-
-                    <p className="text-slate-200 text-xs sm:text-sm leading-relaxed mb-6 font-normal">
-                      {service.desc}
-                    </p>
-                  </div>
-
-                  {/* Bullet Points */}
-                  <div className="space-y-2.5 mb-6 pt-4 border-t border-white/15">
-                    {service.features.map((feat, idx) => (
-                      <div key={idx} className="flex items-center gap-2.5 text-xs sm:text-sm text-slate-100 font-semibold">
-                        <CheckCircleFilled className="text-emerald-400 text-base shrink-0" />
-                        <span>{feat}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Card Footer Button */}
-                <div className="relative z-10 p-8 pt-0">
-                  <Link to={service.ctaLink} className="block w-full">
-                    <Button
-                      block
-                      type="primary"
-                      className="!bg-[#C0262D] hover:!bg-[#A01F25] !border-none font-black h-13 rounded-xl text-xs sm:text-sm uppercase tracking-wider shadow-xl flex items-center justify-center gap-2"
-                      icon={<ArrowRightOutlined />}
-                      iconPlacement="end"
-                    >
-                      {service.ctaText}
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
