@@ -198,15 +198,6 @@ export class DeliveryService {
       statusDescription: fullDesc,
     });
 
-    NotificationService.createNotification({
-      recipientId: del.customerId,
-      recipientType: 'customer',
-      title: `Local Delivery Update: ${del.id.slice(0, 8)}`,
-      message: fullDesc,
-      type: 'delivery',
-      referenceId: del.id,
-    });
-
     return del;
   }
 }
