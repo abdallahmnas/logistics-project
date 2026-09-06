@@ -1,5 +1,5 @@
 // ─── Backend Seed Data Definition ─────────────────────────────
-// Contains production seed records for initializing PostgreSQL database
+// Contains production seed records for initializing PostgreSQL database.
 
 export const seedUsers = [
   {
