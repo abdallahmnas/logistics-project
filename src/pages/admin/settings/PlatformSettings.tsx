@@ -5,6 +5,8 @@ import { ShippingRatesConfig } from './ShippingRatesConfig';
 import { FinancialRatesConfig } from './FinancialRatesConfig';
 import { NotificationPreferences } from './NotificationPreferences';
 import { BusinessMetadataConfig } from './BusinessMetadataConfig';
+import { ConnectedAppsConfig } from './ConnectedAppsConfig';
+import { ApiOutlined } from '@ant-design/icons';
 
 export const PlatformSettings: React.FC = () => {
   return (
@@ -48,6 +50,15 @@ export const PlatformSettings: React.FC = () => {
               </span>
             ),
             children: <NotificationPreferences />,
+          },
+          {
+            key: 'apps',
+            label: (
+              <span className="flex items-center gap-2">
+                <ApiOutlined /> Connected Apps
+              </span>
+            ),
+            children: <ConnectedAppsConfig />,
           },
         ]}
       />
