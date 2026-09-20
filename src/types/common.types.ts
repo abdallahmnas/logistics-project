@@ -6,6 +6,7 @@ export type UserRole =
   | 'admin'
   | 'warehouse_cn'
   | 'warehouse_ng'
+  | 'finance'
   | 'procurement'
   | 'clearance_agent'
   | 'driver';
