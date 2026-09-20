@@ -86,10 +86,11 @@ export const createVehicle = async (req: Request, res: Response): Promise<void> 
         name: req.body.name,
         type: req.body.type || 'sedan',
         description: req.body.description,
-        priceLagos: Number(req.body.priceLagos || 2500),
-        priceKano: Number(req.body.priceKano || 2000),
-        priceInterstate: Number(req.body.priceInterstate || 7500),
-        perKmRate: req.body.perKmRate ? Number(req.body.perKmRate) : undefined,
+        baseFare: Number(req.body.baseFare || 1500),
+        perKmRate: Number(req.body.perKmRate || 150),
+        priceLagos: req.body.priceLagos ? Number(req.body.priceLagos) : undefined,
+        priceKano: req.body.priceKano ? Number(req.body.priceKano) : undefined,
+        priceInterstate: req.body.priceInterstate ? Number(req.body.priceInterstate) : undefined,
         maxWeightKg: req.body.maxWeightKg ? Number(req.body.maxWeightKg) : undefined,
         imageUrl,
         isActive: req.body.isActive === 'false' || req.body.isActive === false ? false : true,
@@ -125,10 +126,11 @@ export const updateVehicle = async (req: Request, res: Response): Promise<void> 
     if (req.body.name) updateData.name = req.body.name;
     if (req.body.type) updateData.type = req.body.type;
     if (req.body.description !== undefined) updateData.description = req.body.description;
+    if (req.body.baseFare !== undefined) updateData.baseFare = Number(req.body.baseFare);
+    if (req.body.perKmRate !== undefined) updateData.perKmRate = Number(req.body.perKmRate);
     if (req.body.priceLagos !== undefined) updateData.priceLagos = Number(req.body.priceLagos);
     if (req.body.priceKano !== undefined) updateData.priceKano = Number(req.body.priceKano);
     if (req.body.priceInterstate !== undefined) updateData.priceInterstate = Number(req.body.priceInterstate);
-    if (req.body.perKmRate !== undefined) updateData.perKmRate = Number(req.body.perKmRate);
     if (req.body.maxWeightKg !== undefined) updateData.maxWeightKg = Number(req.body.maxWeightKg);
     if (imageUrl) updateData.imageUrl = imageUrl;
     if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive === 'true' || req.body.isActive === true;

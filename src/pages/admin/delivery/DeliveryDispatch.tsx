@@ -177,10 +177,8 @@ export const DeliveryDispatch: React.FC = () => {
       name: v.name,
       type: v.type,
       description: v.description,
-      priceLagos: v.priceLagos,
-      priceKano: v.priceKano,
-      priceInterstate: v.priceInterstate,
-      perKmRate: v.perKmRate,
+      baseFare: v.baseFare || 1500,
+      perKmRate: v.perKmRate || 150,
       maxWeightKg: v.maxWeightKg,
       isActive: v.isActive,
     });
@@ -195,10 +193,8 @@ export const DeliveryDispatch: React.FC = () => {
       formData.append('name', values.name);
       formData.append('type', values.type || 'sedan');
       if (values.description) formData.append('description', values.description);
-      formData.append('priceLagos', String(values.priceLagos));
-      formData.append('priceKano', String(values.priceKano));
-      formData.append('priceInterstate', String(values.priceInterstate));
-      if (values.perKmRate) formData.append('perKmRate', String(values.perKmRate));
+      formData.append('baseFare', String(values.baseFare || 1500));
+      formData.append('perKmRate', String(values.perKmRate || 150));
       if (values.maxWeightKg) formData.append('maxWeightKg', String(values.maxWeightKg));
       formData.append('isActive', String(values.isActive !== false));
 
@@ -338,22 +334,16 @@ export const DeliveryDispatch: React.FC = () => {
       ),
     },
     {
-      title: 'Lagos Rate (₦)',
-      dataIndex: 'priceLagos',
-      key: 'priceLagos',
-      render: (p: number) => <span className="font-bold text-slate-800">₦{Number(p).toLocaleString()}</span>,
+      title: 'Base Fare (₦)',
+      dataIndex: 'baseFare',
+      key: 'baseFare',
+      render: (p: number, record: DeliveryVehicle) => <span className="font-bold text-slate-800">₦{Number(p || record.baseFare || 1000).toLocaleString()}</span>,
     },
     {
-      title: 'Kano Rate (₦)',
-      dataIndex: 'priceKano',
-      key: 'priceKano',
-      render: (p: number) => <span className="font-bold text-slate-800">₦{Number(p).toLocaleString()}</span>,
-    },
-    {
-      title: 'Inter-State Rate (₦)',
-      dataIndex: 'priceInterstate',
-      key: 'priceInterstate',
-      render: (p: number) => <span className="font-extrabold text-brand-orange">₦{Number(p).toLocaleString()}</span>,
+      title: 'Rate Per KM (₦/km)',
+      dataIndex: 'perKmRate',
+      key: 'perKmRate',
+      render: (p: number, record: DeliveryVehicle) => <span className="font-extrabold text-brand-orange">₦{Number(p || record.perKmRate || 150).toLocaleString()}/km</span>,
     },
     {
       title: 'Status',
@@ -652,32 +642,24 @@ export const DeliveryDispatch: React.FC = () => {
           </Form.Item>
 
           <span className="text-[10px] font-extrabold text-brand-orange uppercase tracking-widest block mb-2">
-            REGIONAL PRICING PARAMETERS (NAIRA ₦)
+            PER-KILOMETER PRICING PARAMETERS (NAIRA ₦)
           </span>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Form.Item
-              name="priceLagos"
-              label={<span className="text-xs font-bold text-slate-700 uppercase">Lagos Rate (₦) <span className="text-red-500">*</span></span>}
-              rules={[{ required: true, message: 'Enter Lagos rate' }]}
+              name="baseFare"
+              label={<span className="text-xs font-bold text-slate-700 uppercase">Base Fare / Minimum Rate (₦) <span className="text-red-500">*</span></span>}
+              rules={[{ required: true, message: 'Enter base fare' }]}
             >
-              <InputNumber size="large" prefix="₦" className="w-full font-bold" placeholder="2,500" />
+              <InputNumber size="large" prefix="₦" className="w-full font-bold" placeholder="1,500" />
             </Form.Item>
 
             <Form.Item
-              name="priceKano"
-              label={<span className="text-xs font-bold text-slate-700 uppercase">Kano Rate (₦) <span className="text-red-500">*</span></span>}
-              rules={[{ required: true, message: 'Enter Kano rate' }]}
+              name="perKmRate"
+              label={<span className="text-xs font-bold text-slate-700 uppercase">Rate Per Kilometer (₦/km) <span className="text-red-500">*</span></span>}
+              rules={[{ required: true, message: 'Enter per km rate' }]}
             >
-              <InputNumber size="large" prefix="₦" className="w-full font-bold" placeholder="2,000" />
-            </Form.Item>
-
-            <Form.Item
-              name="priceInterstate"
-              label={<span className="text-xs font-bold text-slate-700 uppercase">Inter-State Rate (₦) <span className="text-red-500">*</span></span>}
-              rules={[{ required: true, message: 'Enter Inter-state rate' }]}
-            >
-              <InputNumber size="large" prefix="₦" className="w-full font-bold" placeholder="7,500" />
+              <InputNumber size="large" prefix="₦" suffix="/km" className="w-full font-bold" placeholder="150" />
             </Form.Item>
           </div>
 

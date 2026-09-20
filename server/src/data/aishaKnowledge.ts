@@ -200,11 +200,12 @@ export const HAMZA_INTENTS: Intent[] = [
       'local delivery',
       'dispatch rider',
       'delivery to home',
-      'delivery rates lagos kano',
+      'delivery rates per km',
+      'per kilometer delivery',
       'pickup pin',
     ],
     responses: [
-      'We offer doorstep local delivery across Lagos Metro, Kano Metro, and Inter-state across Nigeria using Express Motorbikes, Sedans, Vans, and Trucks. When a rider is assigned to your delivery, you will receive a **4-digit verification PIN** on your dashboard for secure pickup!',
+      'We offer doorstep local delivery across Nigeria calculated transparently **per kilometer (KM)** based on vehicle type. Rates are computed as: **Base Pickup Fare + (Distance in KM × Rate per KM)**. Choose from Express Motorbikes, Sedans, Vans, or Heavy Duty Trucks. When a driver is assigned to your delivery, you will receive a 4-digit verification PIN on your dashboard for secure pickup!',
     ],
   },
   {

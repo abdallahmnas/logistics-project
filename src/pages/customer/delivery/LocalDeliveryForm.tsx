@@ -16,7 +16,7 @@ export const LocalDeliveryForm: React.FC = () => {
   const { vehicles } = useAppSelector((state) => state.delivery);
 
   const [selectedVehicle, setSelectedVehicle] = useState<DeliveryVehicle | null>(null);
-  const [dropoffCity, setDropoffCity] = useState<string>('Lagos');
+  const [distanceKm, setDistanceKm] = useState<number>(15);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -44,14 +44,10 @@ export const LocalDeliveryForm: React.FC = () => {
     })),
   ];
 
-  const calculateVehiclePrice = (v: DeliveryVehicle, city: string) => {
-    const c = (city || '').toLowerCase().trim();
-    if (c.includes('lagos')) return v.priceLagos;
-    if (c.includes('kano')) return v.priceKano;
-    return v.priceInterstate;
-  };
-
-  const currentPrice = selectedVehicle ? calculateVehiclePrice(selectedVehicle, dropoffCity) : 0;
+  const baseFare = selectedVehicle?.baseFare || 1000;
+  const perKmRate = selectedVehicle?.perKmRate || 150;
+  const distanceFee = distanceKm * perKmRate;
+  const currentPrice = baseFare + distanceFee;
 
   const handleSubmit = async (values: any) => {
     if (!selectedVehicle) {
@@ -67,12 +63,13 @@ export const LocalDeliveryForm: React.FC = () => {
           pickupPhone: user?.phone || '+2348090219021',
           pickupContactName: user ? `${user.firstName} ${user.lastName}` : 'Warehouse Admin',
           dropoffAddress: values.dropoffAddress,
-          dropoffCity: values.dropoffCity || dropoffCity,
+          dropoffCity: values.dropoffCity || 'Lagos',
           dropoffPhone: values.dropoffPhone,
           dropoffContactName: values.dropoffContactName,
           packageDescription: values.packageDescription,
           vehicleId: selectedVehicle.id,
           vehicleType: selectedVehicle.name,
+          distanceKm,
           paymentMethod: values.paymentMethod === 'cash_on_delivery' ? 'cash_on_delivery' : 'wallet',
         })
       ).unwrap();
@@ -100,20 +97,20 @@ export const LocalDeliveryForm: React.FC = () => {
         />
         <div>
           <h1 className="text-3xl font-extrabold text-[#0A1128] m-0 mb-1 tracking-tight">New Doorstep Delivery Request</h1>
-          <p className="text-slate-500 text-sm m-0">Book local dispatch or inter-state haulage across Nigeria.</p>
+          <p className="text-slate-500 text-sm m-0">Dynamic doorstep dispatch calculated transparently per kilometer (KM).</p>
         </div>
       </div>
 
-      <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false} initialValues={{ dropoffCity: 'Lagos', paymentMethod: 'wallet' }}>
+      <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false} initialValues={{ dropoffCity: 'Lagos', paymentMethod: 'wallet', distanceKm: 15 }}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left Column - Forms */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* Route Planning */}
+            {/* Route & Distance */}
             <Card bordered={false} className="shadow-sm border border-slate-100 rounded-xl" bodyStyle={{ padding: '24px' }}>
               <h2 className="text-xl font-bold text-[#0A1128] mb-6 flex items-center gap-2">
-                <EnvironmentOutlined className="text-brand-orange" /> Route & Destination State
+                <EnvironmentOutlined className="text-brand-orange" /> Route & Delivery Distance (KM)
               </h2>
               
               <div className="space-y-4">
@@ -129,24 +126,6 @@ export const LocalDeliveryForm: React.FC = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-1">
-                    <Form.Item 
-                      name="dropoffCity" 
-                      label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">DESTINATION REGION <span className="text-red-500">*</span></span>}
-                    >
-                      <Select
-                        size="large"
-                        className="w-full font-bold"
-                        onChange={(val) => setDropoffCity(val)}
-                        options={[
-                          { label: '🇳🇬 Lagos State (Metro)', value: 'Lagos' },
-                          { label: '🇳🇬 Kano State (Metro)', value: 'Kano' },
-                          { label: '🚚 Inter-State (Other States)', value: 'Abuja / Inter-State' },
-                        ]}
-                      />
-                    </Form.Item>
-                  </div>
-
                   <div className="md:col-span-2">
                     <Form.Item 
                       name="dropoffAddress" 
@@ -161,6 +140,62 @@ export const LocalDeliveryForm: React.FC = () => {
                       />
                     </Form.Item>
                   </div>
+
+                  <div className="md:col-span-1">
+                    <Form.Item 
+                      name="dropoffCity" 
+                      label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">DESTINATION CITY/STATE</span>}
+                    >
+                      <Input
+                        size="large"
+                        placeholder="e.g. Lagos, Kano, Abuja"
+                        className="bg-white border-slate-200 py-3 rounded-xl font-bold"
+                      />
+                    </Form.Item>
+                  </div>
+                </div>
+
+                {/* Distance Selector */}
+                <div className="p-4 bg-amber-500/5 rounded-xl border border-brand-orange/20">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs font-bold text-[#0A1128] uppercase tracking-wider">
+                      ESTIMATED DISTANCE IN KILOMETERS (KM)
+                    </label>
+                    <Tag color="orange" className="font-bold text-xs border-none">
+                      {distanceKm} KM
+                    </Tag>
+                  </div>
+
+                  <div className="flex gap-2 flex-wrap mb-3">
+                    {[5, 10, 15, 25, 50, 100, 200].map((km) => (
+                      <Button
+                        key={km}
+                        size="small"
+                        type={distanceKm === km ? 'primary' : 'default'}
+                        className={distanceKm === km ? 'bg-brand-orange border-none font-bold' : 'font-medium'}
+                        onClick={() => {
+                          setDistanceKm(km);
+                          form.setFieldsValue({ distanceKm: km });
+                        }}
+                      >
+                        {km} KM
+                      </Button>
+                    ))}
+                  </div>
+
+                  <Input
+                    type="number"
+                    size="large"
+                    suffix="KM"
+                    min={1}
+                    value={distanceKm}
+                    onChange={(e) => {
+                      const val = Math.max(1, Number(e.target.value) || 1);
+                      setDistanceKm(val);
+                      form.setFieldsValue({ distanceKm: val });
+                    }}
+                    className="bg-white border-slate-200 font-bold rounded-xl"
+                  />
                 </div>
               </div>
             </Card>
@@ -171,7 +206,7 @@ export const LocalDeliveryForm: React.FC = () => {
                 <h2 className="text-xl font-bold text-[#0A1128] m-0 flex items-center gap-2">
                   <CarOutlined className="text-brand-orange" /> Select Dispatch Vehicle
                 </h2>
-                <span className="text-xs text-slate-500">Prices calculated for <strong>{dropoffCity}</strong></span>
+                <span className="text-xs text-slate-500">Calculated for <strong>{distanceKm} KM</strong></span>
               </div>
 
               {vehicles.length === 0 ? (
@@ -181,7 +216,9 @@ export const LocalDeliveryForm: React.FC = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {vehicles.map((v) => {
-                    const price = calculateVehiclePrice(v, dropoffCity);
+                    const vehicleBase = v.baseFare || 1000;
+                    const vehicleKmRate = v.perKmRate || 150;
+                    const price = vehicleBase + (distanceKm * vehicleKmRate);
                     const isSelected = selectedVehicle?.id === v.id;
                     return (
                       <div
@@ -211,11 +248,14 @@ export const LocalDeliveryForm: React.FC = () => {
                               MAX {v.maxWeightKg || 50}KG
                             </Tag>
                           </div>
-                          <p className="text-xs text-slate-500 m-0 mb-3 line-clamp-2">{v.description}</p>
+                          <p className="text-xs text-slate-500 m-0 mb-2 line-clamp-2">{v.description}</p>
+                          <p className="text-[11px] font-medium text-slate-400 mb-3">
+                            Base: ₦{vehicleBase.toLocaleString()} + ₦{vehicleKmRate}/km
+                          </p>
                         </div>
 
                         <div className="flex justify-between items-center pt-3 border-t border-slate-100 mt-auto">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">Estimated Fare</span>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">Fare ({distanceKm} km)</span>
                           <span className="text-lg font-black text-brand-orange">₦{price.toLocaleString()}</span>
                         </div>
                       </div>
@@ -282,7 +322,7 @@ export const LocalDeliveryForm: React.FC = () => {
           <div className="lg:col-span-1">
             <Card bordered={false} className="shadow-lg border-t-4 border-[#0A1128] rounded-2xl sticky top-24" bodyStyle={{ padding: '0' }}>
               <div className="p-6 border-b border-slate-100">
-                <h2 className="text-xl font-bold text-[#0A1128] m-0">Dispatch Fare Breakdown</h2>
+                <h2 className="text-xl font-bold text-[#0A1128] m-0">Per-KM Fare Breakdown</h2>
               </div>
               
               <div className="p-6 space-y-4 text-sm">
@@ -291,12 +331,16 @@ export const LocalDeliveryForm: React.FC = () => {
                   <span className="font-bold text-[#0A1128]">{selectedVehicle?.name || 'Standard Vehicle'}</span>
                 </div>
                 <div className="flex justify-between items-center text-slate-600">
-                  <span>Destination Region</span>
-                  <span className="font-bold text-brand-orange">{dropoffCity}</span>
+                  <span>Distance</span>
+                  <span className="font-bold text-brand-orange">{distanceKm} KM</span>
                 </div>
                 <div className="flex justify-between items-center text-slate-600">
-                  <span>Regional Fare</span>
-                  <span className="font-mono font-bold">₦{currentPrice.toLocaleString()}</span>
+                  <span>Base Pickup Fare</span>
+                  <span className="font-mono font-bold">₦{baseFare.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>Distance Fee ({distanceKm} km × ₦{perKmRate}/km)</span>
+                  <span className="font-mono font-bold text-brand-orange">₦{distanceFee.toLocaleString()}</span>
                 </div>
                 
                 <div className="pt-3 border-t border-slate-100">

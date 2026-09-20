@@ -7,10 +7,11 @@ export interface DeliveryVehicleAttributes {
   type: string; // 'motorbike' | 'sedan' | 'van' | 'truck'
   imageUrl?: string;
   description?: string;
-  priceLagos: number;
-  priceKano: number;
-  priceInterstate: number;
-  perKmRate?: number;
+  baseFare: number;
+  perKmRate: number;
+  priceLagos?: number;
+  priceKano?: number;
+  priceInterstate?: number;
   maxWeightKg?: number;
   isActive: boolean;
   createdAt?: Date;
@@ -19,7 +20,7 @@ export interface DeliveryVehicleAttributes {
 
 export type DeliveryVehicleCreationAttributes = Optional<
   DeliveryVehicleAttributes,
-  'id' | 'imageUrl' | 'description' | 'perKmRate' | 'maxWeightKg' | 'isActive'
+  'id' | 'imageUrl' | 'description' | 'baseFare' | 'perKmRate' | 'priceLagos' | 'priceKano' | 'priceInterstate' | 'maxWeightKg' | 'isActive'
 >;
 
 export class DeliveryVehicle
@@ -31,10 +32,11 @@ export class DeliveryVehicle
   public declare type: string;
   public declare imageUrl?: string;
   public declare description?: string;
-  public declare priceLagos: number;
-  public declare priceKano: number;
-  public declare priceInterstate: number;
-  public declare perKmRate?: number;
+  public declare baseFare: number;
+  public declare perKmRate: number;
+  public declare priceLagos?: number;
+  public declare priceKano?: number;
+  public declare priceInterstate?: number;
   public declare maxWeightKg?: number;
   public declare isActive: boolean;
   public declare readonly createdAt: Date;
@@ -64,25 +66,30 @@ DeliveryVehicle.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    priceLagos: {
+    baseFare: {
       type: DataTypes.FLOAT,
       allowNull: false,
+      defaultValue: 1500,
+    },
+    perKmRate: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 150,
+    },
+    priceLagos: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
       defaultValue: 2500,
     },
     priceKano: {
       type: DataTypes.FLOAT,
-      allowNull: false,
+      allowNull: true,
       defaultValue: 2000,
     },
     priceInterstate: {
       type: DataTypes.FLOAT,
-      allowNull: false,
-      defaultValue: 8500,
-    },
-    perKmRate: {
-      type: DataTypes.FLOAT,
       allowNull: true,
-      defaultValue: 150,
+      defaultValue: 8500,
     },
     maxWeightKg: {
       type: DataTypes.FLOAT,

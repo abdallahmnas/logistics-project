@@ -19,6 +19,7 @@ export class DeliveryService {
       packageDescription: string;
       vehicleId?: string;
       vehicleType?: string;
+      distanceKm?: number;
       paymentMethod: 'wallet' | 'cash_on_delivery';
     }
   ) {
@@ -44,23 +45,11 @@ export class DeliveryService {
       throw new Error('No active delivery vehicles available. Please contact support.');
     }
 
-    const dropoffCityLower = (payload.dropoffCity || '').toLowerCase().trim();
-    const pickupCityLower = (payload.pickupCity || '').toLowerCase().trim();
-
-    let totalFee = vehicle.priceInterstate; // Default to Interstate
-
-    const isLagos = dropoffCityLower.includes('lagos') || pickupCityLower.includes('lagos');
-    const isKano = dropoffCityLower.includes('kano') || pickupCityLower.includes('kano');
-
-    if (isLagos && isKano) {
-      totalFee = vehicle.priceInterstate;
-    } else if (isLagos) {
-      totalFee = vehicle.priceLagos;
-    } else if (isKano) {
-      totalFee = vehicle.priceKano;
-    } else {
-      totalFee = vehicle.priceInterstate;
-    }
+    const distanceKm = Math.max(1, Number(payload.distanceKm) || 10);
+    const baseFare = Number(vehicle.baseFare) || 1000;
+    const perKmRate = Number(vehicle.perKmRate) || 150;
+    const distanceFee = distanceKm * perKmRate;
+    const totalFee = baseFare + distanceFee;
 
     let paymentStatus: 'unpaid' | 'paid' = 'unpaid';
 
@@ -70,7 +59,7 @@ export class DeliveryService {
 
       if (currentBalance < totalFee) {
         throw new Error(
-          `Insufficient wallet balance. Total fee for ${vehicle.name} (${isLagos ? 'Lagos' : isKano ? 'Kano' : 'Inter-state'}) is ₦${totalFee.toLocaleString()}, but your balance is ₦${currentBalance.toLocaleString()}. Please top up your wallet.`
+          `Insufficient wallet balance. Total fee for ${vehicle.name} (${distanceKm} km @ ₦${perKmRate}/km + ₦${baseFare.toLocaleString()} base fare) is ₦${totalFee.toLocaleString()}, but your balance is ₦${currentBalance.toLocaleString()}. Please top up your wallet.`
         );
       }
 
@@ -96,9 +85,9 @@ export class DeliveryService {
       dropoffContactName: payload.dropoffContactName,
       packageDescription: payload.packageDescription,
       vehicleType: vehicle.type || 'sedan',
-      distanceKm: 15,
-      baseFare: totalFee,
-      distanceFee: 0,
+      distanceKm,
+      baseFare,
+      distanceFee,
       totalFee,
       paymentMethod: payload.paymentMethod,
       paymentStatus,

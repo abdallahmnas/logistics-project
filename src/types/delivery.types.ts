@@ -17,10 +17,11 @@ export interface DeliveryVehicle {
   type: string;
   imageUrl?: string;
   description?: string;
-  priceLagos: number;
-  priceKano: number;
-  priceInterstate: number;
-  perKmRate?: number;
+  baseFare: number;
+  perKmRate: number;
+  priceLagos?: number;
+  priceKano?: number;
+  priceInterstate?: number;
   maxWeightKg?: number;
   isActive: boolean;
   createdAt?: string;
@@ -84,6 +85,7 @@ export interface LocalDeliveryPayload {
   estimatedWeightKg?: number;
   vehicleId?: string;
   vehicleType?: string;
+  distanceKm?: number;
   paymentMethod: 'wallet' | 'cash_on_delivery';
 }
 
