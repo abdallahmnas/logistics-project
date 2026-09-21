@@ -67,6 +67,7 @@ import { SupportTicketsList } from "./pages/admin/support/SupportTicketsList";
 import { TicketDetails } from "./pages/admin/support/TicketDetails";
 import { ActivityTrailPage } from "./pages/admin/activity/ActivityTrailPage";
 import { PlatformSettings } from "./pages/admin/settings/PlatformSettings";
+import BannerManagement from "./pages/admin/banners/BannerManagement";
 import { AdminDashboardHome } from "./pages/admin/AdminDashboardHome";
 
 import { useEffect } from "react";
@@ -198,6 +199,7 @@ function App() {
             />
             <Route path="activity-trail" element={<ActivityTrailPage />} />
             <Route path="settings" element={<PlatformSettings />} />
+            <Route path="banners" element={<BannerManagement />} />
           </Route>
 
           {/* Fallback */}

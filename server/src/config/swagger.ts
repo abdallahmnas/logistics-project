@@ -199,11 +199,77 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
             isActive: { type: 'boolean', example: true },
           },
         },
+        Banner: {
+          type: 'object',
+          description: 'Sliding promotional banner for mobile app home screen',
+          properties: {
+            id: { type: 'string', example: 'bnr-101' },
+            title: { type: 'string', example: 'Fast Air Cargo Special' },
+            subtitle: { type: 'string', example: 'Guangzhou to Lagos in 3-5 days @ ₦12,500/kg' },
+            imageUrl: { type: 'string', example: 'https://images.unsplash.com/photo-1570710891163' },
+            linkUrl: { type: 'string', example: 'https://hamzarmb.com/air-cargo' },
+            targetScreen: { type: 'string', example: 'air_freight' },
+            displayOrder: { type: 'number', example: 1 },
+            isActive: { type: 'boolean', example: true },
+          },
+        },
       },
     },
     security: [{ bearerAuth: [] }],
     paths: {
       // ─── PUBLIC METADATA & PRICING (FOR MOBILE / CLIENT APPS) ───────────────
+      '/banners': {
+        get: {
+          tags: ['Public Metadata & Pricing'],
+          summary: 'Fetch active home screen sliding banners for mobile apps',
+          description: 'Public endpoint consumed by mobile apps to render promotional sliding banners on the home screen carousel.',
+          security: [],
+          responses: {
+            200: {
+              description: 'List of active sliding banners ordered by displayOrder',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/Banner' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/banners/admin': {
+        get: {
+          tags: ['Sliding Banners Management'],
+          summary: 'Admin list all sliding banners (active and inactive)',
+          responses: {
+            200: {
+              description: 'Array of all banner objects',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/Banner' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       '/settings': {
         get: {
           tags: ['Public Metadata & Pricing'],

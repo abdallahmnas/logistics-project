@@ -34,6 +34,7 @@ import facilityRoutes from './routes/facility.routes';
 import settingsRoutes from './routes/settings.routes';
 import permissionRoutes from './routes/permission.routes';
 import chatRoutes from './routes/chat.routes';
+import bannerRoutes from './routes/banner.routes';
 
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
@@ -72,6 +73,7 @@ app.use('/api/v1/permissions', permissionRoutes);
 app.use('/api/v1/permission-groups', permissionRoutes);
 app.use('/api/v1/chat', chatRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/v1/banners', bannerRoutes);
 
 // Serve frontend static build in production
 if (process.env.NODE_ENV === 'production') {

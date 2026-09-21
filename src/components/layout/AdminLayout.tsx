@@ -41,6 +41,7 @@ import {
   GlobalOutlined,
   HistoryOutlined,
   WalletOutlined,
+  PictureOutlined,
 } from "@ant-design/icons";
 import { Logo } from "../common/Logo";
 import { SidebarNav, type SidebarNavSection } from "./SidebarNav";
@@ -285,6 +286,11 @@ export const AdminLayout: React.FC = () => {
   }
 
   if (role === "super_admin" || role === "admin" || hasPermission("settings")) {
+    manageItems.push({
+      key: "/admin/banners",
+      icon: <PictureOutlined />,
+      label: "Sliding Banners",
+    });
     manageItems.push({
       key: "/admin/settings",
       icon: <SettingOutlined />,

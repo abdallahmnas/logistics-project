@@ -20,6 +20,7 @@ import { SavedAccount } from './SavedAccount';
 import { SystemSettings } from './SystemSettings';
 import { WalletDeposit } from './WalletDeposit';
 import { DeliveryVehicle } from './DeliveryVehicle';
+import { Banner } from './Banner';
 
 // Define Relationships
 User.hasOne(Wallet, { foreignKey: 'userId', as: 'wallet' });
@@ -63,4 +64,5 @@ export {
   SystemSettings,
   WalletDeposit,
   DeliveryVehicle,
+  Banner,
 };
