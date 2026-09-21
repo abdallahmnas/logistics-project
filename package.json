@@ -11,6 +11,7 @@
     "start": "npx tsx server/src/index.ts",
     "test": "vitest",
     "seed": "tsx server/src/seeders/seed.ts",
+    "create-super-admin": "tsx server/src/scripts/createSuperAdmin.ts",
     "lint": "oxlint",
     "preview": "vite preview"
   },

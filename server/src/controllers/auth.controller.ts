@@ -148,3 +148,12 @@ export const checkAvailability = async (req: Request, res: Response): Promise<vo
     res.status(409).json({ status: 'error', message: error.message });
   }
 };
+
+export const setupSuperAdmin = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await authService.setupSuperAdmin(req.body);
+    res.status(201).json({ status: 'success', message: 'Super Admin onboarded successfully', data: result });
+  } catch (error: any) {
+    res.status(403).json({ status: 'error', message: error.message });
+  }
+};

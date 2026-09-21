@@ -318,4 +318,58 @@ export class AuthService {
     await user.save();
     return { success: true };
   }
+
+  // ─── One-Time Initial Super Admin Setup ──────────────────────────────────
+  public async setupSuperAdmin(data: any) {
+    const { User, Wallet, PermissionGroup } = await import('../models');
+    
+    // Check if a super admin already exists
+    const existingSuperAdminCount = await User.count({ where: { role: 'super_admin' } });
+    if (existingSuperAdminCount > 0) {
+      throw new Error('Initialization locked: A Super Admin account already exists in the system.');
+    }
+
+    const { firstName, lastName, email, phone, password } = data;
+    if (!firstName || !lastName || !email || !phone || !password) {
+      throw new Error('Please provide firstName, lastName, email, phone, and password');
+    }
+
+    const existingUser = await this.userRepository.findByEmail(email);
+    if (existingUser) throw new Error('Email is already registered');
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const customerId = `HZ-SADMIN-${randomSuffix}`;
+
+    // Get Super Admin permission group if available
+    const superAdminGroup = await PermissionGroup.findOne({ where: { title: 'Super Admin' } }) ||
+                            await PermissionGroup.findOne({ where: { name: 'Super Admin' } });
+
+    const user = await User.create({
+      customerId,
+      firstName,
+      lastName,
+      email,
+      phone,
+      passwordHash: hashedPassword,
+      role: 'super_admin',
+      isVerified: true,
+      permissionGroupId: superAdminGroup ? superAdminGroup.id : undefined,
+    });
+
+    await Wallet.create({
+      userId: user.id,
+      balance: 1000000,
+      currency: 'NGN',
+      escrowHeld: 0,
+      availableBalance: 1000000,
+    });
+
+    const token = generateToken({ id: user.id, email: user.email, role: 'super_admin', customerId });
+    const { passwordHash, otpCode, ...safeUser } = user.toJSON() as any;
+
+    return { token, user: safeUser };
+  }
 }

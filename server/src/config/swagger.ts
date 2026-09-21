@@ -257,6 +257,36 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
       },
 
       // ─── AUTH ─────────────────────────────────────────────────────────────
+      '/auth/setup-super-admin': {
+        post: {
+          tags: ['Authentication'],
+          summary: 'One-time initial Super Admin setup endpoint',
+          description: 'Onboards the first Super Admin account immediately after deployment. Accessible ONLY when 0 Super Admin accounts exist in DB. Permanently locks itself (returns 403 Forbidden) once created.',
+          security: [],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['firstName', 'lastName', 'email', 'password', 'phone'],
+                  properties: {
+                    firstName: { type: 'string', example: 'Hamza' },
+                    lastName: { type: 'string', example: 'Admin' },
+                    email: { type: 'string', example: 'admin@hamzarmb.com' },
+                    password: { type: 'string', example: 'SecurePassword123!' },
+                    phone: { type: 'string', example: '+2348012345678' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            201: { description: 'Super Admin onboarded successfully & token issued' },
+            403: { description: 'Initialization locked: Super Admin already exists' },
+          },
+        },
+      },
       '/auth/register': {
         post: {
           tags: ['Authentication'],

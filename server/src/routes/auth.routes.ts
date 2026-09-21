@@ -14,6 +14,7 @@ import {
   updateProfile,
   updatePushToken,
   changePassword,
+  setupSuperAdmin,
 } from '../controllers/auth.controller';
 import { requireAuth } from '../middlewares/auth.middleware';
 
@@ -30,6 +31,7 @@ const optionalAuth = (req: any, res: any, next: any) => {
 // Public Routes
 router.post('/register', register);
 router.post('/login', login);
+router.post('/setup-super-admin', setupSuperAdmin);
 router.post('/check-availability', checkAvailability);
 router.post('/verify-otp', optionalAuth, verifyOtp);
 router.post('/resend-otp', optionalAuth, resendOtp);
