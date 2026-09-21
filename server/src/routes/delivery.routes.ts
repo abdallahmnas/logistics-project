@@ -16,10 +16,12 @@ import {
 
 const router = Router();
 
+// Public Vehicle Fleet Endpoint (No Auth Required)
+router.get('/vehicles', getVehicles);
+
 router.use(authenticate);
 
-// Vehicle Endpoints
-router.get('/vehicles', getVehicles);
+// Vehicle Endpoints (Admin)
 router.get('/admin/vehicles', authorize('super_admin', 'admin', 'warehouse_ng', 'staff', 'finance'), getAllVehiclesAdmin);
 router.post('/admin/vehicles', authorize('super_admin', 'admin', 'warehouse_ng', 'staff'), uploadMiddleware.single('image'), createVehicle);
 router.put('/admin/vehicles/:id', authorize('super_admin', 'admin', 'warehouse_ng', 'staff'), uploadMiddleware.single('image'), updateVehicle);

@@ -165,10 +165,97 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
             createdAt: { type: 'string', format: 'date-time' },
           },
         },
+        SystemSettings: {
+          type: 'object',
+          description: 'Global system metadata, rates, freight pricing, and company contact details',
+          properties: {
+            cnyExchangeRate: { type: 'number', example: 215.0 },
+            usdExchangeRate: { type: 'number', example: 1550.0 },
+            airFreightRatePerKg: { type: 'number', example: 12500 },
+            seaFreightRatePerCbm: { type: 'number', example: 450000 },
+            seaFreightRatePerKg: { type: 'number', example: 3500 },
+            buyForMeFeePercent: { type: 'number', example: 5.0 },
+            buyForMeFixedFee: { type: 'number', example: 1000 },
+            ngnEscrowBankName: { type: 'string', example: 'GTBank' },
+            ngnEscrowAccountNo: { type: 'string', example: '0123456789' },
+            ngnEscrowAccountName: { type: 'string', example: 'Hamza RMB Trading Escrow Ltd' },
+            companyName: { type: 'string', example: 'HAMZA RMB GLOBAL COMPANY LTD' },
+            chinaAirCargoAddressCn: { type: 'string', example: '义乌市稠州北路国贸大厦6楼602' },
+            nigeriaOfficeAddress: { type: 'string', example: 'No. 08 Gwarzo Road Beside Shopwell, Gwale Kano State, Nigeria' },
+          },
+        },
+        DeliveryVehicle: {
+          type: 'object',
+          description: 'Local dispatch vehicle configuration with base fare and per-kilometer rates',
+          properties: {
+            id: { type: 'string', example: 'vh-001' },
+            name: { type: 'string', example: 'Express Motorbike' },
+            type: { type: 'string', example: 'motorbike' },
+            description: { type: 'string', example: 'Fastest for light packages up to 15kg.' },
+            baseFare: { type: 'number', example: 1000 },
+            perKmRate: { type: 'number', example: 150 },
+            maxWeightKg: { type: 'number', example: 15 },
+            imageUrl: { type: 'string', example: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39' },
+            isActive: { type: 'boolean', example: true },
+          },
+        },
       },
     },
     security: [{ bearerAuth: [] }],
     paths: {
+      // ─── PUBLIC METADATA & PRICING (FOR MOBILE / CLIENT APPS) ───────────────
+      '/settings': {
+        get: {
+          tags: ['Public Metadata & Pricing'],
+          summary: 'Fetch global system metadata, freight rates, exchange rates & escrow details',
+          description: 'Public endpoint consumed by mobile apps to display live exchange rates, Air/Sea freight prices, procurement fee percentages, and bank deposit accounts.',
+          security: [],
+          responses: {
+            200: {
+              description: 'Global system settings and live rates object',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: { $ref: '#/components/schemas/SystemSettings' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/delivery/vehicles': {
+        get: {
+          tags: ['Public Metadata & Pricing'],
+          summary: 'Fetch active doorstep delivery vehicle fleet & per-kilometer rates',
+          description: 'Public endpoint consumed by mobile apps to display dispatch vehicle options, base pickup fares, and per-kilometer rates.',
+          security: [],
+          responses: {
+            200: {
+              description: 'Array of active delivery vehicles with per-km rates',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/DeliveryVehicle' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+
       // ─── AUTH ─────────────────────────────────────────────────────────────
       '/auth/register': {
         post: {
