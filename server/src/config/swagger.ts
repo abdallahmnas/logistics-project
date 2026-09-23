@@ -514,9 +514,9 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
                   required: ['packageIds', 'shippingMethod', 'destinationWarehouse', 'paymentMethod'],
                   properties: {
                     packageIds: { type: 'array', items: { type: 'string' }, example: ['pkg-1', 'pkg-2'] },
-                    shippingMethod: { type: 'string', example: 'air' },
+                    shippingMethod: { type: 'string', enum: ['air', 'sea', 'express'], example: 'air' },
                     destinationWarehouse: { type: 'string', example: 'lagos' },
-                    paymentMethod: { type: 'string', example: 'wallet' },
+                    paymentMethod: { type: 'string', enum: ['wallet', 'cash_on_delivery'], example: 'wallet' },
                   },
                 },
               },
@@ -545,7 +545,7 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
                     masterTrackingId: { type: 'string', example: 'HZ-BATCH-AIR-20260816-102' },
                     carrierName: { type: 'string', example: 'Ethiopian Cargo' },
                     flightVoyageNo: { type: 'string', example: 'ET-3801' },
-                    shippingType: { type: 'string', example: 'air' },
+                    shippingType: { type: 'string', enum: ['air', 'sea', 'express'], example: 'air' },
                     consolidationIds: { type: 'array', items: { type: 'string' } },
                   },
                 },
@@ -649,7 +649,13 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
                 schema: {
                   type: 'object',
                   required: ['status'],
-                  properties: { status: { type: 'string', example: 'purchased' } },
+                  properties: {
+                    status: {
+                      type: 'string',
+                      enum: ['submitted', 'under_review', 'quoted', 'approved', 'purchasing', 'shipped_to_wh', 'received_at_wh', 'cancelled', 'rejected'],
+                      example: 'purchased',
+                    },
+                  },
                 },
               },
             },
@@ -701,7 +707,8 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
                   required: ['amountNaira', 'rmbDestType', 'rmbDestAccount', 'rmbDestName'],
                   properties: {
                     amountNaira: { type: 'number', example: 500000 },
-                    rmbDestType: { type: 'string', example: 'alipay' },
+                    direction: { type: 'string', enum: ['ngn_to_rmb', 'rmb_to_ngn'], example: 'ngn_to_rmb' },
+                    rmbDestType: { type: 'string', enum: ['alipay', 'wechat_pay', 'chinese_bank'], example: 'alipay' },
                     rmbDestAccount: { type: 'string', example: 'supplier@alipay.cn' },
                     rmbDestName: { type: 'string', example: 'Guangzhou Trading Co' },
                   },
@@ -882,7 +889,11 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
                     lastName: { type: 'string', example: 'Doe' },
                     email: { type: 'string', example: 'jane.doe@logicore.com' },
                     phone: { type: 'string', example: '+2348012345678' },
-                    role: { type: 'string', example: 'warehouse_cn' },
+                    role: {
+                      type: 'string',
+                      enum: ['customer', 'super_admin', 'admin', 'warehouse_cn', 'warehouse_ng', 'procurement', 'finance', 'clearance_agent', 'driver'],
+                      example: 'warehouse_cn',
+                    },
                     password: { type: 'string', example: 'Logistics2026!' },
                   },
                 },
@@ -946,7 +957,11 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
                   required: ['subject', 'category'],
                   properties: {
                     subject: { type: 'string', example: 'Delay on package SF10928' },
-                    category: { type: 'string', example: 'shipment' },
+                    category: {
+                      type: 'string',
+                      enum: ['shipment', 'payment', 'exchange', 'procurement', 'delivery', 'account', 'other'],
+                      example: 'shipment',
+                    },
                     description: { type: 'string', example: 'Package has been at China hub for 3 days' },
                     message: { type: 'string', example: 'Package has been at China hub for 3 days' },
                     imageUrl: { type: 'string', example: 'https://res.cloudinary.com/demo/image/upload/sample.jpg' },
@@ -1017,6 +1032,20 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
             },
           },
           responses: { 200: { description: 'Cloudinary image URL returned' } },
+        },
+      },
+
+      // ─── SYSTEM METADATA & OPTIONS ───────────────────────────────────────
+      '/meta/options': {
+        get: {
+          tags: ['System Metadata & Options'],
+          summary: 'Get all valid status enums, categories, roles, and configuration options',
+          security: [],
+          responses: {
+            200: {
+              description: 'Dictionary of all system categories, statuses, priorities, vehicle types, and roles',
+            },
+          },
         },
       },
     },
