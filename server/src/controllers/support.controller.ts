@@ -18,37 +18,53 @@ const processAttachments = async (req: Request, prefix: string): Promise<string[
     attachments.push(url);
   }
 
-  // 2. Base64 or string URLs passed in req.body.attachments
-  if (req.body.attachments) {
-    let bodyAttachments = req.body.attachments;
-    if (typeof bodyAttachments === 'string') {
+  // 2. Base64 or string URLs passed in req.body fields (imageUrl, image, attachments, photos, photo, etc.)
+  const possibleFields = [
+    req.body.imageUrl,
+    req.body.image,
+    req.body.attachments,
+    req.body.photos,
+    req.body.photo,
+  ];
+
+  for (let raw of possibleFields) {
+    if (!raw) continue;
+    if (typeof raw === 'string') {
       try {
-        bodyAttachments = JSON.parse(bodyAttachments);
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) raw = parsed;
+        else raw = [raw];
       } catch {
-        bodyAttachments = [bodyAttachments];
+        raw = [raw];
       }
     }
-    if (Array.isArray(bodyAttachments)) {
-      for (const item of bodyAttachments) {
-        if (typeof item === 'string' && item.startsWith('data:')) {
-          const url = await uploadBase64ToCloudinary(item, 'support_tickets');
-          attachments.push(url);
-        } else if (typeof item === 'string' && item.trim().length > 0) {
-          attachments.push(item);
+    if (Array.isArray(raw)) {
+      for (const item of raw) {
+        if (typeof item === 'string' && item.trim().length > 0) {
+          if (item.startsWith('data:')) {
+            const url = await uploadBase64ToCloudinary(item, 'support_tickets');
+            attachments.push(url);
+          } else {
+            attachments.push(item.trim());
+          }
         }
       }
     }
   }
 
-  return attachments;
+  return Array.from(new Set(attachments));
 };
 
 export const createTicket = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
     const attachments = await processAttachments(req, 'ticket');
+    const messageText = req.body.message || req.body.description || req.body.subject;
+    const imageUrl = attachments.length > 0 ? attachments[0] : req.body.imageUrl;
     const ticket = await SupportService.createTicket(userId, {
       ...req.body,
+      message: messageText,
+      imageUrl,
       attachments,
     });
     res.status(201).json({ success: true, data: ticket });

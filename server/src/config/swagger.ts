@@ -943,11 +943,19 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
               'application/json': {
                 schema: {
                   type: 'object',
-                  required: ['subject', 'category', 'description'],
+                  required: ['subject', 'category'],
                   properties: {
                     subject: { type: 'string', example: 'Delay on package SF10928' },
-                    category: { type: 'string', example: 'shipping' },
+                    category: { type: 'string', example: 'shipment' },
                     description: { type: 'string', example: 'Package has been at China hub for 3 days' },
+                    message: { type: 'string', example: 'Package has been at China hub for 3 days' },
+                    imageUrl: { type: 'string', example: 'https://res.cloudinary.com/demo/image/upload/sample.jpg' },
+                    attachments: {
+                      type: 'array',
+                      items: { type: 'string' },
+                      example: ['https://res.cloudinary.com/demo/image/upload/sample.jpg'],
+                    },
+                    referenceId: { type: 'string', example: 'PKG-10029' },
                   },
                 },
               },

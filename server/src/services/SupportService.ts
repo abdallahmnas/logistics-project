@@ -14,6 +14,10 @@ export class SupportService {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('User not found');
 
+    const attachments = payload.attachments || [];
+    const imageUrl = attachments.length > 0 ? attachments[0] : (payload as any).imageUrl;
+    const messageText = payload.message || (payload as any).description || payload.subject;
+
     const ticket = await SupportTicket.create({
       customerId: user.customerId,
       customerName: `${user.firstName} ${user.lastName}`,
@@ -22,6 +26,8 @@ export class SupportService {
       status: 'open',
       priority: (payload.priority as any) || 'medium',
       referenceId: payload.referenceId,
+      imageUrl: imageUrl || undefined,
+      attachments: attachments,
     });
 
     // Add the first message from customer with attachments
@@ -30,8 +36,8 @@ export class SupportService {
       senderId: userId,
       senderName: `${user.firstName} ${user.lastName}`,
       senderRole: user.role,
-      message: payload.message,
-      attachments: payload.attachments || [],
+      message: messageText,
+      attachments: attachments,
     });
 
     // Trigger Notification for Admin Team

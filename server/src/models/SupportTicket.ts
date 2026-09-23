@@ -10,6 +10,8 @@ export interface SupportTicketAttributes {
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   referenceId?: string;
+  imageUrl?: string;
+  attachments?: string[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -25,6 +27,8 @@ export class SupportTicket extends Model<SupportTicketAttributes, SupportTicketC
   public declare status: 'open' | 'in_progress' | 'resolved' | 'closed';
   public declare priority: 'low' | 'medium' | 'high' | 'urgent';
   public declare referenceId?: string;
+  public declare imageUrl?: string;
+  public declare attachments?: string[];
   public declare readonly createdAt: Date;
   public declare readonly updatedAt: Date;
 }
@@ -48,6 +52,8 @@ SupportTicket.init(
       defaultValue: 'medium',
     },
     referenceId: { type: DataTypes.STRING, allowNull: true },
+    imageUrl: { type: DataTypes.TEXT, allowNull: true },
+    attachments: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },
   },
   { sequelize, tableName: 'support_tickets', timestamps: true }
 );
