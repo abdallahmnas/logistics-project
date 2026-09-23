@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import {
   register,
+  setPassword,
   login,
   getMe,
   logout,
@@ -30,6 +31,8 @@ const optionalAuth = (req: any, res: any, next: any) => {
 
 // Public Routes
 router.post('/register', register);
+router.post('/set-password', setPassword);
+router.post('/register/password', setPassword);
 router.post('/login', login);
 router.post('/setup-super-admin', setupSuperAdmin);
 router.post('/check-availability', checkAvailability);

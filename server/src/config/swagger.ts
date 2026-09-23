@@ -411,20 +411,45 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
       '/auth/verify-otp': {
         post: {
           tags: ['Authentication'],
-          summary: 'Verify email registration OTP code',
+          summary: 'Verify email registration OTP code (stored in Redis cache)',
           requestBody: {
             required: true,
             content: {
               'application/json': {
                 schema: {
                   type: 'object',
-                  required: ['otp'],
-                  properties: { otp: { type: 'string', example: '123456' } },
+                  required: ['email', 'otp'],
+                  properties: {
+                    email: { type: 'string', example: 'user@example.com' },
+                    otp: { type: 'string', example: '123456' },
+                  },
                 },
               },
             },
           },
           responses: { 200: { description: 'OTP verified successfully' } },
+        },
+      },
+      '/auth/set-password': {
+        post: {
+          tags: ['Authentication'],
+          summary: 'Set password & push pending registration from Redis cache to PostgreSQL database',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['email', 'password'],
+                  properties: {
+                    email: { type: 'string', example: 'user@example.com' },
+                    password: { type: 'string', example: 'Password123!' },
+                  },
+                },
+              },
+            },
+          },
+          responses: { 200: { description: 'Password set and account created in database' } },
         },
       },
       '/auth/resend-otp': {
