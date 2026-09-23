@@ -13,9 +13,14 @@ router.post('/chat', handleChatMessage);
 router.use(authenticate);
 
 router.post('/', uploadMiddleware.any(), createTicket);
+router.post('/tickets', uploadMiddleware.any(), createTicket);
 router.get('/', getTickets);
+router.get('/tickets', getTickets);
 router.get('/:id', getTicket);
+router.get('/tickets/:id', getTicket);
 router.post('/:id/reply', uploadMiddleware.any(), replyToTicket);
+router.post('/tickets/:id/reply', uploadMiddleware.any(), replyToTicket);
 router.patch('/:id/status', authorize('super_admin', 'admin'), updateTicketStatus);
+router.patch('/tickets/:id/status', authorize('super_admin', 'admin'), updateTicketStatus);
 
 export default router;

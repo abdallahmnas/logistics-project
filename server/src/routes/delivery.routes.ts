@@ -29,9 +29,13 @@ router.delete('/admin/vehicles/:id', authorize('super_admin', 'admin', 'warehous
 
 // Delivery Endpoints
 router.post('/', createDelivery);
+router.post('/request', createDelivery);
 router.get('/', getDeliveries);
+router.get('/deliveries', getDeliveries);
 router.post('/:id/driver', authorize('super_admin', 'admin', 'warehouse_ng', 'driver', 'staff'), assignDriver);
+router.patch('/deliveries/:id/dispatch', authorize('super_admin', 'admin', 'warehouse_ng', 'driver', 'staff'), assignDriver);
 router.patch('/:id/status', authorize('super_admin', 'admin', 'warehouse_ng', 'driver', 'staff'), updateDeliveryStatus);
 router.put('/:id/status', authorize('super_admin', 'admin', 'warehouse_ng', 'driver', 'staff'), updateDeliveryStatus);
+router.post('/deliveries/:id/verify-pin', authorize('super_admin', 'admin', 'warehouse_ng', 'driver', 'staff'), updateDeliveryStatus);
 
 export default router;
