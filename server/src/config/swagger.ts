@@ -1060,6 +1060,44 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
         },
       },
 
+      // ─── SYSTEM SETTINGS & FREIGHT CONFIG ──────────────────────────────
+      '/settings': {
+        get: {
+          tags: ['System Metadata & Options'],
+          summary: 'Get global platform rates, freight charges, and minimum thresholds',
+          security: [],
+          responses: {
+            200: { description: 'Global system settings object' },
+          },
+        },
+        put: {
+          tags: ['System Metadata & Options'],
+          summary: 'Admin update global freight rates, exchange rates, and minimum thresholds (minAirFreightKg, minSeaFreightCbm)',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    airFreightRatePerKg: { type: 'number', example: 12500 },
+                    seaFreightRatePerCbm: { type: 'number', example: 450000 },
+                    seaFreightRatePerKg: { type: 'number', example: 3500 },
+                    minAirFreightKg: { type: 'number', example: 1.0 },
+                    minSeaFreightCbm: { type: 'number', example: 0.1 },
+                    cnyExchangeRate: { type: 'number', example: 215.0 },
+                    usdExchangeRate: { type: 'number', example: 1550.0 },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Platform settings updated' },
+          },
+        },
+      },
+
       // ─── SYSTEM METADATA & OPTIONS ───────────────────────────────────────
       '/meta/options': {
         get: {

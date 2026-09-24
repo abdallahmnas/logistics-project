@@ -143,11 +143,17 @@ export const NewConsolidationPage: React.FC = () => {
   const totalWeight = selectedItems.reduce((sum, i) => sum + (i.weight || 0), 0);
   const totalVolume = selectedItems.reduce((sum, i) => sum + (i.volume || 0), 0);
 
+  const minAirFreightKg = settings?.minAirFreightKg ?? 1.0;
+  const minSeaFreightCbm = settings?.minSeaFreightCbm ?? 0.1;
+
+  const effectiveWeight = totalWeight > 0 ? Math.max(totalWeight, minAirFreightKg) : 0;
+  const effectiveVolume = totalVolume > 0 ? Math.max(totalVolume, minSeaFreightCbm) : 0;
+
   const availableBalance = wallet?.availableBalance ?? wallet?.balance ?? 0;
   const estimatedFee =
     freight === "air"
-      ? totalWeight * (settings?.airFreightRatePerKg || 12500)
-      : totalVolume * (settings?.seaFreightRatePerCbm || 450000);
+      ? effectiveWeight * (settings?.airFreightRatePerKg || 12500)
+      : effectiveVolume * (settings?.seaFreightRatePerCbm || 450000);
   const hasEnoughWalletBalance = availableBalance >= estimatedFee;
 
   const handleConsolidateSubmit = async () => {

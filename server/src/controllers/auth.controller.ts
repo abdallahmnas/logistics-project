@@ -50,7 +50,7 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
     const result = await authService.verifyOtp(targetIdentifier, otp);
     res.status(200).json({ status: 'success', ...result });
   } catch (error: any) {
-    res.status(400).json({ status: 'error', message: error.message });
+    res.status(400).json({ status: 'error', message: "Invalid or expired OTP Code. Try again." });
   }
 };
 
@@ -86,7 +86,7 @@ export const verifyResetOtp = async (req: Request, res: Response): Promise<void>
     const result = await authService.verifyResetOtp(email, otp);
     res.status(200).json({ status: 'success', ...result });
   } catch (error: any) {
-    res.status(400).json({ status: 'error', message: error.message });
+    res.status(400).json({ status: 'error', message: "Invalid or expired OTP Code. Try again." });
   }
 };
 

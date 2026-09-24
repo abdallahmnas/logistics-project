@@ -184,23 +184,39 @@ export const ShippingRatesConfig: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-[#0A1128] m-0 mb-1">Package Consolidation Thresholds</h2>
-                <p className="text-slate-500 text-xs m-0">Minimum weight and volume criteria for packing items in China warehouses.</p>
+                <p className="text-slate-500 text-xs m-0">Minimum weight (KG) and volume (CBM) criteria for packing items in China warehouses.</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <label className="block text-xs font-bold text-[#0A1128] uppercase mb-2">Minimum Volume (CBM)</label>
                 <div className="relative">
-                  <InputNumber min={0.01} defaultValue={0.1} step={0.1} precision={2} className="w-full h-12 rounded-lg border-slate-300 text-lg font-bold" />
+                  <InputNumber
+                    min={0.01}
+                    step={0.05}
+                    precision={2}
+                    value={formData.minSeaFreightCbm ?? 0.1}
+                    onChange={(val) => handleChange('minSeaFreightCbm', val)}
+                    className="w-full h-12 rounded-lg border-slate-300 text-lg font-bold"
+                  />
                   <span className="absolute right-4 top-[14px] text-slate-400 text-xs font-bold">m³</span>
                 </div>
+                <p className="text-[11px] text-slate-500 mt-2 mb-0">Minimum ocean cargo volume billed per consignment.</p>
               </div>
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <label className="block text-xs font-bold text-[#0A1128] uppercase mb-2">Minimum Weight (KG)</label>
                 <div className="relative">
-                  <InputNumber min={0.1} defaultValue={1.0} step={0.5} precision={1} className="w-full h-12 rounded-lg border-slate-300 text-lg font-bold" />
+                  <InputNumber
+                    min={0.1}
+                    step={0.5}
+                    precision={1}
+                    value={formData.minAirFreightKg ?? 1.0}
+                    onChange={(val) => handleChange('minAirFreightKg', val)}
+                    className="w-full h-12 rounded-lg border-slate-300 text-lg font-bold"
+                  />
                   <span className="absolute right-4 top-[14px] text-slate-400 text-xs font-bold">kg</span>
                 </div>
+                <p className="text-[11px] text-slate-500 mt-2 mb-0">Minimum air cargo gross weight billed per consignment.</p>
               </div>
             </div>
           </Card>
@@ -212,7 +228,7 @@ export const ShippingRatesConfig: React.FC = () => {
           <Card bordered={false} className="shadow-md border-none rounded-2xl bg-[#0A1128] text-white p-2">
             <h3 className="text-base font-bold mb-2 text-white">🇨🇳 ➔ 🇳🇬 China-Nigeria Live Rates</h3>
             <p className="text-xs text-slate-300 leading-relaxed mb-4">
-              All package consolidations submitted by customers are calculated using these central Air & Sea freight rates.
+              All package consolidations submitted by customers are calculated using these central Air & Sea freight rates and minimum thresholds.
             </p>
             <div className="space-y-3 text-xs bg-white/10 p-3.5 rounded-xl border border-white/10">
               <div className="flex justify-between items-center">
@@ -220,8 +236,16 @@ export const ShippingRatesConfig: React.FC = () => {
                 <span className="font-extrabold text-amber-300 text-sm">₦{(formData.airFreightRatePerKg || 12500).toLocaleString()}/kg</span>
               </div>
               <div className="flex justify-between items-center">
+                <span className="text-slate-300">Min Weight (Air):</span>
+                <span className="font-extrabold text-amber-300 text-xs">{formData.minAirFreightKg ?? 1.0} kg</span>
+              </div>
+              <div className="flex justify-between items-center pt-1 border-t border-white/10">
                 <span className="text-slate-300">Sea Freight Rate:</span>
                 <span className="font-extrabold text-cyan-300 text-sm">₦{(formData.seaFreightRatePerCbm || 450000).toLocaleString()}/cbm</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Min Volume (Sea):</span>
+                <span className="font-extrabold text-cyan-300 text-xs">{formData.minSeaFreightCbm ?? 0.1} cbm</span>
               </div>
             </div>
 

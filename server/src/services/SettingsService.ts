@@ -20,6 +20,8 @@ export class SettingsService {
         airFreightRatePerKg: 12500,
         seaFreightRatePerCbm: 450000,
         seaFreightRatePerKg: 3500,
+        minAirFreightKg: 1.0,
+        minSeaFreightCbm: 0.1,
         buyForMeFeePercent: 5.0,
         buyForMeFixedFee: 1000,
         deliveryMotorbikeBaseRate: 1500,

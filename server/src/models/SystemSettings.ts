@@ -23,6 +23,8 @@ export interface SystemSettingsAttributes {
   airFreightRatePerKg: number;
   seaFreightRatePerCbm: number;
   seaFreightRatePerKg: number;
+  minAirFreightKg: number;
+  minSeaFreightCbm: number;
 
   // Procurement Charges (Buy For Me)
   buyForMeFeePercent: number;
@@ -72,6 +74,8 @@ export class SystemSettings extends Model<SystemSettingsAttributes, SystemSettin
   public declare airFreightRatePerKg: number;
   public declare seaFreightRatePerCbm: number;
   public declare seaFreightRatePerKg: number;
+  public declare minAirFreightKg: number;
+  public declare minSeaFreightCbm: number;
   public declare buyForMeFeePercent: number;
   public declare buyForMeFixedFee: number;
   public declare deliveryMotorbikeBaseRate: number;
@@ -151,6 +155,14 @@ SystemSettings.init(
     seaFreightRatePerKg: {
       type: DataTypes.FLOAT,
       defaultValue: 3500,
+    },
+    minAirFreightKg: {
+      type: DataTypes.FLOAT,
+      defaultValue: 1.0,
+    },
+    minSeaFreightCbm: {
+      type: DataTypes.FLOAT,
+      defaultValue: 0.1,
     },
     buyForMeFeePercent: {
       type: DataTypes.FLOAT,

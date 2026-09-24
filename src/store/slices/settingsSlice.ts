@@ -16,6 +16,8 @@ export interface SystemSettings {
   airFreightRatePerKg: number;
   seaFreightRatePerCbm: number;
   seaFreightRatePerKg: number;
+  minAirFreightKg?: number;
+  minSeaFreightCbm?: number;
   buyForMeFeePercent: number;
   buyForMeFixedFee: number;
   deliveryMotorbikeBaseRate: number;

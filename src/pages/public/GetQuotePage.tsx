@@ -2,14 +2,20 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Card, Select, InputNumber, Tag, message } from 'antd';
 import { CalculatorOutlined, ArrowRightOutlined, PhoneOutlined } from '@ant-design/icons';
-import { useAppSelector } from '../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchSettings } from '../../store/slices/settingsSlice';
 
 const { Option } = Select;
 
 export const GetQuotePage: React.FC = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const { settings } = useAppSelector((state) => state.settings);
+
+  React.useEffect(() => {
+    dispatch(fetchSettings());
+  }, [dispatch]);
 
   const [modality, setModality] = useState<'air' | 'sea'>('air');
   const [weightKg, setWeightKg] = useState<number>(10);
@@ -17,26 +23,27 @@ export const GetQuotePage: React.FC = () => {
   const [origin, setOrigin] = useState<string>('guangzhou');
   const [destination, setDestination] = useState<string>('kano');
 
-  // Pull live rates from Admin Settings panel
-  const airRatePerKgUsd = settings?.airFreightRatePerKg ?? 7.50;
-  const seaRatePerCbmUsd = settings?.seaFreightRatePerCbm ?? 240;
-  const usdToNaira = settings?.usdExchangeRate ?? 1550;
+  // Pull live rates and minimum thresholds from Admin Settings panel
+  const airRatePerKg = settings?.airFreightRatePerKg ?? 12500;
+  const seaRatePerCbm = settings?.seaFreightRatePerCbm ?? 450000;
+  const minAirFreightKg = settings?.minAirFreightKg ?? 1.0;
+  const minSeaFreightCbm = settings?.minSeaFreightCbm ?? 0.1;
 
-  // Calculate NGN estimate
+  // Calculate NGN estimate using minimum thresholds
   let estimatedNaira = 0;
   let estimatedTransit = '';
   let estimatedUnit = '';
+  const effectiveKg = Math.max(weightKg || 0, minAirFreightKg);
+  const effectiveCbm = Math.max(volumeCbm || 0, minSeaFreightCbm);
 
   if (modality === 'air') {
-    const usd = Math.max(weightKg * airRatePerKgUsd, 25);
-    estimatedNaira = Math.round(usd * usdToNaira);
+    estimatedNaira = Math.round(effectiveKg * airRatePerKg);
     estimatedTransit = '3–5 Business Days';
-    estimatedUnit = `Based on ${weightKg} KG × ₦${(airRatePerKgUsd * usdToNaira).toLocaleString()}/kg`;
+    estimatedUnit = `Billed weight: ${effectiveKg} KG (Min: ${minAirFreightKg} KG) × ₦${airRatePerKg.toLocaleString()}/kg`;
   } else {
-    const usd = Math.max(volumeCbm * seaRatePerCbmUsd, 50);
-    estimatedNaira = Math.round(usd * usdToNaira);
+    estimatedNaira = Math.round(effectiveCbm * seaRatePerCbm);
     estimatedTransit = '30–45 Days';
-    estimatedUnit = `Based on ${volumeCbm} CBM × ₦${(seaRatePerCbmUsd * usdToNaira).toLocaleString()}/CBM`;
+    estimatedUnit = `Billed volume: ${effectiveCbm} CBM (Min: ${minSeaFreightCbm} CBM) × ₦${seaRatePerCbm.toLocaleString()}/CBM`;
   }
 
   const destinationLabel = destination === 'kano' ? 'Kano Hub — No. 08 Gwarzo Road' : 'Lagos Central Warehouse';
@@ -124,7 +131,7 @@ export const GetQuotePage: React.FC = () => {
                             Express Air Freight
                           </div>
                           <div className="text-xs text-slate-500 mt-0.5 font-medium">
-                            Per KG · 3–5 Business Days
+                            Per KG · 3–5 Days · Min: {minAirFreightKg} KG
                           </div>
                         </div>
                         {modality === 'air' && (
@@ -148,7 +155,7 @@ export const GetQuotePage: React.FC = () => {
                             Ocean Sea Freight
                           </div>
                           <div className="text-xs text-slate-500 mt-0.5 font-medium">
-                            Per CBM · 30–45 Days
+                            Per CBM · 30–45 Days · Min: {minSeaFreightCbm} CBM
                           </div>
                         </div>
                         {modality === 'sea' && (
