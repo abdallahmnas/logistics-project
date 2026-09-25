@@ -1812,8 +1812,18 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
       '/facilities': {
         get: {
           tags: ['Warehouse Facilities'],
-          summary: 'List all origin & destination warehouse facilities',
+          summary: 'List all origin & destination warehouse facilities (Public)',
+          description: 'Public endpoint to fetch warehouse facilities, optionally filtered by country code or name (e.g. CN, NG, China, Nigeria).',
           security: [],
+          parameters: [
+            {
+              name: 'country',
+              in: 'query',
+              required: false,
+              description: 'Filter facilities by country code or name (e.g., CN, NG, China, Nigeria)',
+              schema: { type: 'string', example: 'CN' },
+            },
+          ],
           responses: {
             200: {
               description: 'Array of facility objects',
@@ -1858,7 +1868,8 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
       '/facilities/{id}': {
         get: {
           tags: ['Warehouse Facilities'],
-          summary: 'Get facility details by ID',
+          summary: 'Get facility details by ID (Public)',
+          security: [],
           parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
           responses: { 200: { description: 'Facility details' } },
         },

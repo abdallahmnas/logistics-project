@@ -2,7 +2,7 @@ import { Facility, FacilityAttributes } from '../models';
 import { ActivityLogService } from './ActivityLogService';
 
 export class FacilityService {
-  public static async getAllFacilities() {
+  public static async getAllFacilities(country?: string) {
     let facilities = await Facility.findAll({ order: [['code', 'ASC']] });
 
     // Seed defaults if empty
@@ -78,7 +78,25 @@ export class FacilityService {
       await Facility.destroy({ where: { id: idsToDelete } });
     }
 
-    return uniqueFacilities;
+    let result = uniqueFacilities;
+    if (country && country.trim()) {
+      const queryUpper = country.trim().toUpperCase();
+      result = result.filter(f => {
+        const fCountryUpper = (f.country || '').toUpperCase();
+        const fLocationUpper = (f.location || '').toUpperCase();
+
+        if (fCountryUpper === queryUpper) return true;
+        if ((queryUpper === 'CHINA' || queryUpper === 'CN') && (fCountryUpper === 'CN' || fCountryUpper === 'CHINA' || fLocationUpper.includes('CHINA'))) return true;
+        if ((queryUpper === 'NIGERIA' || queryUpper === 'NG') && (fCountryUpper === 'NG' || fCountryUpper === 'NIGERIA' || fLocationUpper.includes('NIGERIA'))) return true;
+
+        if (queryUpper.length > 2) {
+          return fCountryUpper.includes(queryUpper) || fLocationUpper.includes(queryUpper);
+        }
+        return false;
+      });
+    }
+
+    return result;
   }
 
   public static async getFacilityById(id: string) {

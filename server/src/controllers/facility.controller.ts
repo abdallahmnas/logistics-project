@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { FacilityService } from '../services/FacilityService';
 
-export const getFacilities = async (_req: Request, res: Response): Promise<void> => {
+export const getFacilities = async (req: Request, res: Response): Promise<void> => {
   try {
-    const facilities = await FacilityService.getAllFacilities();
+    const country = req.query.country as string | undefined;
+    const facilities = await FacilityService.getAllFacilities(country);
     res.status(200).json({ status: 'success', data: facilities });
   } catch (error: any) {
     res.status(500).json({ status: 'error', message: error.message });
