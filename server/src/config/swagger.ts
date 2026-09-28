@@ -27,6 +27,10 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
         url: 'http://localhost:5000/api/v1',
         description: 'Local Development Server',
       },
+      {
+        url: 'https://hamza-rmb.onrender.com/api/v1',
+        description: 'Live Development Server',
+      }
     ],
     components: {
       securitySchemes: {
