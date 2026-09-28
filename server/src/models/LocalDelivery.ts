@@ -5,15 +5,23 @@ export interface LocalDeliveryAttributes {
   id: string;
   customerId: string;
   customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
   status: 'pending' | 'confirmed' | 'driver_assigned' | 'out_for_pickup' | 'in_transit' | 'delivered' | 'cancelled' | 'failed';
   pickupAddress: string;
   pickupCity: string;
   pickupPhone: string;
   pickupContactName: string;
+  pickupEmail?: string;
+  pickupLat?: number;
+  pickupLng?: number;
   dropoffAddress: string;
   dropoffCity: string;
   dropoffPhone: string;
   dropoffContactName: string;
+  dropoffEmail?: string;
+  dropoffLat?: number;
+  dropoffLng?: number;
   packageDescription: string;
   packagePhotos?: string[];
   handlingInstructions?: string;
@@ -43,15 +51,23 @@ export class LocalDelivery extends Model<LocalDeliveryAttributes, LocalDeliveryC
   public declare id: string;
   public declare customerId: string;
   public declare customerName: string;
+  public declare customerEmail?: string;
+  public declare customerPhone?: string;
   public declare status: 'pending' | 'confirmed' | 'driver_assigned' | 'out_for_pickup' | 'in_transit' | 'delivered' | 'cancelled' | 'failed';
   public declare pickupAddress: string;
   public declare pickupCity: string;
   public declare pickupPhone: string;
   public declare pickupContactName: string;
+  public declare pickupEmail?: string;
+  public declare pickupLat?: number;
+  public declare pickupLng?: number;
   public declare dropoffAddress: string;
   public declare dropoffCity: string;
   public declare dropoffPhone: string;
   public declare dropoffContactName: string;
+  public declare dropoffEmail?: string;
+  public declare dropoffLat?: number;
+  public declare dropoffLng?: number;
   public declare packageDescription: string;
   public declare packagePhotos?: string[];
   public declare handlingInstructions?: string;
@@ -90,6 +106,14 @@ LocalDelivery.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    customerEmail: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    customerPhone: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     status: {
       type: DataTypes.STRING,
       defaultValue: 'pending',
@@ -98,10 +122,16 @@ LocalDelivery.init(
     pickupCity: { type: DataTypes.STRING, allowNull: false },
     pickupPhone: { type: DataTypes.STRING, allowNull: false },
     pickupContactName: { type: DataTypes.STRING, allowNull: false },
+    pickupEmail: { type: DataTypes.STRING, allowNull: true },
+    pickupLat: { type: DataTypes.FLOAT, allowNull: true },
+    pickupLng: { type: DataTypes.FLOAT, allowNull: true },
     dropoffAddress: { type: DataTypes.STRING, allowNull: false },
     dropoffCity: { type: DataTypes.STRING, allowNull: false },
     dropoffPhone: { type: DataTypes.STRING, allowNull: false },
     dropoffContactName: { type: DataTypes.STRING, allowNull: false },
+    dropoffEmail: { type: DataTypes.STRING, allowNull: true },
+    dropoffLat: { type: DataTypes.FLOAT, allowNull: true },
+    dropoffLng: { type: DataTypes.FLOAT, allowNull: true },
     packageDescription: { type: DataTypes.TEXT, allowNull: false },
     packagePhotos: { type: DataTypes.JSONB, allowNull: true, defaultValue: [] },
     handlingInstructions: { type: DataTypes.STRING, allowNull: true },

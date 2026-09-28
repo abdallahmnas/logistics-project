@@ -1,11 +1,47 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Input, Card, Form, Select, message, Spin, Tag } from 'antd';
-import { ArrowLeftOutlined, EnvironmentOutlined, FlagOutlined, InboxOutlined, CarOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Button, Input, Card, Form, Select, message, Spin, Tag, InputNumber, Divider } from 'antd';
+import {
+  ArrowLeftOutlined,
+  EnvironmentOutlined,
+  FlagOutlined,
+  InboxOutlined,
+  CarOutlined,
+  CheckCircleOutlined,
+  UserOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  CompassOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { submitDelivery, fetchVehicles } from '../../../store/slices/deliverySlice';
 import { fetchPackages, fetchConsolidations } from '../../../store/slices/shipmentSlice';
 import type { DeliveryVehicle } from '../../../types/delivery.types';
+
+// Preset Coordinates for Popular Locations/Hubs in Nigeria
+const PRESET_HUB_COORDINATES = [
+  { label: 'HamzaRMB Ikeja Hub, Lagos', address: 'HamzaRMB Distribution Hub, Ikeja, Lagos', city: 'Lagos', lat: 6.5965, lng: 3.3421 },
+  { label: 'Lekki Phase 1, Lagos', address: 'Admiralty Way, Lekki Phase 1, Lagos', city: 'Lagos', lat: 6.4474, lng: 3.4723 },
+  { label: 'Victoria Island, Lagos', address: 'Ahmadu Bello Way, VI, Lagos', city: 'Lagos', lat: 6.4281, lng: 3.4219 },
+  { label: 'Ikeja City Mall, Alausa', address: 'Obafemi Awolowo Way, Ikeja, Lagos', city: 'Lagos', lat: 6.6190, lng: 3.3582 },
+  { label: 'Kano Central Warehouse', address: 'Baban Gwari Road, Kano', city: 'Kano', lat: 12.0022, lng: 8.5920 },
+  { label: 'Abuja Central Business District', address: 'Herbert Macaulay Way, CBD, Abuja', city: 'Abuja', lat: 9.0579, lng: 7.4951 },
+  { label: 'Port Harcourt Hub', address: 'Aba Road, Port Harcourt', city: 'Port Harcourt', lat: 4.8156, lng: 7.0498 },
+];
+
+function calculateHaversineDistance(lat1?: number, lon1?: number, lat2?: number, lon2?: number): number | null {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const dist = R * c;
+  return Math.max(1, Math.round(dist * 10) / 10);
+}
 
 export const LocalDeliveryForm: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +55,12 @@ export const LocalDeliveryForm: React.FC = () => {
   const [distanceKm, setDistanceKm] = useState<number>(15);
   const [submitting, setSubmitting] = useState(false);
 
+  // Coordinate states
+  const [pickupLat, setPickupLat] = useState<number | undefined>(6.5965);
+  const [pickupLng, setPickupLng] = useState<number | undefined>(3.3421);
+  const [dropoffLat, setDropoffLat] = useState<number | undefined>(6.4474);
+  const [dropoffLng, setDropoffLng] = useState<number | undefined>(3.4723);
+
   useEffect(() => {
     dispatch(fetchPackages());
     dispatch(fetchConsolidations());
@@ -26,10 +68,37 @@ export const LocalDeliveryForm: React.FC = () => {
   }, [dispatch]);
 
   useEffect(() => {
+    if (user) {
+      form.setFieldsValue({
+        customerEmail: user.email,
+        customerPhone: user.phone || '+2348000000000',
+        pickupAddress: 'HamzaRMB Distribution Hub, Ikeja, Lagos',
+        pickupCity: 'Lagos',
+        pickupContactName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Warehouse Admin',
+        pickupPhone: user.phone || '+2348090219021',
+        pickupEmail: user.email || 'hub@logistics.com',
+        pickupLat: 6.5965,
+        pickupLng: 3.3421,
+        dropoffLat: 6.4474,
+        dropoffLng: 3.4723,
+      });
+    }
+  }, [user, form]);
+
+  useEffect(() => {
     if (vehicles.length > 0 && !selectedVehicle) {
       setSelectedVehicle(vehicles[0]);
     }
   }, [vehicles, selectedVehicle]);
+
+  // Recalculate distance when coordinates change
+  const handleCoordinatesChange = (pLat?: number, pLng?: number, dLat?: number, dLng?: number) => {
+    const calc = calculateHaversineDistance(pLat, pLng, dLat, dLng);
+    if (calc !== null) {
+      setDistanceKm(calc);
+      form.setFieldsValue({ distanceKm: calc });
+    }
+  };
 
   const arrivedItems = [
     ...packages.filter(p => ['arrived_destination', 'received_at_wh', 'cleared_customs', 'arrived_lagos', 'ready_for_dispatch'].includes(p.status)).map(p => ({
@@ -58,14 +127,22 @@ export const LocalDeliveryForm: React.FC = () => {
       setSubmitting(true);
       await dispatch(
         submitDelivery({
+          customerEmail: values.customerEmail || user?.email,
+          customerPhone: values.customerPhone || user?.phone,
           pickupAddress: values.pickupAddress || 'HamzaRMB Distribution Hub, Ikeja, Lagos',
-          pickupCity: 'Lagos',
-          pickupPhone: user?.phone || '+2348090219021',
-          pickupContactName: user ? `${user.firstName} ${user.lastName}` : 'Warehouse Admin',
+          pickupCity: values.pickupCity || 'Lagos',
+          pickupPhone: values.pickupPhone || user?.phone || '+2348090219021',
+          pickupContactName: values.pickupContactName || (user ? `${user.firstName} ${user.lastName}` : 'Warehouse Admin'),
+          pickupEmail: values.pickupEmail || user?.email,
+          pickupLat: values.pickupLat != null ? Number(values.pickupLat) : pickupLat,
+          pickupLng: values.pickupLng != null ? Number(values.pickupLng) : pickupLng,
           dropoffAddress: values.dropoffAddress,
           dropoffCity: values.dropoffCity || 'Lagos',
           dropoffPhone: values.dropoffPhone,
           dropoffContactName: values.dropoffContactName,
+          dropoffEmail: values.dropoffEmail,
+          dropoffLat: values.dropoffLat != null ? Number(values.dropoffLat) : dropoffLat,
+          dropoffLng: values.dropoffLng != null ? Number(values.dropoffLng) : dropoffLng,
           packageDescription: values.packageDescription,
           vehicleId: selectedVehicle.id,
           vehicleType: selectedVehicle.name,
@@ -97,46 +174,206 @@ export const LocalDeliveryForm: React.FC = () => {
         />
         <div>
           <h1 className="text-3xl font-extrabold text-[#0A1128] m-0 mb-1 tracking-tight">New Doorstep Delivery Request</h1>
-          <p className="text-slate-500 text-sm m-0">Dynamic doorstep dispatch calculated transparently per kilometer (KM).</p>
+          <p className="text-slate-500 text-sm m-0">Dynamic doorstep dispatch calculated transparently per kilometer (KM) with GPS coordinates.</p>
         </div>
       </div>
 
-      <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false} initialValues={{ dropoffCity: 'Lagos', paymentMethod: 'wallet', distanceKm: 15 }}>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        requiredMark={false}
+        initialValues={{
+          dropoffCity: 'Lagos',
+          pickupCity: 'Lagos',
+          paymentMethod: 'wallet',
+          distanceKm: 15,
+          pickupLat: 6.5965,
+          pickupLng: 3.3421,
+          dropoffLat: 6.4474,
+          dropoffLng: 3.4723,
+        }}
+      >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left Column - Forms */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* Route & Distance */}
+            {/* Customer Information Card */}
             <Card bordered={false} className="shadow-sm border border-slate-100 rounded-xl" bodyStyle={{ padding: '24px' }}>
               <h2 className="text-xl font-bold text-[#0A1128] mb-6 flex items-center gap-2">
-                <EnvironmentOutlined className="text-brand-orange" /> Route & Delivery Distance (KM)
+                <UserOutlined className="text-brand-orange" /> Customer Information
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Form.Item
+                  name="customerEmail"
+                  label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">CUSTOMER EMAIL</span>}
+                  rules={[{ type: 'email', message: 'Please enter a valid email address' }]}
+                >
+                  <Input
+                    size="large"
+                    prefix={<MailOutlined className="text-slate-400 mr-2" />}
+                    placeholder="customer@example.com"
+                    className="bg-slate-50 border-slate-200 rounded-xl"
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="customerPhone"
+                  label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">CUSTOMER PHONE NUMBER</span>}
+                >
+                  <Input
+                    size="large"
+                    prefix={<PhoneOutlined className="text-slate-400 mr-2" />}
+                    placeholder="+234 800 000 0000"
+                    className="bg-slate-50 border-slate-200 rounded-xl"
+                  />
+                </Form.Item>
+              </div>
+            </Card>
+
+            {/* Pickup Location & Coordinates Card */}
+            <Card bordered={false} className="shadow-sm border border-slate-100 rounded-xl" bodyStyle={{ padding: '24px' }}>
+              <h2 className="text-xl font-bold text-[#0A1128] mb-4 flex items-center gap-2">
+                <EnvironmentOutlined className="text-brand-orange" /> Pickup Location & Coordinates
               </h2>
               
               <div className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">PICKUP LOCATION</label>
-                  <Input 
-                    size="large" 
-                    prefix={<EnvironmentOutlined className="text-slate-500 mr-2" />} 
-                    value="HamzaRMB Distribution Hub, Ikeja, Lagos" 
-                    className="bg-slate-50 border-slate-200 text-slate-700 font-medium py-3 rounded-xl" 
-                    readOnly 
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <Form.Item
+                      name="pickupAddress"
+                      label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PICKUP STREET ADDRESS <span className="text-red-500">*</span></span>}
+                      rules={[{ required: true, message: 'Please enter pickup address' }]}
+                    >
+                      <Input 
+                        size="large" 
+                        prefix={<EnvironmentOutlined className="text-slate-500 mr-2" />} 
+                        placeholder="e.g. HamzaRMB Distribution Hub, Ikeja, Lagos"
+                        className="bg-white border-slate-200 py-3 rounded-xl font-medium" 
+                      />
+                    </Form.Item>
+                  </div>
+                  <div className="md:col-span-1">
+                    <Form.Item
+                      name="pickupCity"
+                      label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PICKUP CITY</span>}
+                    >
+                      <Input
+                        size="large"
+                        placeholder="e.g. Lagos"
+                        className="bg-white border-slate-200 py-3 rounded-xl font-medium"
+                      />
+                    </Form.Item>
+                  </div>
                 </div>
-                
+
+                {/* Pickup Contacts */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Form.Item
+                    name="pickupContactName"
+                    label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PICKUP CONTACT NAME</span>}
+                  >
+                    <Input size="large" placeholder="Warehouse Admin" className="bg-slate-50 border-slate-200 rounded-xl" />
+                  </Form.Item>
+                  <Form.Item
+                    name="pickupPhone"
+                    label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PICKUP PHONE</span>}
+                  >
+                    <Input size="large" placeholder="+234 809 000 0000" className="bg-slate-50 border-slate-200 rounded-xl" />
+                  </Form.Item>
+                  <Form.Item
+                    name="pickupEmail"
+                    label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PICKUP EMAIL</span>}
+                  >
+                    <Input size="large" placeholder="pickup@logistics.com" className="bg-slate-50 border-slate-200 rounded-xl" />
+                  </Form.Item>
+                </div>
+
+                {/* Pickup Coordinates */}
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs font-bold text-[#0A1128] uppercase tracking-wider flex items-center gap-2">
+                      <CompassOutlined className="text-brand-orange" /> Pickup GPS Coordinates (Latitude & Longitude)
+                    </span>
+                    <Select
+                      size="small"
+                      placeholder="Quick Hub Selector"
+                      className="w-56"
+                      onChange={(idx) => {
+                        const hub = PRESET_HUB_COORDINATES[idx];
+                        if (hub) {
+                          form.setFieldsValue({
+                            pickupAddress: hub.address,
+                            pickupCity: hub.city,
+                            pickupLat: hub.lat,
+                            pickupLng: hub.lng,
+                          });
+                          setPickupLat(hub.lat);
+                          setPickupLng(hub.lng);
+                          handleCoordinatesChange(hub.lat, hub.lng, dropoffLat, dropoffLng);
+                        }
+                      }}
+                      options={PRESET_HUB_COORDINATES.map((hub, i) => ({ label: hub.label, value: i }))}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Form.Item
+                      name="pickupLat"
+                      className="mb-0"
+                      label={<span className="text-[10px] font-bold text-slate-500 uppercase">LATITUDE (°N)</span>}
+                    >
+                      <InputNumber
+                        step={0.0001}
+                        className="w-full rounded-xl"
+                        placeholder="6.5965"
+                        onChange={(val) => {
+                          const n = val != null ? Number(val) : undefined;
+                          setPickupLat(n);
+                          handleCoordinatesChange(n, pickupLng, dropoffLat, dropoffLng);
+                        }}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name="pickupLng"
+                      className="mb-0"
+                      label={<span className="text-[10px] font-bold text-slate-500 uppercase">LONGITUDE (°E)</span>}
+                    >
+                      <InputNumber
+                        step={0.0001}
+                        className="w-full rounded-xl"
+                        placeholder="3.3421"
+                        onChange={(val) => {
+                          const n = val != null ? Number(val) : undefined;
+                          setPickupLng(n);
+                          handleCoordinatesChange(pickupLat, n, dropoffLat, dropoffLng);
+                        }}
+                      />
+                    </Form.Item>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Destination (Dropoff) Location & Coordinates Card */}
+            <Card bordered={false} className="shadow-sm border border-slate-100 rounded-xl" bodyStyle={{ padding: '24px' }}>
+              <h2 className="text-xl font-bold text-[#0A1128] mb-4 flex items-center gap-2">
+                <FlagOutlined className="text-brand-orange" /> Destination Location & Coordinates
+              </h2>
+              
+              <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="md:col-span-2">
                     <Form.Item 
                       name="dropoffAddress" 
-                      label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">FULL DESTINATION STREET ADDRESS <span className="text-red-500">*</span></span>}
+                      label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">DESTINATION STREET ADDRESS <span className="text-red-500">*</span></span>}
                       rules={[{ required: true, message: 'Please enter delivery destination address' }]}
                     >
                       <Input 
                         size="large" 
                         prefix={<FlagOutlined className="text-brand-orange mr-2" />} 
                         placeholder="e.g. 42 Admiralty Way, Lekki Phase 1, Lagos" 
-                        className="bg-white border-slate-200 py-3 rounded-xl" 
+                        className="bg-white border-slate-200 py-3 rounded-xl font-medium" 
                       />
                     </Form.Item>
                   </div>
@@ -149,7 +386,95 @@ export const LocalDeliveryForm: React.FC = () => {
                       <Input
                         size="large"
                         placeholder="e.g. Lagos, Kano, Abuja"
-                        className="bg-white border-slate-200 py-3 rounded-xl font-bold"
+                        className="bg-white border-slate-200 py-3 rounded-xl font-medium"
+                      />
+                    </Form.Item>
+                  </div>
+                </div>
+
+                {/* Recipient Contacts */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Form.Item 
+                    name="dropoffContactName" 
+                    label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">RECIPIENT NAME <span className="text-red-500">*</span></span>}
+                    rules={[{ required: true, message: 'Please enter recipient name' }]}
+                  >
+                    <Input size="large" placeholder="Recipient Contact Name" className="bg-slate-50 border-slate-200 py-3 rounded-xl" />
+                  </Form.Item>
+                  <Form.Item 
+                    name="dropoffPhone" 
+                    label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">RECIPIENT PHONE <span className="text-red-500">*</span></span>}
+                    rules={[{ required: true, message: 'Please enter recipient phone number' }]}
+                  >
+                    <Input size="large" placeholder="+234 800 000 0000" className="bg-slate-50 border-slate-200 py-3 rounded-xl" />
+                  </Form.Item>
+                  <Form.Item 
+                    name="dropoffEmail" 
+                    label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">RECIPIENT EMAIL (OPTIONAL)</span>}
+                  >
+                    <Input size="large" placeholder="recipient@example.com" className="bg-slate-50 border-slate-200 py-3 rounded-xl" />
+                  </Form.Item>
+                </div>
+
+                {/* Destination Coordinates */}
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs font-bold text-[#0A1128] uppercase tracking-wider flex items-center gap-2">
+                      <CompassOutlined className="text-brand-orange" /> Dropoff GPS Coordinates (Latitude & Longitude)
+                    </span>
+                    <Select
+                      size="small"
+                      placeholder="Quick Preset Selector"
+                      className="w-56"
+                      onChange={(idx) => {
+                        const hub = PRESET_HUB_COORDINATES[idx];
+                        if (hub) {
+                          form.setFieldsValue({
+                            dropoffAddress: hub.address,
+                            dropoffCity: hub.city,
+                            dropoffLat: hub.lat,
+                            dropoffLng: hub.lng,
+                          });
+                          setDropoffLat(hub.lat);
+                          setDropoffLng(hub.lng);
+                          handleCoordinatesChange(pickupLat, pickupLng, hub.lat, hub.lng);
+                        }
+                      }}
+                      options={PRESET_HUB_COORDINATES.map((hub, i) => ({ label: hub.label, value: i }))}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Form.Item
+                      name="dropoffLat"
+                      className="mb-0"
+                      label={<span className="text-[10px] font-bold text-slate-500 uppercase">LATITUDE (°N)</span>}
+                    >
+                      <InputNumber
+                        step={0.0001}
+                        className="w-full rounded-xl"
+                        placeholder="6.4474"
+                        onChange={(val) => {
+                          const n = val != null ? Number(val) : undefined;
+                          setDropoffLat(n);
+                          handleCoordinatesChange(pickupLat, pickupLng, n, dropoffLng);
+                        }}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name="dropoffLng"
+                      className="mb-0"
+                      label={<span className="text-[10px] font-bold text-slate-500 uppercase">LONGITUDE (°E)</span>}
+                    >
+                      <InputNumber
+                        step={0.0001}
+                        className="w-full rounded-xl"
+                        placeholder="3.4723"
+                        onChange={(val) => {
+                          const n = val != null ? Number(val) : undefined;
+                          setDropoffLng(n);
+                          handleCoordinatesChange(pickupLat, pickupLng, dropoffLat, n);
+                        }}
                       />
                     </Form.Item>
                   </div>
@@ -183,20 +508,23 @@ export const LocalDeliveryForm: React.FC = () => {
                     ))}
                   </div>
 
-                  <Input
-                    type="number"
-                    size="large"
-                    suffix="KM"
-                    min={1}
-                    value={distanceKm}
-                    onChange={(e) => {
-                      const val = Math.max(1, Number(e.target.value) || 1);
-                      setDistanceKm(val);
-                      form.setFieldsValue({ distanceKm: val });
-                    }}
-                    className="bg-white border-slate-200 font-bold rounded-xl"
-                  />
+                  <Form.Item name="distanceKm" className="mb-0">
+                    <Input
+                      type="number"
+                      size="large"
+                      suffix="KM"
+                      min={1}
+                      value={distanceKm}
+                      onChange={(e) => {
+                        const val = Math.max(1, Number(e.target.value) || 1);
+                        setDistanceKm(val);
+                        form.setFieldsValue({ distanceKm: val });
+                      }}
+                      className="bg-white border-slate-200 font-bold rounded-xl"
+                    />
+                  </Form.Item>
                 </div>
+
               </div>
             </Card>
 
@@ -268,7 +596,7 @@ export const LocalDeliveryForm: React.FC = () => {
             {/* Package Details */}
             <Card bordered={false} className="shadow-sm border border-slate-100 rounded-xl" bodyStyle={{ padding: '24px' }}>
               <h2 className="text-xl font-bold text-[#0A1128] mb-6 flex items-center gap-2">
-                <InboxOutlined className="text-brand-orange" /> Delivery Items & Recipient Info
+                <InboxOutlined className="text-brand-orange" /> Delivery Items Description
               </h2>
               
               {arrivedItems.length > 0 && (
@@ -297,23 +625,6 @@ export const LocalDeliveryForm: React.FC = () => {
               >
                 <Input size="large" placeholder="e.g. Electronics, Clothing batch, Industrial spare parts" className="bg-slate-50 border-slate-200 py-3 rounded-xl" />
               </Form.Item>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Form.Item 
-                  name="dropoffContactName" 
-                  label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">RECIPIENT NAME <span className="text-red-500">*</span></span>}
-                  rules={[{ required: true, message: 'Please enter recipient name' }]}
-                >
-                  <Input size="large" placeholder="Contact person name" className="bg-slate-50 border-slate-200 py-3 rounded-xl" />
-                </Form.Item>
-                <Form.Item 
-                  name="dropoffPhone" 
-                  label={<span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">RECIPIENT PHONE NUMBER <span className="text-red-500">*</span></span>}
-                  rules={[{ required: true, message: 'Please enter recipient phone number' }]}
-                >
-                  <Input size="large" placeholder="+234 800 000 0000" className="bg-slate-50 border-slate-200 py-3 rounded-xl" />
-                </Form.Item>
-              </div>
             </Card>
 
           </div>
@@ -342,6 +653,20 @@ export const LocalDeliveryForm: React.FC = () => {
                   <span>Distance Fee ({distanceKm} km × ₦{perKmRate}/km)</span>
                   <span className="font-mono font-bold text-brand-orange">₦{distanceFee.toLocaleString()}</span>
                 </div>
+
+                {/* Coordinate Badges in Summary */}
+                {pickupLat != null && pickupLng != null && (
+                  <div className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-200 flex justify-between">
+                    <span>Pickup GPS:</span>
+                    <span className="font-mono font-bold">{pickupLat.toFixed(4)}, {pickupLng.toFixed(4)}</span>
+                  </div>
+                )}
+                {dropoffLat != null && dropoffLng != null && (
+                  <div className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-200 flex justify-between">
+                    <span>Dropoff GPS:</span>
+                    <span className="font-mono font-bold">{dropoffLat.toFixed(4)}, {dropoffLng.toFixed(4)}</span>
+                  </div>
+                )}
                 
                 <div className="pt-3 border-t border-slate-100">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Payment Method</span>

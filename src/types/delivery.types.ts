@@ -32,16 +32,24 @@ export interface LocalDelivery {
   id: string;
   customerId: string;
   customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
   status: DeliveryStatus;
-  // Addresses
+  // Addresses & Coordinates
   pickupAddress: string;
   pickupCity: string;
   pickupPhone: string;
   pickupContactName: string;
+  pickupEmail?: string;
+  pickupLat?: number;
+  pickupLng?: number;
   dropoffAddress: string;
   dropoffCity: string;
   dropoffPhone: string;
   dropoffContactName: string;
+  dropoffEmail?: string;
+  dropoffLat?: number;
+  dropoffLng?: number;
   // Package details
   packageDescription: string;
   packagePhotos?: string[];
@@ -71,14 +79,22 @@ export interface LocalDelivery {
 }
 
 export interface LocalDeliveryPayload {
+  customerEmail?: string;
+  customerPhone?: string;
   pickupAddress: string;
-  pickupCity: string;
-  pickupPhone: string;
-  pickupContactName: string;
+  pickupCity?: string;
+  pickupPhone?: string;
+  pickupContactName?: string;
+  pickupEmail?: string;
+  pickupLat?: number;
+  pickupLng?: number;
   dropoffAddress: string;
-  dropoffCity: string;
+  dropoffCity?: string;
   dropoffPhone: string;
   dropoffContactName: string;
+  dropoffEmail?: string;
+  dropoffLat?: number;
+  dropoffLng?: number;
   packageDescription: string;
   packagePhotos?: string[];
   handlingInstructions?: string;

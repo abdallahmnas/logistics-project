@@ -4,18 +4,38 @@ import { DeliveryVehicleService } from './DeliveryVehicleService';
 import { ActivityLogService } from './ActivityLogService';
 import { NotificationService } from './NotificationService';
 
+export function calculateHaversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+}
+
 export class DeliveryService {
   public static async createDelivery(
     userId: string,
     payload: {
       pickupAddress: string;
-      pickupCity: string;
-      pickupPhone: string;
-      pickupContactName: string;
+      pickupCity?: string;
+      pickupPhone?: string;
+      pickupContactName?: string;
+      pickupEmail?: string;
+      pickupLat?: number;
+      pickupLng?: number;
       dropoffAddress: string;
-      dropoffCity: string;
+      dropoffCity?: string;
       dropoffPhone: string;
       dropoffContactName: string;
+      dropoffEmail?: string;
+      dropoffLat?: number;
+      dropoffLng?: number;
+      customerEmail?: string;
+      customerPhone?: string;
       packageDescription: string;
       vehicleId?: string;
       vehicleType?: string;
@@ -45,7 +65,23 @@ export class DeliveryService {
       throw new Error('No active delivery vehicles available. Please contact support.');
     }
 
-    const distanceKm = Math.max(1, Number(payload.distanceKm) || 10);
+    let calculatedDistance = payload.distanceKm;
+    if (
+      !calculatedDistance &&
+      payload.pickupLat != null &&
+      payload.pickupLng != null &&
+      payload.dropoffLat != null &&
+      payload.dropoffLng != null
+    ) {
+      calculatedDistance = calculateHaversineDistanceKm(
+        Number(payload.pickupLat),
+        Number(payload.pickupLng),
+        Number(payload.dropoffLat),
+        Number(payload.dropoffLng)
+      );
+    }
+
+    const distanceKm = Math.max(1, Number(calculatedDistance) || 10);
     const baseFare = Number(vehicle.baseFare) || 1000;
     const perKmRate = Number(vehicle.perKmRate) || 150;
     const distanceFee = distanceKm * perKmRate;
@@ -74,15 +110,23 @@ export class DeliveryService {
     const delivery = await LocalDelivery.create({
       customerId: user.customerId,
       customerName: `${user.firstName} ${user.lastName}`,
+      customerEmail: payload.customerEmail || user.email,
+      customerPhone: payload.customerPhone || user.phone || undefined,
       status: 'pending',
       pickupAddress: payload.pickupAddress,
-      pickupCity: payload.pickupCity,
-      pickupPhone: payload.pickupPhone,
-      pickupContactName: payload.pickupContactName,
+      pickupCity: payload.pickupCity || 'Lagos',
+      pickupPhone: payload.pickupPhone || user.phone || '',
+      pickupContactName: payload.pickupContactName || `${user.firstName} ${user.lastName}`,
+      pickupEmail: payload.pickupEmail || user.email,
+      pickupLat: payload.pickupLat != null ? Number(payload.pickupLat) : undefined,
+      pickupLng: payload.pickupLng != null ? Number(payload.pickupLng) : undefined,
       dropoffAddress: payload.dropoffAddress,
-      dropoffCity: payload.dropoffCity,
+      dropoffCity: payload.dropoffCity || 'Lagos',
       dropoffPhone: payload.dropoffPhone,
       dropoffContactName: payload.dropoffContactName,
+      dropoffEmail: payload.dropoffEmail || undefined,
+      dropoffLat: payload.dropoffLat != null ? Number(payload.dropoffLat) : undefined,
+      dropoffLng: payload.dropoffLng != null ? Number(payload.dropoffLng) : undefined,
       packageDescription: payload.packageDescription,
       vehicleType: vehicle.type || 'sedan',
       distanceKm,

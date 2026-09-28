@@ -182,8 +182,22 @@ export const LocalDeliveryList: React.FC = () => {
                     </span>
                     <h3 className="text-xl font-extrabold text-[#0A1128] m-0">{item.packageDescription}</h3>
                     <p className="text-xs text-slate-500 m-0 mt-1">
-                      Destination: <strong className="text-slate-800">{item.dropoffCity}</strong> — {item.dropoffAddress} ({item.dropoffContactName}, {item.dropoffPhone})
+                      Destination: <strong className="text-slate-800">{item.dropoffCity}</strong> — {item.dropoffAddress} ({item.dropoffContactName}, {item.dropoffPhone}{item.dropoffEmail ? `, ${item.dropoffEmail}` : ''})
                     </p>
+                    {(item.pickupLat != null || item.dropoffLat != null) && (
+                      <div className="flex gap-3 text-[11px] font-mono text-slate-500 mt-2">
+                        {item.pickupLat != null && (
+                          <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            📍 Pickup GPS: {item.pickupLat}, {item.pickupLng}
+                          </span>
+                        )}
+                        {item.dropoffLat != null && (
+                          <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            🏁 Dropoff GPS: {item.dropoffLat}, {item.dropoffLng}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3">
