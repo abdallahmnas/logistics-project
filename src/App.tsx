@@ -42,6 +42,11 @@ import { WalletPage } from "./pages/customer/wallet/WalletPage";
 import { ProfilePage } from "./pages/customer/profile/ProfilePage";
 import { NotificationsPage } from "./pages/customer/notifications/NotificationsPage";
 import { AishaChatPage } from "./pages/customer/AishaChatPage";
+import { CustomsClearanceHome } from "./pages/customer/clearance/CustomsClearanceHome";
+import { NewClearanceRequestForm } from "./pages/customer/clearance/NewClearanceRequestForm";
+import { MyClearanceRequestsPage } from "./pages/customer/clearance/MyClearanceRequestsPage";
+import { ClearanceDetailTrackerPage } from "./pages/customer/clearance/ClearanceDetailTrackerPage";
+import { ClearanceConfirmationPage } from "./pages/customer/clearance/ClearanceConfirmationPage";
 
 import { InboundPackages } from "./pages/admin/warehouse/InboundPackages";
 import { PackageScanPage } from "./pages/admin/warehouse/PackageScanPage";
@@ -138,6 +143,11 @@ function App() {
             <Route path="profile" element={<ProfilePage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="aisha" element={<AishaChatPage />} />
+            <Route path="customs-clearance" element={<CustomsClearanceHome />} />
+            <Route path="customs-clearance/new" element={<NewClearanceRequestForm />} />
+            <Route path="customs-clearance/my-requests" element={<MyClearanceRequestsPage />} />
+            <Route path="customs-clearance/requests/:id" element={<ClearanceDetailTrackerPage />} />
+            <Route path="customs-clearance/requests/:id/confirmation" element={<ClearanceConfirmationPage />} />
           </Route>
 
           {/* Admin Dashboard Routes */}

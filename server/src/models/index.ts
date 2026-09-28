@@ -21,6 +21,12 @@ import { SystemSettings } from './SystemSettings';
 import { WalletDeposit } from './WalletDeposit';
 import { DeliveryVehicle } from './DeliveryVehicle';
 import { Banner } from './Banner';
+import { ClearanceRequest } from './ClearanceRequest';
+import { ClearanceItem } from './ClearanceItem';
+import { ClearanceDocument } from './ClearanceDocument';
+import { ClearanceCharge } from './ClearanceCharge';
+import { ClearanceMessage } from './ClearanceMessage';
+import { ClearanceStatusHistory } from './ClearanceStatusHistory';
 
 // Define Relationships
 User.hasOne(Wallet, { foreignKey: 'userId', as: 'wallet' });
@@ -40,6 +46,25 @@ User.belongsTo(PermissionGroup, { foreignKey: 'permissionGroupId', as: 'permissi
 
 PermissionGroup.hasMany(Permission, { foreignKey: 'permissionGroupId', as: 'permissionRules' });
 Permission.belongsTo(PermissionGroup, { foreignKey: 'permissionGroupId', as: 'group' });
+
+// Clearance Relationships
+User.hasMany(ClearanceRequest, { foreignKey: 'customerId', as: 'clearanceRequests' });
+ClearanceRequest.belongsTo(User, { foreignKey: 'customerId', as: 'customer' });
+
+ClearanceRequest.hasMany(ClearanceItem, { foreignKey: 'clearanceRequestId', as: 'items' });
+ClearanceItem.belongsTo(ClearanceRequest, { foreignKey: 'clearanceRequestId', as: 'clearanceRequest' });
+
+ClearanceRequest.hasMany(ClearanceDocument, { foreignKey: 'clearanceRequestId', as: 'documents' });
+ClearanceDocument.belongsTo(ClearanceRequest, { foreignKey: 'clearanceRequestId', as: 'clearanceRequest' });
+
+ClearanceRequest.hasMany(ClearanceCharge, { foreignKey: 'clearanceRequestId', as: 'charges' });
+ClearanceCharge.belongsTo(ClearanceRequest, { foreignKey: 'clearanceRequestId', as: 'clearanceRequest' });
+
+ClearanceRequest.hasMany(ClearanceMessage, { foreignKey: 'clearanceRequestId', as: 'messages' });
+ClearanceMessage.belongsTo(ClearanceRequest, { foreignKey: 'clearanceRequestId', as: 'clearanceRequest' });
+
+ClearanceRequest.hasMany(ClearanceStatusHistory, { foreignKey: 'clearanceRequestId', as: 'history' });
+ClearanceStatusHistory.belongsTo(ClearanceRequest, { foreignKey: 'clearanceRequestId', as: 'clearanceRequest' });
 
 export {
   sequelize,
@@ -65,4 +90,10 @@ export {
   WalletDeposit,
   DeliveryVehicle,
   Banner,
+  ClearanceRequest,
+  ClearanceItem,
+  ClearanceDocument,
+  ClearanceCharge,
+  ClearanceMessage,
+  ClearanceStatusHistory,
 };

@@ -135,6 +135,26 @@ export const ServicesPage: React.FC = () => {
       ctaText: 'Request Local Dispatch',
       ctaLink: '/customer/local-delivery',
     },
+    {
+      id: 'customs-clearance',
+      icon: <SafetyCertificateOutlined />,
+      iconBg: 'bg-teal-50 text-teal-600',
+      title: '🛃 Nigerian Customs Clearance Assistance',
+      badge: 'SEA & AIR CLEARANCE',
+      badgeColor: 'bg-teal-600',
+      tagline: 'Expert clearance handling for commercial sea containers, LCL cargo & air freight.',
+      description:
+        'Imported goods arriving at Lagos ports (Apapa, Tin Can, Lekki) or Airports (MMIA, NAIA)? Submit your shipment details and documents. Our clearance service handles customs assessment, documentation review, and port release on your behalf.',
+      features: [
+        'Full clearance support for Sea, Air & Land freight',
+        'Port handling at Apapa, Tin Can, Lekki & Lagos Airports',
+        'Assistance even if Form M or PAAR documents are pending',
+        'Live request progress tracking & transparent duty quote breakdown',
+        'Direct delivery dispatch upon customs release',
+      ],
+      ctaText: 'Request Customs Clearance',
+      ctaLink: '/customer/customs-clearance',
+    },
   ];
 
   return (

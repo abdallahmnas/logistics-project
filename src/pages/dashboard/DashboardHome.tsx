@@ -200,6 +200,17 @@ export const DashboardHome: React.FC = () => {
               <p className="text-slate-500 text-[10px] m-0">China sourcing</p>
             </div>
           </Link>
+
+          {/* 6. Customs Clearance */}
+          <Link to="/customer/customs-clearance" className="no-underline col-span-2 sm:col-span-1">
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-brand-orange/40 transition-all text-center group cursor-pointer h-full flex flex-col items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center text-xl mb-2 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                🛃
+              </div>
+              <h3 className="font-extrabold text-[#0A1128] text-xs m-0 mb-0.5">Customs Clearance</h3>
+              <p className="text-slate-500 text-[10px] m-0">Port &amp; airport clearance</p>
+            </div>
+          </Link>
         </div>
       </div>
 

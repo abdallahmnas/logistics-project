@@ -2038,7 +2038,72 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
         },
       },
 
-      // ─── SYSTEM METADATA & OPTIONS ───────────────────────────────────────
+      // ─── CUSTOMS CLEARANCE ──────────────────────────────────────────────
+      '/clearance/requests': {
+        get: {
+          tags: ['Customs Clearance'],
+          summary: 'List customer customs clearance requests',
+          parameters: [
+            { name: 'status', in: 'query', schema: { type: 'string' }, example: 'ACTIVE' },
+          ],
+          responses: { 200: { description: 'List of customer clearance requests' } },
+        },
+        post: {
+          tags: ['Customs Clearance'],
+          summary: 'Submit or save draft customs clearance request',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['shipmentType', 'portOfEntry', 'items'],
+                  properties: {
+                    shipmentType: { type: 'string', enum: ['sea', 'air', 'land'], example: 'sea' },
+                    originCountry: { type: 'string', example: 'China' },
+                    portOfEntry: { type: 'string', example: 'Apapa Port' },
+                    shipmentStatus: { type: 'string', example: 'in_transit' },
+                    billOfLadingNumber: { type: 'string', example: 'MSK90812374' },
+                    containerNumber: { type: 'string', example: 'MSKU8819234' },
+                    isDraft: { type: 'boolean', example: false },
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          productName: { type: 'string', example: "Men's Leather Shoes" },
+                          quantity: { type: 'number', example: 100 },
+                          unit: { type: 'string', example: 'pairs' },
+                          value: { type: 'number', example: 2500 },
+                        },
+                      },
+                    },
+                    deliveryPreference: { type: 'string', enum: ['deliver_to_me', 'self_pickup'], example: 'deliver_to_me' },
+                    deliveryAddress: { type: 'string', example: '12 Commercial Avenue, Ikeja, Lagos' },
+                  },
+                },
+              },
+            },
+          },
+          responses: { 201: { description: 'Clearance request created' } },
+        },
+      },
+      '/clearance/requests/{id}': {
+        get: {
+          tags: ['Customs Clearance'],
+          summary: 'Get single clearance request details with items, docs, charges, and thread',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Clearance request detail object' } },
+        },
+      },
+      '/clearance/requests/{id}/pay': {
+        post: {
+          tags: ['Customs Clearance'],
+          summary: 'Pay pending clearance charges using customer wallet',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Charges paid successfully via wallet' } },
+        },
+      },
       '/meta/options': {
         get: {
           tags: ['System Metadata & Options'],

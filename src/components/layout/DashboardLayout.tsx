@@ -18,6 +18,7 @@ import {
   EnvironmentOutlined,
   CustomerServiceOutlined,
   RobotOutlined,
+  SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import { Logo } from "../common/Logo";
 import { SidebarNav, type SidebarNavSection } from "./SidebarNav";
@@ -63,6 +64,12 @@ export const DashboardLayout: React.FC = () => {
       title: "Navigation",
       items: [
         { key: "/customer", icon: <AppstoreOutlined />, label: "Overview" },
+        {
+          key: "/customer/customs-clearance",
+          icon: <SafetyCertificateOutlined />,
+          label: "Customs Clearance",
+          badge: unreadByCategory["clearance"],
+        },
         {
           key: "/customer/shipments",
           icon: <InboxOutlined />,

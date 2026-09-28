@@ -41,3 +41,7 @@ export async function uploadSingleFile(
     throw new Error(error?.response?.data?.message || 'File upload failed');
   }
 }
+
+export const uploadService = {
+  uploadFile: uploadSingleFile,
+};
