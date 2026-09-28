@@ -11,7 +11,7 @@ import {
   EnvironmentOutlined,
 } from '@ant-design/icons';
 import { clearanceService } from '../../../services/clearanceService';
-import { ClearanceRequest, STATUS_DESCRIPTIONS } from '../../../types/clearance';
+import { STATUS_DESCRIPTIONS, type ClearanceRequest } from '../../../types/clearance';
 import { formatDate } from '../../../utils/formatters';
 
 export const ClearanceConfirmationPage: React.FC = () => {

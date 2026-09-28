@@ -1,5 +1,5 @@
 import apiClient from '../api/axios';
-import { ClearanceRequest, ClearanceDocument, ClearanceMessage } from '../types/clearance';
+import type { ClearanceRequest, ClearanceDocument, ClearanceMessage } from '../types/clearance';
 
 export const clearanceService = {
   /**

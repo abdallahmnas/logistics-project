@@ -33,9 +33,9 @@ import {
 import { clearanceService } from '../../../services/clearanceService';
 import { uploadService } from '../../../services/uploadService';
 import {
-  ClearanceRequest,
-  ClearanceStatus,
   STATUS_DESCRIPTIONS,
+  type ClearanceRequest,
+  type ClearanceStatus,
 } from '../../../types/clearance';
 import { formatDate } from '../../../utils/formatters';
 import { useAppSelector } from '../../../store/hooks';
