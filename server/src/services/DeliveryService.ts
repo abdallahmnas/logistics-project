@@ -37,6 +37,8 @@ export class DeliveryService {
       customerEmail?: string;
       customerPhone?: string;
       packageDescription: string;
+      packagePhotos?: string[];
+      imageUrls?: string[];
       vehicleId?: string;
       vehicleType?: string;
       distanceKm?: number;
@@ -128,6 +130,8 @@ export class DeliveryService {
       dropoffLat: payload.dropoffLat != null ? Number(payload.dropoffLat) : undefined,
       dropoffLng: payload.dropoffLng != null ? Number(payload.dropoffLng) : undefined,
       packageDescription: payload.packageDescription,
+      packagePhotos: payload.imageUrls || payload.packagePhotos || [],
+      imageUrls: payload.imageUrls || payload.packagePhotos || [],
       vehicleType: vehicle.type || 'sedan',
       distanceKm,
       baseFare,

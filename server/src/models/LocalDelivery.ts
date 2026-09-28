@@ -24,6 +24,7 @@ export interface LocalDeliveryAttributes {
   dropoffLng?: number;
   packageDescription: string;
   packagePhotos?: string[];
+  imageUrls?: string[];
   handlingInstructions?: string;
   estimatedWeightKg?: number;
   vehicleType: 'motorbike' | 'sedan' | 'box_truck';
@@ -70,6 +71,7 @@ export class LocalDelivery extends Model<LocalDeliveryAttributes, LocalDeliveryC
   public declare dropoffLng?: number;
   public declare packageDescription: string;
   public declare packagePhotos?: string[];
+  public declare imageUrls?: string[];
   public declare handlingInstructions?: string;
   public declare estimatedWeightKg?: number;
   public declare vehicleType: 'motorbike' | 'sedan' | 'box_truck';
@@ -134,6 +136,7 @@ LocalDelivery.init(
     dropoffLng: { type: DataTypes.FLOAT, allowNull: true },
     packageDescription: { type: DataTypes.TEXT, allowNull: false },
     packagePhotos: { type: DataTypes.JSONB, allowNull: true, defaultValue: [] },
+    imageUrls: { type: DataTypes.JSONB, allowNull: true, defaultValue: [] },
     handlingInstructions: { type: DataTypes.STRING, allowNull: true },
     estimatedWeightKg: { type: DataTypes.FLOAT, allowNull: true },
     vehicleType: {

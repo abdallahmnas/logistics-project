@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Input, Card, Form, Select, message, Spin, Tag, InputNumber } from 'antd';
+import { Button, Input, Card, Form, Select, message, Spin, Tag, InputNumber, Upload } from 'antd';
+import type { UploadFile } from 'antd';
 import {
   ArrowLeftOutlined,
   EnvironmentOutlined,
@@ -11,6 +12,8 @@ import {
   MailOutlined,
   PhoneOutlined,
   CompassOutlined,
+  CloudUploadOutlined,
+  PictureOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
@@ -18,6 +21,7 @@ import { submitDelivery, fetchVehicles } from '../../../store/slices/deliverySli
 import { fetchPackages, fetchConsolidations } from '../../../store/slices/shipmentSlice';
 import type { DeliveryVehicle } from '../../../types/delivery.types';
 import { LeafletCoordinatePicker } from '../../../components/delivery/LeafletCoordinatePicker';
+import apiClient from '../../../api/axios';
 
 // Preset Coordinates for Popular Locations/Hubs in Nigeria
 const PRESET_HUB_COORDINATES = [
@@ -61,6 +65,10 @@ export const LocalDeliveryForm: React.FC = () => {
   const [pickupLng, setPickupLng] = useState<number | undefined>(3.3421);
   const [dropoffLat, setDropoffLat] = useState<number | undefined>(6.4474);
   const [dropoffLng, setDropoffLng] = useState<number | undefined>(3.4723);
+
+  // Multiple package images state
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     dispatch(fetchPackages());
@@ -122,6 +130,27 @@ export const LocalDeliveryForm: React.FC = () => {
     handleCoordinatesChange(pickupLat, pickupLng, lat, lng);
   };
 
+  // Cloudinary image upload handler for multiple images
+  const handleCustomUpload = async ({ file, onSuccess, onError }: any) => {
+    try {
+      setUploadingImage(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'local_deliveries');
+      const res = await apiClient.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = res.data.url;
+      onSuccess(url);
+      message.success(`${file.name} uploaded successfully!`);
+    } catch (err: any) {
+      onError(err);
+      message.error(`Failed to upload ${file.name}`);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const arrivedItems = [
     ...packages.filter(p => ['arrived_destination', 'received_at_wh', 'cleared_customs', 'arrived_lagos', 'ready_for_dispatch'].includes(p.status)).map(p => ({
       label: `Package: ${p.trackingId} - ${p.description || 'Imported Goods'} (${p.weightKg || 1}kg)`,
@@ -145,6 +174,12 @@ export const LocalDeliveryForm: React.FC = () => {
       message.error('Please select a dispatch vehicle.');
       return;
     }
+
+    // Extract uploaded image URLs
+    const imageUrls: string[] = fileList
+      .map((f) => (f.response ? (typeof f.response === 'string' ? f.response : f.response.url) : f.url))
+      .filter(Boolean);
+
     try {
       setSubmitting(true);
       await dispatch(
@@ -166,6 +201,8 @@ export const LocalDeliveryForm: React.FC = () => {
           dropoffLat: values.dropoffLat != null ? Number(values.dropoffLat) : dropoffLat,
           dropoffLng: values.dropoffLng != null ? Number(values.dropoffLng) : dropoffLng,
           packageDescription: values.packageDescription,
+          imageUrls,
+          packagePhotos: imageUrls,
           vehicleId: selectedVehicle.id,
           vehicleType: selectedVehicle.name,
           distanceKm,
@@ -628,10 +665,10 @@ export const LocalDeliveryForm: React.FC = () => {
               )}
             </Card>
 
-            {/* Package Details */}
+            {/* Package Details & Image Attachments */}
             <Card bordered={false} className="shadow-sm border border-slate-100 rounded-xl" bodyStyle={{ padding: '24px' }}>
               <h2 className="text-xl font-bold text-[#0A1128] mb-6 flex items-center gap-2">
-                <InboxOutlined className="text-brand-orange" /> Delivery Items Description
+                <InboxOutlined className="text-brand-orange" /> Delivery Items & Photos
               </h2>
               
               {arrivedItems.length > 0 && (
@@ -660,6 +697,33 @@ export const LocalDeliveryForm: React.FC = () => {
               >
                 <Input size="large" placeholder="e.g. Electronics, Clothing batch, Industrial spare parts" className="bg-slate-50 border-slate-200 py-3 rounded-xl" />
               </Form.Item>
+
+              {/* Multiple Image Upload Component */}
+              <div className="pt-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  PACKAGE/ITEM PHOTOS (`imageUrl[]`)
+                </label>
+                <Upload
+                  listType="picture-card"
+                  fileList={fileList}
+                  customRequest={handleCustomUpload}
+                  onChange={({ fileList: newFileList }) => setFileList(newFileList)}
+                  onPreview={(file) => {
+                    const src = file.url || (file.response as string);
+                    if (src) window.open(src, '_blank');
+                  }}
+                  accept="image/*"
+                  multiple
+                >
+                  <div>
+                    <CloudUploadOutlined className="text-2xl text-brand-orange mb-1" />
+                    <div className="text-xs font-bold text-slate-700">Upload Image</div>
+                  </div>
+                </Upload>
+                <p className="text-[11px] text-slate-400 m-0 mt-1">
+                  Upload multiple photos of the items to be dispatched (JPEG, PNG).
+                </p>
+              </div>
             </Card>
 
           </div>
@@ -702,6 +766,12 @@ export const LocalDeliveryForm: React.FC = () => {
                     <span className="font-mono font-bold">{dropoffLat.toFixed(4)}, {dropoffLng.toFixed(4)}</span>
                   </div>
                 )}
+                {fileList.length > 0 && (
+                  <div className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-200 flex justify-between">
+                    <span>Photos Attached:</span>
+                    <span className="font-bold text-brand-orange">{fileList.length} Image(s)</span>
+                  </div>
+                )}
                 
                 <div className="pt-3 border-t border-slate-100">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Payment Method</span>
@@ -724,7 +794,7 @@ export const LocalDeliveryForm: React.FC = () => {
                 <Button 
                   type="primary" 
                   htmlType="submit" 
-                  loading={submitting} 
+                  loading={submitting || uploadingImage} 
                   size="large" 
                   block 
                   className="bg-brand-orange hover:bg-[#E86E21] border-none font-bold shadow-md h-12 text-base rounded-xl"

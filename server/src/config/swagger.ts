@@ -1501,6 +1501,11 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
                     customerEmail: { type: 'string', example: 'customer@example.com' },
                     customerPhone: { type: 'string', example: '+2348012345678' },
                     packageDescription: { type: 'string', example: 'Electronics & Spare Parts' },
+                    imageUrls: {
+                      type: 'array',
+                      items: { type: 'string' },
+                      example: ['https://example.com/item1.jpg', 'https://example.com/item2.jpg'],
+                    },
                     vehicleId: { type: 'string', example: 'veh-001' },
                     vehicleType: { type: 'string', example: 'motorbike' },
                     distanceKm: { type: 'number', example: 15 },

@@ -198,6 +198,19 @@ export const LocalDeliveryList: React.FC = () => {
                         )}
                       </div>
                     )}
+                    {((item.imageUrls && item.imageUrls.length > 0) || (item.packagePhotos && item.packagePhotos.length > 0)) && (
+                      <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                        {(item.imageUrls || item.packagePhotos || []).map((imgUrl, i) => (
+                          <img
+                            key={i}
+                            src={imgUrl}
+                            alt={`Item Photo ${i + 1}`}
+                            className="w-14 h-14 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80 transition"
+                            onClick={() => window.open(imgUrl, '_blank')}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3">

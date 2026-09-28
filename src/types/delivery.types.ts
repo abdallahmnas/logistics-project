@@ -53,6 +53,7 @@ export interface LocalDelivery {
   // Package details
   packageDescription: string;
   packagePhotos?: string[];
+  imageUrls?: string[];
   handlingInstructions?: string;
   estimatedWeightKg?: number;
   // Logistics
@@ -97,6 +98,7 @@ export interface LocalDeliveryPayload {
   dropoffLng?: number;
   packageDescription: string;
   packagePhotos?: string[];
+  imageUrls?: string[];
   handlingInstructions?: string;
   estimatedWeightKg?: number;
   vehicleId?: string;
