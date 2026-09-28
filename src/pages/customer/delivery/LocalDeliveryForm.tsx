@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Input, Card, Form, Select, message, Spin, Tag, InputNumber, Divider } from 'antd';
+import { Button, Input, Card, Form, Select, message, Spin, Tag, InputNumber } from 'antd';
 import {
   ArrowLeftOutlined,
   EnvironmentOutlined,
@@ -17,6 +17,7 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { submitDelivery, fetchVehicles } from '../../../store/slices/deliverySlice';
 import { fetchPackages, fetchConsolidations } from '../../../store/slices/shipmentSlice';
 import type { DeliveryVehicle } from '../../../types/delivery.types';
+import { LeafletCoordinatePicker } from '../../../components/delivery/LeafletCoordinatePicker';
 
 // Preset Coordinates for Popular Locations/Hubs in Nigeria
 const PRESET_HUB_COORDINATES = [
@@ -100,6 +101,27 @@ export const LocalDeliveryForm: React.FC = () => {
     }
   };
 
+  // Map Picker callbacks
+  const handleMapChangePickup = (lat: number, lng: number, address?: string, city?: string) => {
+    setPickupLat(lat);
+    setPickupLng(lng);
+    const updates: any = { pickupLat: lat, pickupLng: lng };
+    if (address) updates.pickupAddress = address;
+    if (city) updates.pickupCity = city;
+    form.setFieldsValue(updates);
+    handleCoordinatesChange(lat, lng, dropoffLat, dropoffLng);
+  };
+
+  const handleMapChangeDropoff = (lat: number, lng: number, address?: string, city?: string) => {
+    setDropoffLat(lat);
+    setDropoffLng(lng);
+    const updates: any = { dropoffLat: lat, dropoffLng: lng };
+    if (address) updates.dropoffAddress = address;
+    if (city) updates.dropoffCity = city;
+    form.setFieldsValue(updates);
+    handleCoordinatesChange(pickupLat, pickupLng, lat, lng);
+  };
+
   const arrivedItems = [
     ...packages.filter(p => ['arrived_destination', 'received_at_wh', 'cleared_customs', 'arrived_lagos', 'ready_for_dispatch'].includes(p.status)).map(p => ({
       label: `Package: ${p.trackingId} - ${p.description || 'Imported Goods'} (${p.weightKg || 1}kg)`,
@@ -174,7 +196,7 @@ export const LocalDeliveryForm: React.FC = () => {
         />
         <div>
           <h1 className="text-3xl font-extrabold text-[#0A1128] m-0 mb-1 tracking-tight">New Doorstep Delivery Request</h1>
-          <p className="text-slate-500 text-sm m-0">Dynamic doorstep dispatch calculated transparently per kilometer (KM) with GPS coordinates.</p>
+          <p className="text-slate-500 text-sm m-0">Dynamic doorstep dispatch calculated transparently per kilometer (KM) with interactive Leaflet GPS Map.</p>
         </div>
       </div>
 
@@ -231,10 +253,23 @@ export const LocalDeliveryForm: React.FC = () => {
               </div>
             </Card>
 
+            {/* Interactive Leaflet Map Picker Component */}
+            <div>
+              <LeafletCoordinatePicker
+                pickupLat={pickupLat}
+                pickupLng={pickupLng}
+                dropoffLat={dropoffLat}
+                dropoffLng={dropoffLng}
+                onChangePickup={handleMapChangePickup}
+                onChangeDropoff={handleMapChangeDropoff}
+                distanceKm={distanceKm}
+              />
+            </div>
+
             {/* Pickup Location & Coordinates Card */}
             <Card bordered={false} className="shadow-sm border border-slate-100 rounded-xl" bodyStyle={{ padding: '24px' }}>
               <h2 className="text-xl font-bold text-[#0A1128] mb-4 flex items-center gap-2">
-                <EnvironmentOutlined className="text-brand-orange" /> Pickup Location & Coordinates
+                <EnvironmentOutlined className="text-brand-orange" /> Pickup Location Details & GPS
               </h2>
               
               <div className="space-y-4">
@@ -289,7 +324,7 @@ export const LocalDeliveryForm: React.FC = () => {
                   </Form.Item>
                 </div>
 
-                {/* Pickup Coordinates */}
+                {/* Pickup Coordinates Numeric Inputs */}
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-xs font-bold text-[#0A1128] uppercase tracking-wider flex items-center gap-2">
@@ -358,7 +393,7 @@ export const LocalDeliveryForm: React.FC = () => {
             {/* Destination (Dropoff) Location & Coordinates Card */}
             <Card bordered={false} className="shadow-sm border border-slate-100 rounded-xl" bodyStyle={{ padding: '24px' }}>
               <h2 className="text-xl font-bold text-[#0A1128] mb-4 flex items-center gap-2">
-                <FlagOutlined className="text-brand-orange" /> Destination Location & Coordinates
+                <FlagOutlined className="text-brand-orange" /> Destination Location Details & GPS
               </h2>
               
               <div className="space-y-4">
@@ -416,7 +451,7 @@ export const LocalDeliveryForm: React.FC = () => {
                   </Form.Item>
                 </div>
 
-                {/* Destination Coordinates */}
+                {/* Destination Coordinates Numeric Inputs */}
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-xs font-bold text-[#0A1128] uppercase tracking-wider flex items-center gap-2">
