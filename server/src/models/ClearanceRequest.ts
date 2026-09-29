@@ -1,6 +1,8 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/database';
 
+// clearance
+
 export type ClearanceStatus =
   | 'DRAFT'
   | 'SUBMITTED'
