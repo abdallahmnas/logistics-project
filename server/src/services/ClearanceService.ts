@@ -70,37 +70,37 @@ export class ClearanceService {
     // Format items
     const items = Array.isArray(reqObj.items)
       ? reqObj.items.map((it: any) => ({
-          id: it.id,
-          clearanceRequestId: it.clearanceRequestId || reqObj.id,
-          productName: it.productName || 'Imported Goods',
-          description: it.description || '',
-          category: it.category || 'General Cargo',
-          quantity: Number(it.quantity) || 1,
-          unit: it.unit || 'pieces',
-          purchaseValue: Number(it.purchaseValue ?? it.value ?? 0),
-          currency: it.currency || 'USD',
-          countryOfManufacture: it.countryOfManufacture || 'China',
-          weight: it.weight != null ? Number(it.weight) : null,
-          volume: it.volume != null ? Number(it.volume) : null,
-          hsCode: it.hsCode || null,
-        }))
+        id: it.id,
+        clearanceRequestId: it.clearanceRequestId || reqObj.id,
+        productName: it.productName || 'Imported Goods',
+        description: it.description || '',
+        category: it.category || 'General Cargo',
+        quantity: Number(it.quantity) || 1,
+        unit: it.unit || 'pieces',
+        purchaseValue: Number(it.purchaseValue ?? it.value ?? 0),
+        currency: it.currency || 'USD',
+        countryOfManufacture: it.countryOfManufacture || 'China',
+        weight: it.weight != null ? Number(it.weight) : null,
+        volume: it.volume != null ? Number(it.volume) : null,
+        hsCode: it.hsCode || null,
+      }))
       : [];
 
     // Format documents
     const documents = Array.isArray(reqObj.documents)
       ? reqObj.documents.map((doc: any) => ({
-          id: doc.id,
-          clearanceRequestId: doc.clearanceRequestId || reqObj.id,
-          documentType: doc.documentType || 'Other Document',
-          fileName: doc.fileName || '',
-          fileUrl: doc.fileUrl || '',
-          status: doc.status || (doc.isNotAvailable ? 'Not Available' : 'Uploaded'),
-          uploadedAt: (doc.uploadedAt || doc.createdAt || new Date()).toISOString
-            ? (doc.uploadedAt || doc.createdAt).toISOString()
-            : doc.uploadedAt || doc.createdAt,
-          isNotAvailable: Boolean(doc.isNotAvailable ?? doc.isMissingNoted ?? false),
-          note: doc.note || doc.notes || null,
-        }))
+        id: doc.id,
+        clearanceRequestId: doc.clearanceRequestId || reqObj.id,
+        documentType: doc.documentType || 'Other Document',
+        fileName: doc.fileName || '',
+        fileUrl: doc.fileUrl || '',
+        status: doc.status || (doc.isNotAvailable ? 'Not Available' : 'Uploaded'),
+        uploadedAt: (doc.uploadedAt || doc.createdAt || new Date()).toISOString
+          ? (doc.uploadedAt || doc.createdAt).toISOString()
+          : doc.uploadedAt || doc.createdAt,
+        isNotAvailable: Boolean(doc.isNotAvailable ?? doc.isMissingNoted ?? false),
+        note: doc.note || doc.notes || null,
+      }))
       : [];
 
     const hasMissing = Boolean(reqObj.hasMissingShipmentInfo ?? reqObj.noShippingInfoProvided ?? false);
@@ -153,7 +153,7 @@ export class ClearanceService {
 
   /**
    * Create a new Customs Clearance Request (Draft or Submitted)
-   */
+  */
   public static async createClearanceRequest(customerId: string, payload: any) {
     const user = await User.findByPk(customerId);
     if (!user) throw new Error('Customer account not found');
@@ -387,11 +387,10 @@ export class ClearanceService {
             clearanceRequestId: clearanceRequest.id,
             senderName: 'System Bot',
             senderRole: 'system',
-            message: `Your clearance request ${requestNumber} was submitted successfully.${
-              clearanceFee > 0
+            message: `Your clearance request ${requestNumber} was submitted successfully.${clearanceFee > 0
                 ? ` The clearance fee of ₦${clearanceFee.toLocaleString()} has been debited from your wallet.`
                 : ''
-            } Our customs documentation team will review your uploaded files and provide updates here.`,
+              } Our customs documentation team will review your uploaded files and provide updates here.`,
             isSystemMessage: true,
           },
           { transaction }
