@@ -42,6 +42,9 @@ export interface SystemSettingsAttributes {
   walletFundingFeePercent: number;
   walletWithdrawalFlatFee: number;
 
+  // Customs Clearance Request Fee
+  customsClearanceFee: number;
+
   // Custom Shipping Corridors & Ports JSON
   customRoutes?: string;
 
@@ -86,6 +89,7 @@ export class SystemSettings extends Model<SystemSettingsAttributes, SystemSettin
   public declare deliveryTruckPerKm: number;
   public declare walletFundingFeePercent: number;
   public declare walletWithdrawalFlatFee: number;
+  public declare customsClearanceFee: number;
   public declare customRoutes?: string;
   public declare companyName?: string;
   public declare chinaAirCargoAddressCn?: string;
@@ -203,6 +207,10 @@ SystemSettings.init(
     walletWithdrawalFlatFee: {
       type: DataTypes.FLOAT,
       defaultValue: 500,
+    },
+    customsClearanceFee: {
+      type: DataTypes.FLOAT,
+      defaultValue: 35000,
     },
     customRoutes: {
       type: DataTypes.TEXT,

@@ -209,6 +209,7 @@ npx @openapitools/openapi-generator-cli generate -i http://localhost:5000/api/v1
             minSeaFreightCbm: { type: 'number', example: 0.1 },
             buyForMeFeePercent: { type: 'number', example: 5.0 },
             buyForMeFixedFee: { type: 'number', example: 1000 },
+            customsClearanceFee: { type: 'number', example: 35000 },
             ngnEscrowBankName: { type: 'string', example: 'GTBank' },
             ngnEscrowAccountNo: { type: 'string', example: '0123456789' },
             ngnEscrowAccountName: { type: 'string', example: 'Hamza RMB Trading Escrow Ltd' },

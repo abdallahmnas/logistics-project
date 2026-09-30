@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Input, InputNumber, Button, message, Spin, Divider } from 'antd';
-import { SaveOutlined, SwapOutlined, WalletOutlined, ShoppingCartOutlined, BankOutlined, CarOutlined, RocketOutlined } from '@ant-design/icons';
+import { SaveOutlined, SwapOutlined, WalletOutlined, ShoppingCartOutlined, BankOutlined, CarOutlined, RocketOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchSettings, updateSettings, type SystemSettings } from '../../../store/slices/settingsSlice';
 
@@ -362,6 +362,39 @@ export const FinancialRatesConfig: React.FC = () => {
                   className="w-full font-bold"
                 />
               </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* SECTION 6: CUSTOMS CLEARANCE REQUEST FEE */}
+        <Card bordered={false} className="shadow-sm border border-slate-200 rounded-2xl bg-white lg:col-span-2" bodyStyle={{ padding: '24px' }}>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center text-xl">
+              <SafetyCertificateOutlined />
+            </div>
+            <div>
+              <h2 className="text-lg font-extrabold text-[#0A1128] m-0">6. Customs Clearance Request & Submission Fee</h2>
+              <p className="text-xs text-slate-500 m-0">Configure the fixed processing fee debited automatically from customer wallet when requesting customs clearance</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Clearance Request Fee (₦)</label>
+              <InputNumber
+                value={formData.customsClearanceFee}
+                onChange={(v) => handleChange('customsClearanceFee', v)}
+                prefix="₦"
+                size="large"
+                className="w-full font-extrabold text-xl text-[#0A1128]"
+                placeholder="e.g. 35,000"
+              />
+            </div>
+            <div className="text-xs text-slate-600 bg-teal-50/50 p-4 rounded-xl border border-teal-100">
+              <p className="font-bold text-teal-900 mb-1">ℹ️ How it works:</p>
+              <p className="m-0 leading-relaxed">
+                When a customer submits a new Customs Clearance request, this fee is deducted directly from their available Naira wallet balance and a linked transaction record is created. If wallet balance is insufficient, submission will fail with an prompt to top up.
+              </p>
             </div>
           </div>
         </Card>

@@ -32,6 +32,12 @@ import { ClearanceStatusHistory } from './ClearanceStatusHistory';
 User.hasOne(Wallet, { foreignKey: 'userId', as: 'wallet' });
 Wallet.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+User.hasMany(WalletTransaction, { foreignKey: 'userId', as: 'walletTransactions' });
+WalletTransaction.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Wallet.hasMany(WalletTransaction, { foreignKey: 'walletId', as: 'transactions' });
+WalletTransaction.belongsTo(Wallet, { foreignKey: 'walletId', as: 'wallet' });
+
 User.hasMany(WalletDeposit, { foreignKey: 'userId', as: 'walletDeposits' });
 WalletDeposit.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 

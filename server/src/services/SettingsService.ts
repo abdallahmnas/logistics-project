@@ -32,6 +32,7 @@ export class SettingsService {
         deliveryTruckPerKm: 500,
         walletFundingFeePercent: 1.5,
         walletWithdrawalFlatFee: 500,
+        customsClearanceFee: 35000,
         companyName: 'HAMZA RMB GLOBAL COMPANY LTD',
         chinaAirCargoAddressCn: '义乌市稠州北路国贸大厦6楼602',
         chinaAirCargoAddressEn: 'Room 602, International Trade Mansion, Chouzhou North Road, Yiwu City, Jinhua City, Zhejiang Province, China',

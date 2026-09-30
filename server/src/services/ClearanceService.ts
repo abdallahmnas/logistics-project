@@ -13,6 +13,7 @@ import {
 } from '../models';
 import { sequelize } from '../config/database';
 import { Op } from 'sequelize';
+import { SettingsService } from './SettingsService';
 
 export class ClearanceService {
   /**
@@ -319,30 +320,79 @@ export class ClearanceService {
         { transaction }
       );
 
-      // Create initial system message
+      // Create initial system message & debit clearance fee
       if (!isDraft) {
+        // Fetch clearance request fee configured in Admin Settings
+        const settings = await SettingsService.getSettings();
+        const clearanceFee = Number(settings.customsClearanceFee ?? 35000);
+
+        if (clearanceFee > 0) {
+          // Find customer's wallet
+          let wallet = await Wallet.findOne({ where: { userId: user.id }, transaction });
+          if (!wallet) {
+            wallet = await Wallet.findOne({ where: { userId: customerId }, transaction });
+          }
+
+          if (!wallet || Number(wallet.balance) < clearanceFee) {
+            const currentBal = Number(wallet?.balance || 0);
+            throw new Error(
+              `Insufficient wallet balance to submit customs clearance request. A clearance fee of ₦${clearanceFee.toLocaleString()} is required, but your available balance is ₦${currentBal.toLocaleString()}. Please fund your wallet and retry.`
+            );
+          }
+
+          // Debit wallet
+          const newBalance = Number(wallet.balance) - clearanceFee;
+          const newAvailable = Math.max(0, Number(wallet.availableBalance) - clearanceFee);
+          wallet.balance = newBalance;
+          wallet.availableBalance = newAvailable;
+          await wallet.save({ transaction });
+
+          // Create Wallet Transaction linking to the user
+          await WalletTransaction.create(
+            {
+              userId: user.id,
+              customerId: user.customerId,
+              walletId: wallet.id,
+              type: 'debit',
+              category: 'clearance_fee',
+              amount: clearanceFee,
+              currency: 'NGN',
+              balanceAfter: newBalance,
+              description: `Customs clearance request fee debited (${requestNumber})`,
+              referenceId: clearanceRequest.id,
+              reference: `CLR-REQ-${requestNumber}-${Date.now()}`,
+              status: 'completed',
+            },
+            { transaction }
+          );
+
+          // Add paid clearance charge record
+          await ClearanceCharge.create(
+            {
+              clearanceRequestId: clearanceRequest.id,
+              category: 'service_fee',
+              description: 'Customs Clearance Request & Submission Fee',
+              amount: clearanceFee,
+              currency: 'NGN',
+              isConfirmed: true,
+              status: 'paid',
+              paidAt: new Date(),
+            },
+            { transaction }
+          );
+        }
+
         await ClearanceMessage.create(
           {
             clearanceRequestId: clearanceRequest.id,
             senderName: 'System Bot',
             senderRole: 'system',
-            message: `Your clearance request ${requestNumber} was submitted successfully. Our customs documentation team will review your uploaded files and provide status updates here.`,
+            message: `Your clearance request ${requestNumber} was submitted successfully.${
+              clearanceFee > 0
+                ? ` The clearance fee of ₦${clearanceFee.toLocaleString()} has been debited from your wallet.`
+                : ''
+            } Our customs documentation team will review your uploaded files and provide updates here.`,
             isSystemMessage: true,
-          },
-          { transaction }
-        );
-
-        // Add initial estimated charge breakdown placeholder
-        const estServiceFee = shipmentType.toLowerCase() === 'air' ? 45000 : 85000;
-        await ClearanceCharge.create(
-          {
-            clearanceRequestId: clearanceRequest.id,
-            category: 'service_fee',
-            description: 'Customs Clearance Documentation & Processing Fee (Estimated)',
-            amount: estServiceFee,
-            currency: 'NGN',
-            isConfirmed: false,
-            status: 'pending',
           },
           { transaction }
         );
@@ -913,16 +963,21 @@ export class ClearanceService {
       await wallet.update({ balance: newBalance, availableBalance: newBalance }, { transaction });
 
       // Record Wallet Transaction
+      const user = await User.findByPk(customerId, { transaction });
       await WalletTransaction.create(
         {
           walletId: wallet.id,
           userId: customerId,
-          type: 'DEBIT',
+          customerId: user?.customerId || customerId,
+          type: 'debit',
+          category: 'clearance_fee',
           amount: totalAmount,
+          currency: 'NGN',
           balanceAfter: newBalance,
           description: `Customs Clearance Charges Payment (${request.requestNumber})`,
+          referenceId: request.id,
           reference: `CLR-PAY-${request.requestNumber}-${Date.now()}`,
-          status: 'COMPLETED',
+          status: 'completed',
         },
         { transaction }
       );
