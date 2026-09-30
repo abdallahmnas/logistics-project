@@ -21,7 +21,7 @@ import { SystemSettings } from './SystemSettings';
 import { WalletDeposit } from './WalletDeposit';
 import { DeliveryVehicle } from './DeliveryVehicle';
 import { Banner } from './Banner';
-import { ClearanceRequest } from './ClearanceRequest';
+import { ClearanceRequest, ClearanceStatus } from './ClearanceRequest';
 import { ClearanceItem } from './ClearanceItem';
 import { ClearanceDocument } from './ClearanceDocument';
 import { ClearanceCharge } from './ClearanceCharge';
@@ -31,6 +31,12 @@ import { ClearanceStatusHistory } from './ClearanceStatusHistory';
 // Define Relationships
 User.hasOne(Wallet, { foreignKey: 'userId', as: 'wallet' });
 Wallet.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+User.hasMany(WalletTransaction, { foreignKey: 'userId', as: 'walletTransactions' });
+WalletTransaction.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Wallet.hasMany(WalletTransaction, { foreignKey: 'walletId', as: 'transactions' });
+WalletTransaction.belongsTo(Wallet, { foreignKey: 'walletId', as: 'wallet' });
 
 User.hasMany(WalletDeposit, { foreignKey: 'userId', as: 'walletDeposits' });
 WalletDeposit.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -97,3 +103,4 @@ export {
   ClearanceMessage,
   ClearanceStatusHistory,
 };
+export type { ClearanceStatus };

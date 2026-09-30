@@ -5,12 +5,15 @@ import {
   ClearanceCharge,
   ClearanceMessage,
   ClearanceStatusHistory,
+  type ClearanceStatus,
   User,
   Wallet,
   WalletTransaction,
   Notification,
 } from '../models';
 import { sequelize } from '../config/database';
+import { Op } from 'sequelize';
+import { SettingsService } from './SettingsService';
 
 export class ClearanceService {
   /**
@@ -23,8 +26,134 @@ export class ClearanceService {
   }
 
   /**
-   * Create a new Customs Clearance Request (Draft or Submitted)
+   * Formats ClearanceRequest to sync perfectly with mobile API specification
    */
+  public static formatClearanceResponse(request: any) {
+    if (!request) return null;
+    const reqObj = request.toJSON ? request.toJSON() : { ...request };
+
+    // Format delivery address
+    const isSelfPickup =
+      reqObj.deliveryPreference === "I'll arrange pickup/delivery myself" ||
+      reqObj.deliveryPreference === 'self_pickup' ||
+      reqObj.deliveryPreference === 'Self Pickup';
+
+    let deliveryAddressObj: any = null;
+    if (!isSelfPickup) {
+      if (reqObj.deliveryAddress && typeof reqObj.deliveryAddress === 'object') {
+        deliveryAddressObj = reqObj.deliveryAddress;
+      } else if (typeof reqObj.deliveryAddress === 'string') {
+        try {
+          deliveryAddressObj = JSON.parse(reqObj.deliveryAddress);
+        } catch {
+          deliveryAddressObj = {
+            fullName: reqObj.recipientName || reqObj.customerName || '',
+            phone: reqObj.recipientPhone || reqObj.customerPhone || '',
+            address: reqObj.deliveryAddress,
+            city: reqObj.city || '',
+            state: reqObj.state || '',
+            instructions: reqObj.deliveryInstructions || '',
+          };
+        }
+      } else if (reqObj.recipientName || reqObj.city) {
+        deliveryAddressObj = {
+          fullName: reqObj.recipientName || reqObj.customerName || '',
+          phone: reqObj.recipientPhone || reqObj.customerPhone || '',
+          address: '',
+          city: reqObj.city || '',
+          state: reqObj.state || '',
+          instructions: reqObj.deliveryInstructions || '',
+        };
+      }
+    }
+
+    // Format items
+    const items = Array.isArray(reqObj.items)
+      ? reqObj.items.map((it: any) => ({
+        id: it.id,
+        clearanceRequestId: it.clearanceRequestId || reqObj.id,
+        productName: it.productName || 'Imported Goods',
+        description: it.description || '',
+        category: it.category || 'General Cargo',
+        quantity: Number(it.quantity) || 1,
+        unit: it.unit || 'pieces',
+        purchaseValue: Number(it.purchaseValue ?? it.value ?? 0),
+        currency: it.currency || 'USD',
+        countryOfManufacture: it.countryOfManufacture || 'China',
+        weight: it.weight != null ? Number(it.weight) : null,
+        volume: it.volume != null ? Number(it.volume) : null,
+        hsCode: it.hsCode || null,
+      }))
+      : [];
+
+    // Format documents
+    const documents = Array.isArray(reqObj.documents)
+      ? reqObj.documents.map((doc: any) => ({
+        id: doc.id,
+        clearanceRequestId: doc.clearanceRequestId || reqObj.id,
+        documentType: doc.documentType || 'Other Document',
+        fileName: doc.fileName || '',
+        fileUrl: doc.fileUrl || '',
+        status: doc.status || (doc.isNotAvailable ? 'Not Available' : 'Uploaded'),
+        uploadedAt: (doc.uploadedAt || doc.createdAt || new Date()).toISOString
+          ? (doc.uploadedAt || doc.createdAt).toISOString()
+          : doc.uploadedAt || doc.createdAt,
+        isNotAvailable: Boolean(doc.isNotAvailable ?? doc.isMissingNoted ?? false),
+        note: doc.note || doc.notes || null,
+      }))
+      : [];
+
+    const hasMissing = Boolean(reqObj.hasMissingShipmentInfo ?? reqObj.noShippingInfoProvided ?? false);
+
+    // Normalize shipmentType casing
+    let shipmentType = reqObj.shipmentType || 'Sea';
+    if (shipmentType.toLowerCase() === 'sea') shipmentType = 'Sea';
+    else if (shipmentType.toLowerCase() === 'air') shipmentType = 'Air';
+    else if (shipmentType.toLowerCase() === 'land') shipmentType = 'Land';
+
+    // Normalize delivery preference
+    let deliveryPreference = reqObj.deliveryPreference || 'Deliver to me';
+    if (deliveryPreference === 'deliver_to_me') deliveryPreference = 'Deliver to me';
+    else if (deliveryPreference === 'self_pickup') deliveryPreference = "I'll arrange pickup/delivery myself";
+
+    return {
+      id: reqObj.id,
+      requestNumber: reqObj.requestNumber,
+      customerId: reqObj.customerId,
+      shipmentType,
+      originCountry: reqObj.originCountry || 'China',
+      portOfEntry: reqObj.portOfEntry || '',
+      shipmentStatus: reqObj.shipmentStatus || 'In transit',
+      shippingLine: reqObj.shippingLine || null,
+      airline: reqObj.airline || null,
+      billOfLadingNumber: reqObj.billOfLadingNumber || null,
+      airWaybillNumber: reqObj.airWaybillNumber || null,
+      containerNumber: reqObj.containerNumber || null,
+      estimatedArrivalDate: reqObj.estimatedArrivalDate || null,
+      hasMissingShipmentInfo: hasMissing,
+      status: reqObj.status,
+      deliveryPreference,
+      deliveryAddress: deliveryAddressObj,
+      items,
+      documents,
+      charges: reqObj.charges || [],
+      payments: reqObj.payments || [],
+      messages: reqObj.messages || [],
+      statusHistory: reqObj.history || reqObj.statusHistory || [],
+      requiredActionNote: reqObj.requiredActionNote || null,
+      totalValueUsd: reqObj.totalValueUsd || 0,
+      totalProductsCount: reqObj.totalProductsCount || items.length,
+      customerName: reqObj.customerName || null,
+      customerPhone: reqObj.customerPhone || null,
+      customerEmail: reqObj.customerEmail || null,
+      createdAt: reqObj.createdAt ? new Date(reqObj.createdAt).toISOString() : new Date().toISOString(),
+      updatedAt: reqObj.updatedAt ? new Date(reqObj.updatedAt).toISOString() : new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Create a new Customs Clearance Request (Draft or Submitted)
+  */
   public static async createClearanceRequest(customerId: string, payload: any) {
     const user = await User.findByPk(customerId);
     if (!user) throw new Error('Customer account not found');
@@ -32,81 +161,149 @@ export class ClearanceService {
     const transaction = await sequelize.transaction();
 
     try {
-      const isDraft = payload.isDraft === true;
-      const status = isDraft ? 'DRAFT' : 'SUBMITTED';
+      const isDraft = payload.isDraft === true || payload.status === 'DRAFT';
+      const status: ClearanceStatus = isDraft ? 'DRAFT' : 'SUBMITTED';
 
       let totalValueUsd = 0;
       if (Array.isArray(payload.items)) {
         totalValueUsd = payload.items.reduce(
-          (sum: number, item: any) => sum + Number(item.value || 0),
+          (sum: number, item: any) =>
+            sum + (Number(item.purchaseValue ?? item.value ?? 0) * (Number(item.quantity) || 1)),
           0
         );
       }
 
-      const requestNumber = this.generateRequestNumber();
+      const requestNumber = payload.requestNumber && String(payload.requestNumber).trim()
+        ? payload.requestNumber.trim()
+        : this.generateRequestNumber();
+
+      const hasMissingShipmentInfo = Boolean(
+        payload.hasMissingShipmentInfo ?? payload.noShippingInfoProvided ?? false
+      );
+
+      // Normalize shipment type
+      let shipmentType = payload.shipmentType || 'Sea';
+      if (shipmentType.toLowerCase() === 'sea') shipmentType = 'Sea';
+      else if (shipmentType.toLowerCase() === 'air') shipmentType = 'Air';
+      else if (shipmentType.toLowerCase() === 'land') shipmentType = 'Land';
+
+      // Normalize delivery preference
+      let deliveryPreference = payload.deliveryPreference || 'Deliver to me';
+      if (deliveryPreference === 'deliver_to_me') deliveryPreference = 'Deliver to me';
+      else if (deliveryPreference === 'self_pickup') deliveryPreference = "I'll arrange pickup/delivery myself";
+
+      const isSelfPickup = deliveryPreference === "I'll arrange pickup/delivery myself";
+
+      // Parse deliveryAddress
+      let deliveryAddressData: any = null;
+      let recipientName = `${user.firstName} ${user.lastName}`.trim();
+      let recipientPhone = user.phone || '';
+      let city = 'Lagos';
+      let state = 'Lagos State';
+      let deliveryInstructions = '';
+
+      if (!isSelfPickup) {
+        if (payload.deliveryAddress && typeof payload.deliveryAddress === 'object') {
+          deliveryAddressData = payload.deliveryAddress;
+          recipientName = payload.deliveryAddress.fullName || recipientName;
+          recipientPhone = payload.deliveryAddress.phone || recipientPhone;
+          city = payload.deliveryAddress.city || city;
+          state = payload.deliveryAddress.state || state;
+          deliveryInstructions = payload.deliveryAddress.instructions || '';
+        } else if (typeof payload.deliveryAddress === 'string') {
+          try {
+            deliveryAddressData = JSON.parse(payload.deliveryAddress);
+          } catch {
+            deliveryAddressData = {
+              fullName: payload.recipientName || recipientName,
+              phone: payload.recipientPhone || recipientPhone,
+              address: payload.deliveryAddress,
+              city: payload.city || city,
+              state: payload.state || state,
+              instructions: payload.deliveryInstructions || '',
+            };
+          }
+        }
+      }
 
       const clearanceRequest = await ClearanceRequest.create(
         {
+          id: payload.id || undefined,
           requestNumber,
           customerId,
           customerName: `${user.firstName} ${user.lastName}`.trim(),
           customerPhone: user.phone,
           customerEmail: user.email,
-          shipmentType: payload.shipmentType || 'sea',
+          shipmentType,
           originCountry: payload.originCountry || 'China',
           portOfEntry: payload.portOfEntry || 'Apapa Port',
-          shipmentStatus: payload.shipmentStatus || 'in_transit',
-          shippingLine: payload.shippingLine,
-          airline: payload.airline,
-          billOfLadingNumber: payload.billOfLadingNumber,
-          airWaybillNumber: payload.airWaybillNumber,
-          containerNumber: payload.containerNumber,
-          estimatedArrivalDate: payload.estimatedArrivalDate,
-          noShippingInfoProvided: payload.noShippingInfoProvided || false,
+          shipmentStatus: payload.shipmentStatus || 'In transit',
+          shippingLine: payload.shippingLine || null,
+          airline: payload.airline || null,
+          billOfLadingNumber: payload.billOfLadingNumber || null,
+          airWaybillNumber: payload.airWaybillNumber || null,
+          containerNumber: payload.containerNumber || null,
+          estimatedArrivalDate: payload.estimatedArrivalDate || null,
+          hasMissingShipmentInfo,
+          noShippingInfoProvided: hasMissingShipmentInfo,
           status,
-          deliveryPreference: payload.deliveryPreference || 'deliver_to_me',
-          recipientName: payload.recipientName || `${user.firstName} ${user.lastName}`.trim(),
-          recipientPhone: payload.recipientPhone || user.phone,
-          deliveryAddress: payload.deliveryAddress,
-          city: payload.city,
-          state: payload.state,
-          deliveryInstructions: payload.deliveryInstructions,
+          deliveryPreference,
+          recipientName: isSelfPickup ? null : recipientName,
+          recipientPhone: isSelfPickup ? null : recipientPhone,
+          deliveryAddress: isSelfPickup ? null : deliveryAddressData,
+          city: isSelfPickup ? null : city,
+          state: isSelfPickup ? null : state,
+          deliveryInstructions: isSelfPickup ? null : deliveryInstructions,
           totalValueUsd,
           totalProductsCount: Array.isArray(payload.items) ? payload.items.length : 0,
           isConfirmedAccurate: payload.isConfirmedAccurate ?? true,
+          requiredActionNote: payload.requiredActionNote || null,
         },
         { transaction }
       );
 
       // Create Items
       if (Array.isArray(payload.items) && payload.items.length > 0) {
-        const itemRecords = payload.items.map((it: any) => ({
-          clearanceRequestId: clearanceRequest.id,
-          productName: it.productName || 'Imported Goods',
-          description: it.description || '',
-          category: it.category || 'General Cargo',
-          quantity: Number(it.quantity) || 1,
-          unit: it.unit || 'pcs',
-          value: Number(it.value) || 0,
-          currency: it.currency || 'USD',
-          countryOfManufacture: it.countryOfManufacture || 'China',
-          hsCode: it.hsCode || '',
-          weight: it.weight ? Number(it.weight) : undefined,
-          volume: it.volume ? Number(it.volume) : undefined,
-        }));
+        const itemRecords = payload.items.map((it: any) => {
+          const val = Number(it.purchaseValue ?? it.value ?? 0);
+          return {
+            id: it.id || undefined,
+            clearanceRequestId: clearanceRequest.id,
+            productName: it.productName || 'Imported Goods',
+            description: it.description || '',
+            category: it.category || 'General Cargo',
+            quantity: Number(it.quantity) || 1,
+            unit: it.unit || 'pieces',
+            purchaseValue: val,
+            value: val,
+            currency: it.currency || 'USD',
+            countryOfManufacture: it.countryOfManufacture || 'China',
+            hsCode: it.hsCode || null,
+            weight: it.weight != null ? Number(it.weight) : null,
+            volume: it.volume != null ? Number(it.volume) : null,
+          };
+        });
         await ClearanceItem.bulkCreate(itemRecords, { transaction });
       }
 
       // Create Documents
       if (Array.isArray(payload.documents) && payload.documents.length > 0) {
-        const docRecords = payload.documents.map((doc: any) => ({
-          clearanceRequestId: clearanceRequest.id,
-          documentType: doc.documentType || 'commercial_invoice',
-          fileName: doc.fileName || 'document.pdf',
-          fileUrl: doc.fileUrl,
-          status: 'uploaded',
-          isMissingNoted: doc.isMissingNoted || false,
-        }));
+        const docRecords = payload.documents.map((doc: any) => {
+          const isNotAvailable = Boolean(doc.isNotAvailable ?? doc.isMissingNoted ?? false);
+          return {
+            id: doc.id || undefined,
+            clearanceRequestId: clearanceRequest.id,
+            documentType: doc.documentType || 'Commercial Invoice',
+            fileName: doc.fileName ?? '',
+            fileUrl: doc.fileUrl ?? '',
+            status: doc.status || (isNotAvailable ? 'Not Available' : 'Uploaded'),
+            isNotAvailable,
+            isMissingNoted: isNotAvailable,
+            note: doc.note || doc.notes || null,
+            notes: doc.note || doc.notes || null,
+            uploadedAt: doc.uploadedAt ? new Date(doc.uploadedAt) : new Date(),
+          };
+        });
         await ClearanceDocument.bulkCreate(docRecords, { transaction });
       }
 
@@ -123,35 +320,83 @@ export class ClearanceService {
         { transaction }
       );
 
-      // Create initial system message
+      // Create initial system message & debit clearance fee
       if (!isDraft) {
+        // Fetch clearance request fee configured in Admin Settings
+        const settings = await SettingsService.getSettings();
+        const clearanceFee = Number(settings.customsClearanceFee ?? 35000);
+
+        if (clearanceFee > 0) {
+          // Find customer's wallet
+          let wallet = await Wallet.findOne({ where: { userId: user.id }, transaction });
+          if (!wallet) {
+            wallet = await Wallet.findOne({ where: { userId: customerId }, transaction });
+          }
+
+          if (!wallet || Number(wallet.balance) < clearanceFee) {
+            const currentBal = Number(wallet?.balance || 0);
+            throw new Error(
+              `Insufficient wallet balance to submit customs clearance request. A clearance fee of ₦${clearanceFee.toLocaleString()} is required, but your available balance is ₦${currentBal.toLocaleString()}. Please fund your wallet and retry.`
+            );
+          }
+
+          // Debit wallet
+          const newBalance = Number(wallet.balance) - clearanceFee;
+          const newAvailable = Math.max(0, Number(wallet.availableBalance) - clearanceFee);
+          wallet.balance = newBalance;
+          wallet.availableBalance = newAvailable;
+          await wallet.save({ transaction });
+
+          // Create Wallet Transaction linking to the user
+          await WalletTransaction.create(
+            {
+              userId: user.id,
+              customerId: user.customerId,
+              walletId: wallet.id,
+              type: 'debit',
+              category: 'clearance_fee',
+              amount: clearanceFee,
+              currency: 'NGN',
+              balanceAfter: newBalance,
+              description: `Customs clearance request fee debited (${requestNumber})`,
+              referenceId: clearanceRequest.id,
+              reference: `CLR-REQ-${requestNumber}-${Date.now()}`,
+              status: 'completed',
+            },
+            { transaction }
+          );
+
+          // Add paid clearance charge record
+          await ClearanceCharge.create(
+            {
+              clearanceRequestId: clearanceRequest.id,
+              category: 'service_fee',
+              description: 'Customs Clearance Request & Submission Fee',
+              amount: clearanceFee,
+              currency: 'NGN',
+              isConfirmed: true,
+              status: 'paid',
+              paidAt: new Date(),
+            },
+            { transaction }
+          );
+        }
+
         await ClearanceMessage.create(
           {
             clearanceRequestId: clearanceRequest.id,
             senderName: 'System Bot',
             senderRole: 'system',
-            message: `Your clearance request ${requestNumber} was submitted successfully. Our customs documentation team will review your uploaded files and provide status updates here.`,
+            message: `Your clearance request ${requestNumber} was submitted successfully.${clearanceFee > 0
+                ? ` The clearance fee of ₦${clearanceFee.toLocaleString()} has been debited from your wallet.`
+                : ''
+              } Our customs documentation team will review your uploaded files and provide updates here.`,
             isSystemMessage: true,
           },
           { transaction }
         );
 
-        // Add initial estimated charge breakdown placeholder
-        const estServiceFee = payload.shipmentType === 'air' ? 45000 : 85000;
-        await ClearanceCharge.create(
-          {
-            clearanceRequestId: clearanceRequest.id,
-            category: 'service_fee',
-            description: 'Customs Clearance Documentation & Processing Fee (Estimated)',
-            amount: estServiceFee,
-            currency: 'NGN',
-            isConfirmed: false,
-            status: 'pending',
-          },
-          { transaction }
-        );
-
-        if (payload.deliveryPreference === 'deliver_to_me') {
+        if (!isSelfPickup) {
           await ClearanceCharge.create(
             {
               clearanceRequestId: clearanceRequest.id,
@@ -198,7 +443,11 @@ export class ClearanceService {
     });
     if (!request) throw new Error('Clearance request not found');
 
-    if (request.status !== 'DRAFT' && request.status !== 'SUBMITTED' && request.status !== 'ADDITIONAL_INFORMATION_REQUIRED') {
+    if (
+      request.status !== 'DRAFT' &&
+      request.status !== 'SUBMITTED' &&
+      request.status !== 'ADDITIONAL_INFORMATION_REQUIRED'
+    ) {
       throw new Error('This request cannot be modified in its current status');
     }
 
@@ -210,16 +459,27 @@ export class ClearanceService {
       let totalValueUsd = request.totalValueUsd;
       if (Array.isArray(payload.items)) {
         totalValueUsd = payload.items.reduce(
-          (sum: number, item: any) => sum + Number(item.value || 0),
+          (sum: number, item: any) =>
+            sum + (Number(item.purchaseValue ?? item.value ?? 0) * (Number(item.quantity) || 1)),
           0
         );
       }
 
-      const updatedStatus = isSubmitting
+      const updatedStatus: ClearanceStatus = isSubmitting
         ? request.status === 'ADDITIONAL_INFORMATION_REQUIRED'
           ? 'DOCUMENT_REVIEW'
           : 'SUBMITTED'
         : request.status;
+
+      const hasMissingShipmentInfo =
+        payload.hasMissingShipmentInfo !== undefined
+          ? payload.hasMissingShipmentInfo
+          : request.hasMissingShipmentInfo;
+
+      let deliveryAddressData = request.deliveryAddress;
+      if (payload.deliveryAddress !== undefined) {
+        deliveryAddressData = payload.deliveryAddress;
+      }
 
       await request.update(
         {
@@ -233,18 +493,20 @@ export class ClearanceService {
           airWaybillNumber: payload.airWaybillNumber ?? request.airWaybillNumber,
           containerNumber: payload.containerNumber ?? request.containerNumber,
           estimatedArrivalDate: payload.estimatedArrivalDate ?? request.estimatedArrivalDate,
-          noShippingInfoProvided: payload.noShippingInfoProvided ?? request.noShippingInfoProvided,
+          hasMissingShipmentInfo,
+          noShippingInfoProvided: hasMissingShipmentInfo,
           status: updatedStatus,
           deliveryPreference: payload.deliveryPreference || request.deliveryPreference,
           recipientName: payload.recipientName ?? request.recipientName,
           recipientPhone: payload.recipientPhone ?? request.recipientPhone,
-          deliveryAddress: payload.deliveryAddress ?? request.deliveryAddress,
+          deliveryAddress: deliveryAddressData,
           city: payload.city ?? request.city,
           state: payload.state ?? request.state,
           deliveryInstructions: payload.deliveryInstructions ?? request.deliveryInstructions,
           totalValueUsd,
           totalProductsCount: Array.isArray(payload.items) ? payload.items.length : request.totalProductsCount,
           isConfirmedAccurate: payload.isConfirmedAccurate ?? request.isConfirmedAccurate,
+          requiredActionNote: payload.requiredActionNote ?? request.requiredActionNote,
         },
         { transaction }
       );
@@ -252,33 +514,46 @@ export class ClearanceService {
       // Replace items if provided
       if (Array.isArray(payload.items)) {
         await ClearanceItem.destroy({ where: { clearanceRequestId: request.id }, transaction });
-        const itemRecords = payload.items.map((it: any) => ({
-          clearanceRequestId: request.id,
-          productName: it.productName || 'Imported Goods',
-          description: it.description || '',
-          category: it.category || 'General Cargo',
-          quantity: Number(it.quantity) || 1,
-          unit: it.unit || 'pcs',
-          value: Number(it.value) || 0,
-          currency: it.currency || 'USD',
-          countryOfManufacture: it.countryOfManufacture || 'China',
-          hsCode: it.hsCode || '',
-          weight: it.weight ? Number(it.weight) : undefined,
-          volume: it.volume ? Number(it.volume) : undefined,
-        }));
+        const itemRecords = payload.items.map((it: any) => {
+          const val = Number(it.purchaseValue ?? it.value ?? 0);
+          return {
+            id: it.id || undefined,
+            clearanceRequestId: request.id,
+            productName: it.productName || 'Imported Goods',
+            description: it.description || '',
+            category: it.category || 'General Cargo',
+            quantity: Number(it.quantity) || 1,
+            unit: it.unit || 'pieces',
+            purchaseValue: val,
+            value: val,
+            currency: it.currency || 'USD',
+            countryOfManufacture: it.countryOfManufacture || 'China',
+            hsCode: it.hsCode || null,
+            weight: it.weight != null ? Number(it.weight) : null,
+            volume: it.volume != null ? Number(it.volume) : null,
+          };
+        });
         await ClearanceItem.bulkCreate(itemRecords, { transaction });
       }
 
       // Add new documents if provided
       if (Array.isArray(payload.documents) && payload.documents.length > 0) {
-        const docRecords = payload.documents.map((doc: any) => ({
-          clearanceRequestId: request.id,
-          documentType: doc.documentType || 'commercial_invoice',
-          fileName: doc.fileName || 'document.pdf',
-          fileUrl: doc.fileUrl,
-          status: 'uploaded',
-          isMissingNoted: doc.isMissingNoted || false,
-        }));
+        const docRecords = payload.documents.map((doc: any) => {
+          const isNotAvailable = Boolean(doc.isNotAvailable ?? doc.isMissingNoted ?? false);
+          return {
+            id: doc.id || undefined,
+            clearanceRequestId: request.id,
+            documentType: doc.documentType || 'Commercial Invoice',
+            fileName: doc.fileName ?? '',
+            fileUrl: doc.fileUrl ?? '',
+            status: doc.status || (isNotAvailable ? 'Not Available' : 'Uploaded'),
+            isNotAvailable,
+            isMissingNoted: isNotAvailable,
+            note: doc.note || doc.notes || null,
+            notes: doc.note || doc.notes || null,
+            uploadedAt: doc.uploadedAt ? new Date(doc.uploadedAt) : new Date(),
+          };
+        });
         await ClearanceDocument.bulkCreate(docRecords, { transaction });
       }
 
@@ -323,7 +598,18 @@ export class ClearanceService {
 
     if (filter?.status && filter.status !== 'ALL') {
       if (filter.status === 'ACTIVE') {
-        where.status = ['SUBMITTED', 'DOCUMENT_REVIEW', 'ADDITIONAL_INFORMATION_REQUIRED', 'CLEARANCE_PROCESSING', 'CUSTOMS_ASSESSMENT', 'INSPECTION', 'AWAITING_PAYMENT', 'CUSTOMS_RELEASED', 'DELIVERY', 'ON_HOLD'];
+        where.status = [
+          'SUBMITTED',
+          'DOCUMENT_REVIEW',
+          'ADDITIONAL_INFORMATION_REQUIRED',
+          'CLEARANCE_PROCESSING',
+          'CUSTOMS_ASSESSMENT',
+          'INSPECTION',
+          'AWAITING_PAYMENT',
+          'CUSTOMS_RELEASED',
+          'DELIVERY',
+          'ON_HOLD',
+        ];
       } else if (filter.status === 'COMPLETED') {
         where.status = 'COMPLETED';
       } else if (filter.status === 'CANCELLED') {
@@ -333,31 +619,112 @@ export class ClearanceService {
       }
     }
 
+    if (filter?.search && filter.search.trim()) {
+      const q = `%${filter.search.trim()}%`;
+      where[Op.or] = [
+        { requestNumber: { [Op.iLike]: q } },
+        { billOfLadingNumber: { [Op.iLike]: q } },
+        { airWaybillNumber: { [Op.iLike]: q } },
+        { containerNumber: { [Op.iLike]: q } },
+        { portOfEntry: { [Op.iLike]: q } },
+      ];
+    }
+
     const requests = await ClearanceRequest.findAll({
       where,
       include: [
         { model: ClearanceItem, as: 'items' },
         { model: ClearanceDocument, as: 'documents' },
         { model: ClearanceCharge, as: 'charges' },
+        { model: ClearanceStatusHistory, as: 'history', order: [['createdAt', 'ASC']] },
       ],
       order: [['createdAt', 'DESC']],
     });
 
-    return requests;
+    return requests.map((r) => this.formatClearanceResponse(r));
+  }
+
+  /**
+   * Get all clearance requests for Admin Dashboard & Clearance Agents
+   */
+  public static async getAllClearanceRequests(filter?: {
+    status?: string;
+    search?: string;
+    shipmentType?: string;
+  }) {
+    const where: any = {};
+
+    if (filter?.status && filter.status !== 'ALL') {
+      if (filter.status === 'ACTIVE') {
+        where.status = [
+          'SUBMITTED',
+          'DOCUMENT_REVIEW',
+          'ADDITIONAL_INFORMATION_REQUIRED',
+          'CLEARANCE_PROCESSING',
+          'CUSTOMS_ASSESSMENT',
+          'INSPECTION',
+          'AWAITING_PAYMENT',
+          'CUSTOMS_RELEASED',
+          'DELIVERY',
+          'ON_HOLD',
+        ];
+      } else if (filter.status === 'COMPLETED') {
+        where.status = 'COMPLETED';
+      } else if (filter.status === 'CANCELLED') {
+        where.status = 'CANCELLED';
+      } else {
+        where.status = filter.status;
+      }
+    }
+
+    if (filter?.shipmentType && filter.shipmentType !== 'ALL') {
+      where.shipmentType = { [Op.iLike]: filter.shipmentType };
+    }
+
+    if (filter?.search && filter.search.trim()) {
+      const q = `%${filter.search.trim()}%`;
+      where[Op.or] = [
+        { requestNumber: { [Op.iLike]: q } },
+        { customerName: { [Op.iLike]: q } },
+        { customerId: { [Op.iLike]: q } },
+        { customerEmail: { [Op.iLike]: q } },
+        { customerPhone: { [Op.iLike]: q } },
+        { billOfLadingNumber: { [Op.iLike]: q } },
+        { airWaybillNumber: { [Op.iLike]: q } },
+        { containerNumber: { [Op.iLike]: q } },
+        { portOfEntry: { [Op.iLike]: q } },
+      ];
+    }
+
+    const requests = await ClearanceRequest.findAll({
+      where,
+      include: [
+        { model: ClearanceItem, as: 'items' },
+        { model: ClearanceDocument, as: 'documents' },
+        { model: ClearanceCharge, as: 'charges' },
+        { model: ClearanceMessage, as: 'messages', order: [['createdAt', 'ASC']] },
+        { model: ClearanceStatusHistory, as: 'history', order: [['createdAt', 'ASC']] },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    return requests.map((r) => this.formatClearanceResponse(r));
   }
 
   /**
    * Get single clearance request details by ID or Request Number
    */
-  public static async getClearanceRequestById(requestIdOrNumber: string, customerId: string) {
+  public static async getClearanceRequestById(requestIdOrNumber: string, customerId?: string) {
+    const where: any = {
+      [Op.or]: [{ id: requestIdOrNumber }, { requestNumber: requestIdOrNumber }],
+    };
+
+    if (customerId) {
+      where.customerId = customerId;
+    }
+
     const request = await ClearanceRequest.findOne({
-      where: {
-        customerId,
-        [sequelize.Sequelize.Op.or]: [
-          { id: requestIdOrNumber },
-          { requestNumber: requestIdOrNumber },
-        ],
-      },
+      where,
       include: [
         { model: ClearanceItem, as: 'items' },
         { model: ClearanceDocument, as: 'documents' },
@@ -371,7 +738,89 @@ export class ClearanceService {
       throw new Error('Customs clearance request not found');
     }
 
-    return request;
+    return this.formatClearanceResponse(request);
+  }
+
+  /**
+   * Admin / Officer Modify Status of a Clearance Request
+   */
+  public static async updateRequestStatus(
+    requestId: string,
+    adminUser: any,
+    newStatus: ClearanceStatus,
+    note?: string,
+    requiredActionNote?: string
+  ) {
+    const request = await ClearanceRequest.findOne({
+      where: {
+        [Op.or]: [{ id: requestId }, { requestNumber: requestId }],
+      },
+    });
+
+    if (!request) throw new Error('Clearance request not found');
+
+    const previousStatus = request.status;
+    const adminName = adminUser
+      ? `${adminUser.firstName || ''} ${adminUser.lastName || ''}`.trim() || 'Admin'
+      : 'Clearance Officer';
+
+    const transaction = await sequelize.transaction();
+
+    try {
+      const updateData: any = { status: newStatus };
+      if (requiredActionNote !== undefined) {
+        updateData.requiredActionNote = requiredActionNote;
+      }
+
+      await request.update(updateData, { transaction });
+
+      // Add status history
+      const historyMessage =
+        note?.trim() ||
+        `Status changed from ${previousStatus} to ${newStatus} by ${adminName}.`;
+
+      await ClearanceStatusHistory.create(
+        {
+          clearanceRequestId: request.id,
+          status: newStatus,
+          message: historyMessage,
+        },
+        { transaction }
+      );
+
+      // Add staff/system message in thread
+      await ClearanceMessage.create(
+        {
+          clearanceRequestId: request.id,
+          senderId: adminUser?.id || undefined,
+          senderName: adminName,
+          senderRole: 'support',
+          message: note?.trim() || `Clearance status updated to: ${newStatus}`,
+          isSystemMessage: false,
+        },
+        { transaction }
+      );
+
+      // Notify customer
+      await Notification.create(
+        {
+          userId: request.customerId,
+          title: 'Customs Clearance Update',
+          message: `Your clearance request ${request.requestNumber} status has been updated to "${newStatus}".`,
+          type: 'clearance',
+          isRead: false,
+          referenceId: request.id,
+        },
+        { transaction }
+      );
+
+      await transaction.commit();
+
+      return this.getClearanceRequestById(request.id);
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   }
 
   /**
@@ -383,27 +832,34 @@ export class ClearanceService {
     });
     if (!request) throw new Error('Clearance request not found');
 
+    const isNotAvailable = Boolean(docPayload.isNotAvailable ?? docPayload.isMissingNoted ?? false);
+
     const document = await ClearanceDocument.create({
       clearanceRequestId: request.id,
-      documentType: docPayload.documentType || 'other',
-      fileName: docPayload.fileName || 'uploaded_file',
-      fileUrl: docPayload.fileUrl,
-      status: 'uploaded',
+      documentType: docPayload.documentType || 'Other Document',
+      fileName: docPayload.fileName || '',
+      fileUrl: docPayload.fileUrl || '',
+      status: docPayload.status || (isNotAvailable ? 'Not Available' : 'Uploaded'),
+      isNotAvailable,
+      isMissingNoted: isNotAvailable,
+      note: docPayload.note || docPayload.notes || null,
+      notes: docPayload.note || docPayload.notes || null,
+      uploadedAt: new Date(),
     });
 
-    // If request was awaiting additional information, log system notification
+    // If request was awaiting additional information, resume document review
     if (request.status === 'ADDITIONAL_INFORMATION_REQUIRED') {
       await request.update({ status: 'DOCUMENT_REVIEW' });
       await ClearanceStatusHistory.create({
         clearanceRequestId: request.id,
         status: 'DOCUMENT_REVIEW',
-        message: `Customer uploaded document (${docPayload.fileName}). Review resumed.`,
+        message: `Customer uploaded document (${docPayload.fileName || 'file'}). Review resumed.`,
       });
       await ClearanceMessage.create({
         clearanceRequestId: request.id,
         senderName: 'System Bot',
         senderRole: 'system',
-        message: `Uploaded document: ${docPayload.fileName}. Our team will review the updated file.`,
+        message: `Uploaded document: ${docPayload.fileName || 'file'}. Our team will review the updated file.`,
         isSystemMessage: true,
       });
     }
@@ -439,6 +895,30 @@ export class ClearanceService {
     });
 
     return msg;
+  }
+
+  /**
+   * Admin add a charge to clearance request (e.g. customs duty, assessment fee)
+   */
+  public static async addCharge(requestId: string, chargePayload: any) {
+    const request = await ClearanceRequest.findOne({
+      where: {
+        [Op.or]: [{ id: requestId }, { requestNumber: requestId }],
+      },
+    });
+    if (!request) throw new Error('Clearance request not found');
+
+    const charge = await ClearanceCharge.create({
+      clearanceRequestId: request.id,
+      category: chargePayload.category || 'customs_duty',
+      description: chargePayload.description || 'Customs Clearance Assessment Fee',
+      amount: Number(chargePayload.amount) || 0,
+      currency: chargePayload.currency || 'NGN',
+      isConfirmed: chargePayload.isConfirmed ?? true,
+      status: chargePayload.status || 'pending',
+    });
+
+    return charge;
   }
 
   /**
@@ -482,16 +962,21 @@ export class ClearanceService {
       await wallet.update({ balance: newBalance, availableBalance: newBalance }, { transaction });
 
       // Record Wallet Transaction
+      const user = await User.findByPk(customerId, { transaction });
       await WalletTransaction.create(
         {
           walletId: wallet.id,
           userId: customerId,
-          type: 'DEBIT',
+          customerId: user?.customerId || customerId,
+          type: 'debit',
+          category: 'clearance_fee',
           amount: totalAmount,
+          currency: 'NGN',
           balanceAfter: newBalance,
           description: `Customs Clearance Charges Payment (${request.requestNumber})`,
+          referenceId: request.id,
           reference: `CLR-PAY-${request.requestNumber}-${Date.now()}`,
-          status: 'COMPLETED',
+          status: 'completed',
         },
         { transaction }
       );
@@ -502,7 +987,8 @@ export class ClearanceService {
       }
 
       // Advance request status
-      const nextStatus = request.status === 'AWAITING_PAYMENT' ? 'CUSTOMS_RELEASED' : request.status;
+      const nextStatus: ClearanceStatus =
+        request.status === 'AWAITING_PAYMENT' ? 'CUSTOMS_RELEASED' : request.status;
       await request.update({ status: nextStatus }, { transaction });
 
       // Add History & System Message
@@ -576,6 +1062,6 @@ export class ClearanceService {
       isSystemMessage: true,
     });
 
-    return request;
+    return this.formatClearanceResponse(request);
   }
 }

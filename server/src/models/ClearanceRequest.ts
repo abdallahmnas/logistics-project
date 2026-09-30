@@ -25,35 +25,47 @@ export interface ClearanceRequestAttributes {
   customerName?: string;
   customerPhone?: string;
   customerEmail?: string;
-  shipmentType: 'sea' | 'air' | 'land';
+  shipmentType: string;
   originCountry: string;
   portOfEntry: string;
-  shipmentStatus: 'not_shipped' | 'in_transit' | 'arrived_ng' | 'at_terminal' | 'arrived_uncleared';
-  shippingLine?: string;
-  airline?: string;
-  billOfLadingNumber?: string;
-  airWaybillNumber?: string;
-  containerNumber?: string;
-  estimatedArrivalDate?: string;
+  shipmentStatus: string;
+  shippingLine?: string | null;
+  airline?: string | null;
+  billOfLadingNumber?: string | null;
+  airWaybillNumber?: string | null;
+  containerNumber?: string | null;
+  estimatedArrivalDate?: string | null;
+  hasMissingShipmentInfo?: boolean;
   noShippingInfoProvided?: boolean;
   status: ClearanceStatus;
-  deliveryPreference: 'deliver_to_me' | 'self_pickup';
-  recipientName?: string;
-  recipientPhone?: string;
-  deliveryAddress?: string;
-  city?: string;
-  state?: string;
-  deliveryInstructions?: string;
+  deliveryPreference: string;
+  recipientName?: string | null;
+  recipientPhone?: string | null;
+  deliveryAddress?: any;
+  city?: string | null;
+  state?: string | null;
+  deliveryInstructions?: string | null;
   totalValueUsd?: number;
   totalProductsCount?: number;
   isConfirmedAccurate?: boolean;
+  requiredActionNote?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export type ClearanceRequestCreationAttributes = Optional<
   ClearanceRequestAttributes,
-  'id' | 'status' | 'originCountry' | 'shipmentStatus' | 'deliveryPreference' | 'totalValueUsd' | 'totalProductsCount' | 'isConfirmedAccurate'
+  | 'id'
+  | 'status'
+  | 'originCountry'
+  | 'shipmentStatus'
+  | 'deliveryPreference'
+  | 'totalValueUsd'
+  | 'totalProductsCount'
+  | 'isConfirmedAccurate'
+  | 'hasMissingShipmentInfo'
+  | 'noShippingInfoProvided'
+  | 'requiredActionNote'
 >;
 
 export class ClearanceRequest
@@ -65,28 +77,30 @@ export class ClearanceRequest
   public declare customerName?: string;
   public declare customerPhone?: string;
   public declare customerEmail?: string;
-  public declare shipmentType: 'sea' | 'air' | 'land';
+  public declare shipmentType: string;
   public declare originCountry: string;
   public declare portOfEntry: string;
-  public declare shipmentStatus: 'not_shipped' | 'in_transit' | 'arrived_ng' | 'at_terminal' | 'arrived_uncleared';
-  public declare shippingLine?: string;
-  public declare airline?: string;
-  public declare billOfLadingNumber?: string;
-  public declare airWaybillNumber?: string;
-  public declare containerNumber?: string;
-  public declare estimatedArrivalDate?: string;
+  public declare shipmentStatus: string;
+  public declare shippingLine?: string | null;
+  public declare airline?: string | null;
+  public declare billOfLadingNumber?: string | null;
+  public declare airWaybillNumber?: string | null;
+  public declare containerNumber?: string | null;
+  public declare estimatedArrivalDate?: string | null;
+  public declare hasMissingShipmentInfo?: boolean;
   public declare noShippingInfoProvided?: boolean;
   public declare status: ClearanceStatus;
-  public declare deliveryPreference: 'deliver_to_me' | 'self_pickup';
-  public declare recipientName?: string;
-  public declare recipientPhone?: string;
-  public declare deliveryAddress?: string;
-  public declare city?: string;
-  public declare state?: string;
-  public declare deliveryInstructions?: string;
+  public declare deliveryPreference: string;
+  public declare recipientName?: string | null;
+  public declare recipientPhone?: string | null;
+  public declare deliveryAddress?: any;
+  public declare city?: string | null;
+  public declare state?: string | null;
+  public declare deliveryInstructions?: string | null;
   public declare totalValueUsd?: number;
   public declare totalProductsCount?: number;
   public declare isConfirmedAccurate?: boolean;
+  public declare requiredActionNote?: string | null;
   public declare readonly createdAt: Date;
   public declare readonly updatedAt: Date;
 }
@@ -122,7 +136,7 @@ ClearanceRequest.init(
     shipmentType: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 'sea',
+      defaultValue: 'Sea',
     },
     originCountry: {
       type: DataTypes.STRING,
@@ -136,7 +150,7 @@ ClearanceRequest.init(
     shipmentStatus: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 'in_transit',
+      defaultValue: 'In transit',
     },
     shippingLine: { type: DataTypes.STRING, allowNull: true },
     airline: { type: DataTypes.STRING, allowNull: true },
@@ -144,26 +158,54 @@ ClearanceRequest.init(
     airWaybillNumber: { type: DataTypes.STRING, allowNull: true },
     containerNumber: { type: DataTypes.STRING, allowNull: true },
     estimatedArrivalDate: { type: DataTypes.STRING, allowNull: true },
+    hasMissingShipmentInfo: { type: DataTypes.BOOLEAN, defaultValue: false },
     noShippingInfoProvided: { type: DataTypes.BOOLEAN, defaultValue: false },
     status: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 'DRAFT',
+      defaultValue: 'SUBMITTED',
     },
     deliveryPreference: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 'deliver_to_me',
+      defaultValue: 'Deliver to me',
     },
     recipientName: { type: DataTypes.STRING, allowNull: true },
     recipientPhone: { type: DataTypes.STRING, allowNull: true },
-    deliveryAddress: { type: DataTypes.TEXT, allowNull: true },
+    deliveryAddress: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      get() {
+        const raw = this.getDataValue('deliveryAddress');
+        if (!raw) return null;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return raw;
+        }
+      },
+      set(val: any) {
+        if (val === null || val === undefined) {
+          this.setDataValue('deliveryAddress', null);
+        } else if (typeof val === 'object') {
+          this.setDataValue('deliveryAddress', JSON.stringify(val));
+          if (val.fullName) this.setDataValue('recipientName', val.fullName);
+          if (val.phone) this.setDataValue('recipientPhone', val.phone);
+          if (val.city) this.setDataValue('city', val.city);
+          if (val.state) this.setDataValue('state', val.state);
+          if (val.instructions) this.setDataValue('deliveryInstructions', val.instructions);
+        } else {
+          this.setDataValue('deliveryAddress', val);
+        }
+      },
+    },
     city: { type: DataTypes.STRING, allowNull: true },
     state: { type: DataTypes.STRING, allowNull: true },
     deliveryInstructions: { type: DataTypes.TEXT, allowNull: true },
     totalValueUsd: { type: DataTypes.FLOAT, defaultValue: 0 },
     totalProductsCount: { type: DataTypes.INTEGER, defaultValue: 0 },
     isConfirmedAccurate: { type: DataTypes.BOOLEAN, defaultValue: true },
+    requiredActionNote: { type: DataTypes.TEXT, allowNull: true },
   },
   {
     sequelize,

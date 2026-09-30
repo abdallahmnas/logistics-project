@@ -28,6 +28,7 @@ export interface SystemSettings {
   deliveryTruckPerKm: number;
   walletFundingFeePercent: number;
   walletWithdrawalFlatFee: number;
+  customsClearanceFee?: number;
   customRoutes?: string;
   companyName?: string;
   chinaAirCargoAddressCn?: string;

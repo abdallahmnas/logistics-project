@@ -138,6 +138,16 @@ export const ShippingRatesConfig: React.FC = () => {
                   icon: '🚢',
                   tagColor: 'cyan',
                 },
+                {
+                  name: 'Customs Clearance Request Fee',
+                  desc: 'Fixed documentation & processing fee debited from customer wallet on submission',
+                  time: 'Instant on Submission',
+                  rateKey: 'customsClearanceFee',
+                  defaultRate: 35000,
+                  unit: '₦ / request',
+                  icon: '🛡️',
+                  tagColor: 'green',
+                },
               ].map((route, idx) => (
                 <div
                   key={idx}

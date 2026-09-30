@@ -1,5 +1,6 @@
 import { Wallet, WalletTransaction, WalletDeposit, User } from '../models';
 import { sequelize } from '../config/database';
+import { Op } from 'sequelize';
 import { NotificationService } from './NotificationService';
 import { ActivityLogService } from './ActivityLogService';
 
@@ -120,7 +121,9 @@ export class WalletService {
 
       await WalletTransaction.create(
         {
+          userId: user.id,
           customerId: user.customerId,
+          walletId: wallet.id,
           type: 'credit',
           category: 'top_up',
           amount: deposit.amount,
@@ -128,6 +131,8 @@ export class WalletService {
           balanceAfter: newBalance,
           description: `Bank deposit approved (Sender: ${deposit.senderName}${deposit.sessionId ? `, Ref: ${deposit.sessionId}` : ''})`,
           referenceId: deposit.id,
+          reference: deposit.sessionId || `DEP-${deposit.id.slice(0, 8)}`,
+          status: 'completed',
         },
         { transaction: t }
       );
@@ -202,7 +207,12 @@ export class WalletService {
     if (!user) throw new Error('User not found');
 
     return WalletTransaction.findAll({
-      where: { customerId: user.customerId },
+      where: {
+        [Op.or]: [
+          { userId: user.id },
+          { customerId: user.customerId },
+        ],
+      },
       order: [['createdAt', 'DESC']],
     });
   }
