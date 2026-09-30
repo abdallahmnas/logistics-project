@@ -168,7 +168,7 @@ export class ClearanceService {
       if (Array.isArray(payload.items)) {
         totalValueUsd = payload.items.reduce(
           (sum: number, item: any) =>
-            sum + (Number(item.purchaseValue ?? item.value || 0) * (Number(item.quantity) || 1)),
+            sum + (Number(item.purchaseValue ?? item.value ?? 0) * (Number(item.quantity) || 1)),
           0
         );
       }
@@ -460,7 +460,7 @@ export class ClearanceService {
       if (Array.isArray(payload.items)) {
         totalValueUsd = payload.items.reduce(
           (sum: number, item: any) =>
-            sum + (Number(item.purchaseValue ?? item.value || 0) * (Number(item.quantity) || 1)),
+            sum + (Number(item.purchaseValue ?? item.value ?? 0) * (Number(item.quantity) || 1)),
           0
         );
       }
