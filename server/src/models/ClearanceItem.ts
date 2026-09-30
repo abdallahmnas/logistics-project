@@ -9,19 +9,30 @@ export interface ClearanceItemAttributes {
   category?: string;
   quantity: number;
   unit: string;
+  purchaseValue: number;
   value: number;
   currency: string;
   countryOfManufacture?: string;
-  hsCode?: string;
-  weight?: number;
-  volume?: number;
+  hsCode?: string | null;
+  weight?: number | null;
+  volume?: number | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export type ClearanceItemCreationAttributes = Optional<
   ClearanceItemAttributes,
-  'id' | 'description' | 'category' | 'unit' | 'currency' | 'countryOfManufacture' | 'hsCode' | 'weight' | 'volume'
+  | 'id'
+  | 'description'
+  | 'category'
+  | 'unit'
+  | 'purchaseValue'
+  | 'value'
+  | 'currency'
+  | 'countryOfManufacture'
+  | 'hsCode'
+  | 'weight'
+  | 'volume'
 >;
 
 export class ClearanceItem
@@ -34,12 +45,13 @@ export class ClearanceItem
   public declare category?: string;
   public declare quantity: number;
   public declare unit: string;
+  public declare purchaseValue: number;
   public declare value: number;
   public declare currency: string;
   public declare countryOfManufacture?: string;
-  public declare hsCode?: string;
-  public declare weight?: number;
-  public declare volume?: number;
+  public declare hsCode?: string | null;
+  public declare weight?: number | null;
+  public declare volume?: number | null;
   public declare readonly createdAt: Date;
   public declare readonly updatedAt: Date;
 }
@@ -66,16 +78,22 @@ ClearanceItem.init(
     category: {
       type: DataTypes.STRING,
       allowNull: true,
+      defaultValue: 'General Cargo',
     },
     quantity: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.FLOAT,
       allowNull: false,
       defaultValue: 1,
     },
     unit: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 'pcs',
+      defaultValue: 'pieces',
+    },
+    purchaseValue: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
     },
     value: {
       type: DataTypes.FLOAT,

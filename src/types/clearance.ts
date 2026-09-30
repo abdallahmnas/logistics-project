@@ -21,12 +21,13 @@ export interface ClearanceItem {
   category?: string;
   quantity: number;
   unit: string;
+  purchaseValue?: number;
   value: number;
   currency: string;
   countryOfManufacture?: string;
-  hsCode?: string;
-  weight?: number;
-  volume?: number;
+  hsCode?: string | null;
+  weight?: number | null;
+  volume?: number | null;
 }
 
 export interface ClearanceDocument {
@@ -35,21 +36,24 @@ export interface ClearanceDocument {
   documentType: string;
   fileName: string;
   fileUrl: string;
-  status: 'uploaded' | 'under_review' | 'accepted' | 'more_info_required';
+  status: string;
   notes?: string;
+  note?: string | null;
+  isNotAvailable?: boolean;
   isMissingNoted?: boolean;
+  uploadedAt?: string;
   createdAt?: string;
 }
 
 export interface ClearanceCharge {
   id?: string;
   clearanceRequestId?: string;
-  category: 'customs_duty' | 'service_fee' | 'delivery_fee' | 'terminal_handling' | 'documentation' | 'other';
+  category: 'customs_duty' | 'service_fee' | 'delivery_fee' | 'terminal_handling' | 'documentation' | 'other' | string;
   description: string;
   amount: number;
   currency: string;
   isConfirmed: boolean;
-  status: 'pending' | 'paid' | 'waived';
+  status: 'pending' | 'paid' | 'waived' | string;
   createdAt?: string;
 }
 
@@ -58,7 +62,7 @@ export interface ClearanceMessage {
   clearanceRequestId?: string;
   senderId?: string;
   senderName: string;
-  senderRole: 'customer' | 'system' | 'support';
+  senderRole: 'customer' | 'system' | 'support' | string;
   message: string;
   attachmentUrl?: string;
   isSystemMessage: boolean;
@@ -73,6 +77,15 @@ export interface ClearanceStatusHistory {
   createdAt?: string;
 }
 
+export interface ClearanceDeliveryAddress {
+  fullName?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  instructions?: string;
+}
+
 export interface ClearanceRequest {
   id: string;
   requestNumber: string;
@@ -80,33 +93,37 @@ export interface ClearanceRequest {
   customerName?: string;
   customerPhone?: string;
   customerEmail?: string;
-  shipmentType: 'sea' | 'air' | 'land';
+  shipmentType: string;
   originCountry: string;
   portOfEntry: string;
-  shipmentStatus: 'not_shipped' | 'in_transit' | 'arrived_ng' | 'at_terminal' | 'arrived_uncleared';
-  shippingLine?: string;
-  airline?: string;
-  billOfLadingNumber?: string;
-  airWaybillNumber?: string;
-  containerNumber?: string;
-  estimatedArrivalDate?: string;
+  shipmentStatus: string;
+  shippingLine?: string | null;
+  airline?: string | null;
+  billOfLadingNumber?: string | null;
+  airWaybillNumber?: string | null;
+  containerNumber?: string | null;
+  estimatedArrivalDate?: string | null;
+  hasMissingShipmentInfo?: boolean;
   noShippingInfoProvided?: boolean;
   status: ClearanceStatus;
-  deliveryPreference: 'deliver_to_me' | 'self_pickup';
-  recipientName?: string;
-  recipientPhone?: string;
-  deliveryAddress?: string;
-  city?: string;
-  state?: string;
-  deliveryInstructions?: string;
+  deliveryPreference: string;
+  recipientName?: string | null;
+  recipientPhone?: string | null;
+  deliveryAddress?: ClearanceDeliveryAddress | string | null;
+  city?: string | null;
+  state?: string | null;
+  deliveryInstructions?: string | null;
   totalValueUsd?: number;
   totalProductsCount?: number;
   isConfirmedAccurate?: boolean;
+  requiredActionNote?: string | null;
   items?: ClearanceItem[];
   documents?: ClearanceDocument[];
   charges?: ClearanceCharge[];
+  payments?: any[];
   messages?: ClearanceMessage[];
   history?: ClearanceStatusHistory[];
+  statusHistory?: ClearanceStatusHistory[];
   createdAt: string;
   updatedAt: string;
 }

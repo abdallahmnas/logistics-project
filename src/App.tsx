@@ -74,6 +74,7 @@ import { ActivityTrailPage } from "./pages/admin/activity/ActivityTrailPage";
 import { PlatformSettings } from "./pages/admin/settings/PlatformSettings";
 import BannerManagement from "./pages/admin/banners/BannerManagement";
 import { AdminDashboardHome } from "./pages/admin/AdminDashboardHome";
+import { ClearanceManagement } from "./pages/admin/clearance/ClearanceManagement";
 
 import { useEffect } from "react";
 import { useAppDispatch } from "./store/hooks";
@@ -210,6 +211,8 @@ function App() {
             <Route path="activity-trail" element={<ActivityTrailPage />} />
             <Route path="settings" element={<PlatformSettings />} />
             <Route path="banners" element={<BannerManagement />} />
+            <Route path="clearance" element={<ClearanceManagement />} />
+            <Route path="clearance/:id" element={<ClearanceManagement />} />
           </Route>
 
           {/* Fallback */}

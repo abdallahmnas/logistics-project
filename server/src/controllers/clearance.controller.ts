@@ -40,8 +40,36 @@ export const getCustomerClearanceRequests = async (req: Request, res: Response):
       return;
     }
 
-    const { status, search } = req.query as { status?: string; search?: string };
-    const requests = await ClearanceService.getCustomerClearanceRequests(user.id, { status, search });
+    const { status, search, all } = req.query as { status?: string; search?: string; all?: string };
+    const isAdmin = ['super_admin', 'admin', 'clearance_agent'].includes(user.role);
+
+    let requests;
+    if (isAdmin && (all === 'true' || req.query.adminView === 'true')) {
+      requests = await ClearanceService.getAllClearanceRequests({ status, search });
+    } else {
+      requests = await ClearanceService.getCustomerClearanceRequests(user.id, { status, search });
+    }
+
+    res.status(200).json({ status: 'success', data: requests });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const getAllClearanceRequests = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    if (!user) {
+      res.status(401).json({ status: 'error', message: 'Unauthorized' });
+      return;
+    }
+
+    const { status, search, shipmentType } = req.query as {
+      status?: string;
+      search?: string;
+      shipmentType?: string;
+    };
+    const requests = await ClearanceService.getAllClearanceRequests({ status, search, shipmentType });
     res.status(200).json({ status: 'success', data: requests });
   } catch (error: any) {
     res.status(500).json({ status: 'error', message: error.message });
@@ -57,10 +85,62 @@ export const getClearanceRequestById = async (req: Request, res: Response): Prom
       return;
     }
 
-    const clearanceRequest = await ClearanceService.getClearanceRequestById(id, user.id);
+    const isAdmin = ['super_admin', 'admin', 'clearance_agent'].includes(user.role);
+    const clearanceRequest = await ClearanceService.getClearanceRequestById(
+      id,
+      isAdmin ? undefined : user.id
+    );
     res.status(200).json({ status: 'success', data: clearanceRequest });
   } catch (error: any) {
     res.status(404).json({ status: 'error', message: error.message });
+  }
+};
+
+export const updateClearanceStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params;
+    if (!user) {
+      res.status(401).json({ status: 'error', message: 'Unauthorized' });
+      return;
+    }
+
+    const { status, note, requiredActionNote } = req.body;
+    if (!status) {
+      res.status(400).json({ status: 'error', message: 'New status is required' });
+      return;
+    }
+
+    const updatedRequest = await ClearanceService.updateRequestStatus(
+      id,
+      user,
+      status,
+      note,
+      requiredActionNote
+    );
+    res.status(200).json({
+      status: 'success',
+      data: updatedRequest,
+      message: `Clearance status updated to ${status} successfully`,
+    });
+  } catch (error: any) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
+
+export const addClearanceCharge = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params;
+    if (!user) {
+      res.status(401).json({ status: 'error', message: 'Unauthorized' });
+      return;
+    }
+
+    const charge = await ClearanceService.addCharge(id, req.body);
+    res.status(201).json({ status: 'success', data: charge, message: 'Charge added successfully' });
+  } catch (error: any) {
+    res.status(400).json({ status: 'error', message: error.message });
   }
 };
 

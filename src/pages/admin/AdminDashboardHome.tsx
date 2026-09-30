@@ -23,6 +23,12 @@ import { fetchProcurements } from '../../store/slices/procurementSlice';
 import { formatNaira, formatDate } from '../../utils/formatters';
 import { shipmentStatusMap } from '../../utils/statusMappings';
 import apiClient from '../../api/axios';
+import { clearanceService } from '../../services/clearanceService';
+import type { ClearanceRequest, ClearanceStatus } from '../../types/clearance';
+import { STATUS_DESCRIPTIONS } from '../../types/clearance';
+
+const { TextArea } = Input;
+const { Option } = Select;
 
 export const AdminDashboardHome: React.FC = () => {
   const navigate = useNavigate();
@@ -43,6 +49,19 @@ export const AdminDashboardHome: React.FC = () => {
   const [verificationPin, setVerificationPin] = useState('');
   const [verifyingPin, setVerifyingPin] = useState(false);
 
+  // Customs Clearance State for Admin / Clearance Agent
+  const [clearanceRequests, setClearanceRequests] = useState<ClearanceRequest[]>([]);
+  const [selectedClearanceReq, setSelectedClearanceReq] = useState<ClearanceRequest | null>(null);
+  const [clearanceStatusModalOpen, setClearanceStatusModalOpen] = useState(false);
+  const [newClearanceStatus, setNewClearanceStatus] = useState<ClearanceStatus | null>(null);
+  const [clearanceNote, setClearanceNote] = useState('');
+  const [clearanceActionNote, setClearanceActionNote] = useState('');
+  const [updatingClearanceStatus, setUpdatingClearanceStatus] = useState(false);
+
+  const loadClearanceData = () => {
+    clearanceService.getAllAdminRequests().then(setClearanceRequests).catch(() => {});
+  };
+
   useEffect(() => {
     dispatch(fetchAdminStats());
     dispatch(fetchAllUsers());
@@ -51,7 +70,31 @@ export const AdminDashboardHome: React.FC = () => {
     dispatch(fetchExchanges());
     dispatch(fetchActiveRate());
     dispatch(fetchProcurements());
+    loadClearanceData();
   }, [dispatch]);
+
+  const handleModifyClearanceStatus = async () => {
+    if (!selectedClearanceReq || !newClearanceStatus) return;
+    try {
+      setUpdatingClearanceStatus(true);
+      await clearanceService.updateStatus(
+        selectedClearanceReq.id,
+        newClearanceStatus,
+        clearanceNote,
+        clearanceActionNote
+      );
+      message.success(`Status for ${selectedClearanceReq.requestNumber} updated to ${newClearanceStatus}`);
+      setClearanceStatusModalOpen(false);
+      setSelectedClearanceReq(null);
+      setClearanceNote('');
+      setClearanceActionNote('');
+      loadClearanceData();
+    } catch (err: any) {
+      message.error(err.message || 'Failed to update clearance status');
+    } finally {
+      setUpdatingClearanceStatus(false);
+    }
+  };
 
   // Compute general KPI counts
   const activePreAlertsCount = useMemo(() => allPackages.filter(p => p.status === 'pre_alerted').length, [allPackages]);
@@ -563,11 +606,245 @@ export const AdminDashboardHome: React.FC = () => {
   }
 
   // =========================================================================
-  // 4. WAREHOUSE & CLEARANCE STAFF DASHBOARD VIEW
+  // 4. CLEARANCE OFFICER DASHBOARD VIEW
   // =========================================================================
-  if (role === 'warehouse_cn' || role === 'warehouse_ng' || role === 'clearance_agent') {
+  if (role === 'clearance_agent') {
+    const pendingReview = clearanceRequests.filter(
+      (r) =>
+        r.status === 'SUBMITTED' ||
+        r.status === 'DOCUMENT_REVIEW' ||
+        r.status === 'ADDITIONAL_INFORMATION_REQUIRED'
+    );
+    const inProcessing = clearanceRequests.filter(
+      (r) =>
+        r.status === 'CLEARANCE_PROCESSING' ||
+        r.status === 'CUSTOMS_ASSESSMENT' ||
+        r.status === 'INSPECTION'
+    );
+    const awaitingPayment = clearanceRequests.filter((r) => r.status === 'AWAITING_PAYMENT');
+    const released = clearanceRequests.filter(
+      (r) => r.status === 'CUSTOMS_RELEASED' || r.status === 'DELIVERY' || r.status === 'COMPLETED'
+    );
+
+    return (
+      <div className="space-y-6 pb-20 animate-fade-in-up max-w-[1200px] mx-auto">
+        <div className="bg-[#0A1128] text-white p-8 rounded-2xl shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-brand-orange text-xs font-bold tracking-widest uppercase mb-2">
+              <SafetyCertificateOutlined /> CUSTOMS CLEARANCE & BORDER COMPLIANCE DESK
+            </div>
+            <h1 className="text-3xl font-extrabold text-white m-0">Clearance Desk — {currentUser?.firstName}</h1>
+            <p className="text-slate-300 text-sm mt-1 mb-0 max-w-xl">
+              Inspect shipping documents, verify cargo invoices, manage port/airport terminal customs assessments, and update clearance declarations.
+            </p>
+          </div>
+          <Button
+            type="primary"
+            icon={<SafetyCertificateOutlined />}
+            size="large"
+            className="!bg-brand-orange hover:!bg-orange-600 border-none font-bold px-6 shadow-md"
+            onClick={() => navigate('/admin/clearance')}
+          >
+            Go to Full Clearance Desk
+          </Button>
+        </div>
+
+        {/* Clearance KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="rounded-2xl border-none shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Awaiting Review</span>
+              <Badge count={pendingReview.length} className="[&_.ant-badge-count]:bg-brand-orange" />
+            </div>
+            <h2 className="text-3xl font-extrabold text-brand-orange mb-1">{pendingReview.length}</h2>
+            <span className="text-xs text-slate-500">Submitted declarations</span>
+          </Card>
+
+          <Card className="rounded-2xl border-none shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Customs Processing</span>
+              <Tag color="cyan" className="font-bold text-xs">Active Valuation</Tag>
+            </div>
+            <h2 className="text-3xl font-extrabold text-cyan-600 mb-1">{inProcessing.length}</h2>
+            <span className="text-xs text-slate-500">Under duty assessment</span>
+          </Card>
+
+          <Card className="rounded-2xl border-none shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payment Pending</span>
+              <Tag color="gold" className="font-bold text-xs">Duty Due</Tag>
+            </div>
+            <h2 className="text-3xl font-extrabold text-amber-600 mb-1">{awaitingPayment.length}</h2>
+            <span className="text-xs text-slate-500">Awaiting customer payment</span>
+          </Card>
+
+          <Card className="rounded-2xl border-none shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Customs Released</span>
+              <CheckCircleOutlined className="text-emerald-500 text-xl" />
+            </div>
+            <h2 className="text-3xl font-extrabold text-emerald-600 mb-1">{released.length}</h2>
+            <span className="text-xs text-slate-500">Completed releases</span>
+          </Card>
+        </div>
+
+        {/* Declarations Queue Table */}
+        <Card
+          title={
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-base text-[#0A1128]">
+                <SafetyCertificateOutlined className="mr-2 text-brand-orange" />
+                Active Customs Declarations Queue
+              </span>
+              <Button
+                type="link"
+                className="text-xs font-bold text-brand-orange"
+                onClick={() => navigate('/admin/clearance')}
+              >
+                View All ({clearanceRequests.length}) ➔
+              </Button>
+            </div>
+          }
+          className="rounded-2xl border-none shadow-sm"
+        >
+          <Table
+            dataSource={clearanceRequests}
+            rowKey="id"
+            pagination={{ pageSize: 6 }}
+            columns={[
+              {
+                title: 'REQUEST #',
+                key: 'requestNumber',
+                render: (r: ClearanceRequest) => (
+                  <div>
+                    <div className="font-bold text-[#0A1128] text-xs">{r.requestNumber}</div>
+                    <div className="text-[10px] text-slate-400">{r.shipmentType} • {r.portOfEntry}</div>
+                  </div>
+                ),
+              },
+              {
+                title: 'CUSTOMER',
+                key: 'customer',
+                render: (r: ClearanceRequest) => (
+                  <div>
+                    <div className="font-bold text-slate-800 text-xs">{r.customerName || 'Customer'}</div>
+                    <div className="text-[10px] text-slate-400">{r.customerId}</div>
+                  </div>
+                ),
+              },
+              {
+                title: 'EST. VALUE',
+                key: 'value',
+                render: (r: ClearanceRequest) => (
+                  <span className="font-extrabold text-xs text-emerald-600">
+                    ${Number(r.totalValueUsd || 0).toLocaleString()} USD
+                  </span>
+                ),
+              },
+              {
+                title: 'STATUS',
+                key: 'status',
+                render: (r: ClearanceRequest) => {
+                  const desc = STATUS_DESCRIPTIONS[r.status] || { label: r.status, badgeColor: 'bg-slate-100 text-slate-700' };
+                  return (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${desc.badgeColor}`}>
+                      {desc.label}
+                    </span>
+                  );
+                },
+              },
+              {
+                title: 'ACTION',
+                key: 'action',
+                render: (r: ClearanceRequest) => (
+                  <Button
+                    type="primary"
+                    size="small"
+                    className="!bg-[#0A1128] font-bold text-xs"
+                    onClick={() => {
+                      setSelectedClearanceReq(r);
+                      setNewClearanceStatus(r.status);
+                      setClearanceStatusModalOpen(true);
+                    }}
+                  >
+                    Modify Status
+                  </Button>
+                ),
+              },
+            ]}
+          />
+        </Card>
+
+        {/* Status Modification Modal */}
+        <Modal
+          title={`Modify Customs Status: ${selectedClearanceReq?.requestNumber || ''}`}
+          open={clearanceStatusModalOpen}
+          onCancel={() => setClearanceStatusModalOpen(false)}
+          onOk={handleModifyClearanceStatus}
+          confirmLoading={updatingClearanceStatus}
+          okText="Confirm Status Update"
+          okButtonProps={{ className: '!bg-[#0A1128] font-bold' }}
+        >
+          {selectedClearanceReq && (
+            <div className="space-y-4 py-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">New Clearance Status</label>
+                <Select
+                  value={newClearanceStatus || selectedClearanceReq.status}
+                  onChange={(v) => setNewClearanceStatus(v)}
+                  className="w-full"
+                  size="large"
+                >
+                  <Option value="SUBMITTED">SUBMITTED — Request Received</Option>
+                  <Option value="DOCUMENT_REVIEW">DOCUMENT_REVIEW — Reviewing Documents</Option>
+                  <Option value="ADDITIONAL_INFORMATION_REQUIRED">ADDITIONAL_INFORMATION_REQUIRED — Action Required</Option>
+                  <Option value="CLEARANCE_PROCESSING">CLEARANCE_PROCESSING — Processing</Option>
+                  <Option value="CUSTOMS_ASSESSMENT">CUSTOMS_ASSESSMENT — Valuation & Duty Assessment</Option>
+                  <Option value="INSPECTION">INSPECTION — Examination at Port</Option>
+                  <Option value="AWAITING_PAYMENT">AWAITING_PAYMENT — Payment Required</Option>
+                  <Option value="CUSTOMS_RELEASED">CUSTOMS_RELEASED — Customs Released</Option>
+                  <Option value="DELIVERY">DELIVERY — In Local Delivery</Option>
+                  <Option value="COMPLETED">COMPLETED — Completed</Option>
+                  <Option value="ON_HOLD">ON_HOLD — On Hold</Option>
+                  <Option value="CANCELLED">CANCELLED — Cancelled</Option>
+                </Select>
+              </div>
+
+              {(newClearanceStatus === 'ADDITIONAL_INFORMATION_REQUIRED' || newClearanceStatus === 'ON_HOLD') && (
+                <div>
+                  <label className="block text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">Action Required Note for Customer</label>
+                  <TextArea
+                    rows={3}
+                    placeholder="Describe documents or information needed..."
+                    value={clearanceActionNote}
+                    onChange={(e) => setClearanceActionNote(e.target.value)}
+                    className="border-amber-300 bg-amber-50/50"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Operational Note / Message</label>
+                <TextArea
+                  rows={3}
+                  placeholder="Internal audit log or message to customer..."
+                  value={clearanceNote}
+                  onChange={(e) => setClearanceNote(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+        </Modal>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // 5. WAREHOUSE STAFF DASHBOARD VIEW
+  // =========================================================================
+  if (role === 'warehouse_cn' || role === 'warehouse_ng') {
     const isCN = role === 'warehouse_cn';
-    const hubTitle = isCN ? 'China Hub (Guangzhou)' : role === 'clearance_agent' ? 'Customs Clearance Desk' : 'Nigeria Hub (Lagos)';
+    const hubTitle = isCN ? 'China Hub (Guangzhou)' : 'Nigeria Hub (Lagos)';
     const hubPackages = allPackages.filter(p => isCN ? p.status === 'received_cn' || p.status === 'pre_alerted' : p.status === 'arrived_ng' || p.status === 'held_customs');
 
     return (
@@ -732,16 +1009,26 @@ export const AdminDashboardHome: React.FC = () => {
             <Button
               type="primary"
               className="!bg-[#0A1128] hover:!bg-slate-800 !h-12 !px-5 font-bold !rounded-md shadow-md flex items-center gap-2"
-              onClick={() => dispatch(fetchAllPackages())}
+              onClick={() => {
+                dispatch(fetchAllPackages());
+                loadClearanceData();
+              }}
             >
               <SyncOutlined className="text-lg" /> Refresh<br />Data
+            </Button>
+            <Button
+              type="primary"
+              className="!bg-brand-orange hover:!bg-orange-600 !h-12 !px-5 font-bold !rounded-md shadow-md flex items-center gap-2"
+              onClick={() => navigate('/admin/clearance')}
+            >
+              <SafetyCertificateOutlined className="text-lg" /> Customs<br />Clearance
             </Button>
           </div>
         </div>
       </div>
 
       {/* KPI Stats Row — DYNAMIC DATA */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <Card className="rounded-2xl border-none shadow-sm h-full">
           <div className="flex justify-between items-start mb-6">
             <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
@@ -803,6 +1090,25 @@ export const AdminDashboardHome: React.FC = () => {
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest m-0 flex flex-col">
             ARRIVED (NIGERIA)
             <span className="w-12 h-1 bg-slate-300 mt-3 rounded-full" />
+          </p>
+        </Card>
+
+        <Card
+          className="rounded-2xl border-none shadow-sm h-full cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => navigate('/admin/clearance')}
+        >
+          <div className="flex justify-between items-start mb-6">
+            <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+              <SafetyCertificateOutlined className="text-brand-orange text-lg" />
+            </div>
+            <span className="bg-orange-50 text-brand-orange text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 border border-orange-200">
+              Clearance
+            </span>
+          </div>
+          <h2 className="text-3xl font-extrabold text-brand-navy mb-1">{clearanceRequests.length}</h2>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest m-0 flex flex-col">
+            CUSTOMS DECLARATIONS
+            <span className="w-12 h-1 bg-brand-orange mt-3 rounded-full" />
           </p>
         </Card>
       </div>

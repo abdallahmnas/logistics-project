@@ -182,7 +182,7 @@ export const AdminLayout: React.FC = () => {
       {
         key: "/admin/warehouse/inbound",
         icon: <InboxOutlined />,
-        label: role === "clearance_agent" ? "Customs Clearance" : "Packages",
+        label: "Packages",
         badge: unreadByCategory["shipment"],
       },
       {
@@ -208,12 +208,26 @@ export const AdminLayout: React.FC = () => {
     }
 
     sections.push({
-      title: role === "clearance_agent" ? "Customs Clearance" : "Warehouse Ops",
+      title: "Warehouse Ops",
       items: whItems,
     });
   }
 
   const opsItems = [];
+  if (
+    role === "super_admin" ||
+    role === "admin" ||
+    role === "clearance_agent" ||
+    hasPermission("clearance") ||
+    hasPermission("customs_clearance")
+  ) {
+    opsItems.push({
+      key: "/admin/clearance",
+      icon: <SafetyCertificateOutlined />,
+      label: "Customs Clearance",
+      badge: unreadByCategory["clearance"],
+    });
+  }
   if (role === "super_admin" || role === "admin" || role === "procurement" || hasPermission("procurement")) {
     opsItems.push({
       key: "/admin/procurement",
@@ -357,6 +371,8 @@ export const AdminLayout: React.FC = () => {
                   navigate('/admin/exchange');
                 } else if (n.type === 'delivery') {
                   navigate('/admin/delivery');
+                } else if (n.type === 'clearance') {
+                  navigate('/admin/clearance');
                 }
               }}
               className={`p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
