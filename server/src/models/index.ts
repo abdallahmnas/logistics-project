@@ -21,7 +21,7 @@ import { SystemSettings } from './SystemSettings';
 import { WalletDeposit } from './WalletDeposit';
 import { DeliveryVehicle } from './DeliveryVehicle';
 import { Banner } from './Banner';
-import { ClearanceRequest } from './ClearanceRequest';
+import { ClearanceRequest, ClearanceStatus } from './ClearanceRequest';
 import { ClearanceItem } from './ClearanceItem';
 import { ClearanceDocument } from './ClearanceDocument';
 import { ClearanceCharge } from './ClearanceCharge';
@@ -103,3 +103,4 @@ export {
   ClearanceMessage,
   ClearanceStatusHistory,
 };
+export type { ClearanceStatus };

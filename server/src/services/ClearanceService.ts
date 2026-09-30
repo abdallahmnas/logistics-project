@@ -5,7 +5,7 @@ import {
   ClearanceCharge,
   ClearanceMessage,
   ClearanceStatusHistory,
-  ClearanceStatus,
+  type ClearanceStatus,
   User,
   Wallet,
   WalletTransaction,
